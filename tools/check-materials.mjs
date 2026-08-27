@@ -55,6 +55,8 @@ for (const m of MATERIALS) {
   if (!(m.cte > 2 && m.cte < 12)) P(id, `CTE ${m.cte} вне 2…12 ·10⁻⁶/°C`);
   if (m.moisturePct != null && !(m.moisturePct > 5 && m.moisturePct < 40)) P(id, `влажность ${m.moisturePct} % вне 5…40`);
 
+  if (m.packKg != null && !(m.packKg > 0 && m.packKg < 100)) P(id, `фасовка ${m.packKg} кг вне 0…100`);
+  if (m.priceRub != null && m.packKg == null) P(id, 'есть цена, но нет фасовки — цену за килограмм не посчитать');
   const d = density(m);
   if (!(d > 1.5 && d < 2.4)) P(id, `расчётная плотность ${d.toFixed(2)} г/см³ вне 1.5…2.4`);
   if (m.moisturePct == null && !m.est.includes('density')) P(id, 'плотность оценочная, но не отмечена в est');

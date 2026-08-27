@@ -5,6 +5,7 @@
 import { userProfileMM, floorY } from './math.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById, LIMITS } from '../config/processes.js';
+import { economics } from './economics.js';
 
 const DEG = 180 / Math.PI;
 
@@ -251,7 +252,7 @@ export function batchPlan(procId, pieces) {
 }
 
 /* ---------- техкарта текстом ---------- */
-export function techCard(state, prod, an, procId, pieces) {
+export function techCard(state, prod, an, procId, pieces, econOpt = {}) {
   const n = toolingNumbers(state, prod, an, procId);
   const ch = checks(state, an, procId);
   const bp = batchPlan(procId, pieces);
@@ -287,6 +288,18 @@ export function techCard(state, prod, an, procId, pieces) {
   L.push(`- Партия: ${pieces} шт`);
   if (bp.known) L.push(`- Ресурс формы ${bp.lo}–${bp.hi} циклов → комплектов оснастки: ${bp.setsLo}–${bp.setsHi}`);
   else L.push('- Ресурс оснастки для этого процесса не подтверждён источником — уточните у изготовителя форм');
+  L.push('');
+  const ec = economics(state, prod, procId, {...econOpt, batch: pieces});
+  L.push('## Экономика партии');
+  L.push(`- Ваши вводные: цикл ${ec.input.cycleSec} с, комплект оснастки ${Math.round(ec.input.toolingCostRub)} ₽, ставка ${ec.input.labourRubPerHour} ₽/ч, вручную ${ec.input.manualPerHour} шт/ч`);
+  if (ec.perKg != null) L.push(`- Материал: ${Math.round(ec.perKg)} ₽/кг, заготовка ${ec.blankKg.toFixed(2)} кг, ${Math.round(ec.matMachine)} ₽ на изделие`);
+  else L.push('- Материал: цена массы в реестре не указана');
+  L.push(`- Машиной: ${Math.round(ec.machinePerPiece)} ₽/шт, ${Math.round(ec.machineTotal)} ₽ за партию, ${ec.machineHours.toFixed(1)} ч`);
+  L.push(`- Руками: ${Math.round(ec.manualPerPiece)} ₽/шт, ${Math.round(ec.manualTotal)} ₽ за партию, ${ec.manualHours.toFixed(0)} ч`);
+  L.push(`- Глины на партию: ${Math.round(ec.clayKgMachine)} кг`);
+  if (ec.cheaper === 'machine') L.push(`- На этом тираже оснастка выгоднее на ${Math.round(ec.manualTotal - ec.machineTotal)} ₽`);
+  else if (ec.breakEven) L.push(`- Оснастка окупается начиная с ${ec.breakEven} шт`);
+  else L.push('- На этих цифрах оснастка не окупается ни при каком тираже');
   L.push('');
   L.push('## Оснастка');
   L.push(`- ${n.proc.tooling}`);

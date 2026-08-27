@@ -29,6 +29,23 @@ export function initTabs(){
   show(tabs.some(t=>t.dataset.tab===saved)?saved:'form');
 }
 
+/* Свёрнутые блоки запоминаются: человек настраивает панель под себя один раз. */
+export function initBlocks(){
+  document.querySelectorAll('.tabpane').forEach(pane=>{
+    const tab=pane.dataset.pane;
+    [...pane.querySelectorAll('details.block')].forEach((d,i)=>{
+      const key=`krug.block.${tab}.${i}`;
+      let saved=null;
+      try{saved=localStorage.getItem(key);}catch(_){}
+      if(saved==='0') d.open=false;
+      if(saved==='1') d.open=true;
+      d.addEventListener('toggle',()=>{
+        try{localStorage.setItem(key,d.open?'1':'0');}catch(_){}
+      });
+    });
+  });
+}
+
 /* ползунок с точным вводом по двойному клику (CAD-режим) */
 export function hookSlider(id,outId,fmt,apply){
   const sl=$(id),out=$(outId);
@@ -133,7 +150,11 @@ export function initPanels(){
   $('hollowChk').addEventListener('change',e=>{state.hollow=e.target.checked;emit();});
   buildPrintPanel();
   document.querySelectorAll('[data-kb]').forEach(b=>{
-    if(!b.onclick) b.onclick=()=>openArticle(b.dataset.kb);
+    if(!b.onclick) b.onclick=e=>{
+      e.preventDefault();      // кнопка справки живёт внутри <summary>:
+      e.stopPropagation();     // без этого клик по ней складывает блок
+      openArticle(b.dataset.kb);
+    };
   });
 }
 

@@ -11,6 +11,7 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
          MOULD_DEFAULTS } from '../js/core/mould.js';
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
+import { economics, pricePerKg } from '../js/core/economics.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -113,7 +114,29 @@ if (uc.length !== 2) P(`ваза с пузом и горлом: перегибо
 if (!uc.some(u => u.kind === 'пузо') || !uc.some(u => u.kind === 'горло'))
   P('перегибы не различаются на пузо и горло');
 
+// экономика: цена за килограмм, рост партии, точка окупаемости
+setShape(PRESETS[0].pts, 90, 85);
+for (const m of MATERIALS) {
+  const per = pricePerKg(m);
+  if (m.priceRub != null && !(per > 0 && per < 2000)) P(`${m.id}: цена ${per} ₽/кг вне разумного`);
+}
+state.mat = 'gzhel-red';
+const prodCup = computeProduction(state);
+const small = economics(state, prodCup, 'ram', {batch: 10});
+const big = economics(state, prodCup, 'ram', {batch: 20000});
+if (!(small.machineTotal > 0 && big.machineTotal > small.machineTotal)) P('стоимость партии не растёт с тиражом');
+if (!(big.machinePerPiece < small.machinePerPiece)) P('оснастка не размазывается по тиражу: цена штуки не падает');
+if (small.cheaper !== 'manual') P('на десяти штуках оснастка не должна быть выгоднее рук');
+if (big.cheaper !== 'machine') P('на двадцати тысячах штук машина должна выигрывать');
+if (!(small.breakEven > 10)) P(`точка окупаемости ${small.breakEven} — должна быть больше десяти штук`);
+const noPrice = economics({...state, mat: 'mkf-2'}, prodCup, 'ram', {batch: 500});
+if (noPrice.perKg !== null) P('масса без цены должна давать perKg = null, а не число');
+if (!isFinite(noPrice.machineTotal)) P('без цены материала расчёт всё равно должен считаться');
+if (!economics(state, prodCup, 'casting', {batch: 500}).sets.known) P('у литья ресурс формы должен быть известен');
+if (economics(state, prodCup, 'ram', {batch: 500}).sets.known) P('у штамповки ресурс формы неизвестен — не выдумывать');
+
 console.log(`\nУсилие пресса: ⌀200 → ${f200.toFixed(1)} тс, ⌀400 → ${f400.toFixed(1)} тс (растёт как площадь)`);
+console.log(`Экономика (чашка, Гжель): 10 шт — ${Math.round(small.machinePerPiece)} ₽/шт машиной против ${Math.round(small.manualPerPiece)} ₽/шт руками; 20 000 шт — ${Math.round(big.machinePerPiece)} против ${Math.round(big.manualPerPiece)}; окупаемость с ${small.breakEven} шт`);
 if (problems.length) {
   console.log('\nОШИБКИ:');
   for (const p of problems) console.log('  ✗ ' + p);

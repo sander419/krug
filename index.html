@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>КРУГ · Производственный симулятор гончарных форм + LDM-слайсер</title>
-<meta name="description" content="КРУГ — параметрический симулятор гончарных форм в браузере: чертёж профиля 1:1 с 3D-моделью, библиотека керамических масс с рынка РФ, масса глины, устойчивость, прочность при LDM-печати, G-code, экспорт STL/OBJ/GLB и энциклопедия гончарного дела.">
+<meta name="description" content="КРУГ — параметрический симулятор гончарных форм в браузере: чертёж профиля 1:1 с 3D-моделью, библиотека керамических масс с рынка РФ, масса глины, прочность при LDM-печати, G-code, оснастка для серийного производства и энциклопедия гончарного дела.">
 <meta name="theme-color" content="#171310">
 <meta property="og:type" content="website">
 <meta property="og:title" content="КРУГ — симулятор гончарных форм">
-<meta property="og:description" content="Рисуете профиль — получаете 3D-форму, массу глины, проверку на осадку, G-code для глиняного 3D-принтера, библиотеку масс и энциклопедию гончарного дела.">
+<meta property="og:description" content="Рисуете профиль — получаете 3D-форму, массу глины, проверку на осадку, G-code для глиняного 3D-принтера, оснастку для завода и энциклопедию гончарного дела.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="styles.css">
@@ -19,22 +19,22 @@
   <div class="logo"></div>
   <div class="brand">
     <div class="brand-name">КРУГ</div>
-    <div class="brand-sub">производственный симулятор · рецепт → форма → прочность → G-code → 3D-экспорт</div>
+    <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
   <div class="head-right">
-    <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false">
+    <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
     <button class="btn" id="kbBtn" title="Энциклопедия гончарного дела">📖 Знания</button>
     <button class="btn" id="snapBtn" title="Снимок вида в PNG">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      Снимок
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span class="btn-label">Снимок</span>
     </button>
-    <button class="btn" id="dnaBtn" title="ДНК формы — рецепт передаётся ссылкой">🧬 ДНК</button>
+    <button class="btn" id="dnaBtn" title="ДНК формы — рецепт передаётся ссылкой">🧬 <span class="btn-label">ДНК</span></button>
     <button class="btn" id="embedBtn" title="Код встраивания 3D-витрины (iframe)">&lt;/&gt;</button>
-    <div class="export-group">
-      <span class="export-label">Экспорт:</span>
-      <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">⬇ STL</button>
-      <button class="btn" id="objBtn" title="OBJ — для 3D-редакторов">⬇ OBJ</button>
-      <button class="btn" id="glbBtn" title="GLB — универсальный формат">⬇ GLB</button>
+    <div class="export-group" role="group" aria-label="Экспорт модели">
+      <span class="export-label">Экспорт</span>
+      <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
+      <button class="btn" id="objBtn" title="OBJ — для 3D-редакторов">OBJ</button>
+      <button class="btn" id="glbBtn" title="GLB — универсальный формат">GLB</button>
     </div>
   </div>
 </header>
@@ -42,9 +42,9 @@
 <main>
   <!-- ================= панель управления ================= -->
   <aside id="panel">
-    <nav class="tabs">
+    <nav class="tabs" aria-label="Разделы настроек">
       <button class="tab active" data-tab="form">Форма</button>
-      <button class="tab" data-tab="mat">Материал</button>
+      <button class="tab" data-tab="mat">Масса</button>
       <button class="tab" data-tab="print">Печать</button>
       <button class="tab" data-tab="glaze">Глазурь</button>
       <button class="tab" data-tab="tool">Оснастка</button>
@@ -53,253 +53,321 @@
     <div class="panes">
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
-        <div class="block">
-          <div class="block-title">Пресеты</div>
-          <div class="presets" id="presets"></div>
-          <div class="seed-line">seed: <b id="seedOut">—</b> · один seed = одна и та же форма</div>
-        </div>
+        <details class="block" open>
+          <summary class="block-title">Пресеты</summary>
+          <div class="block-body">
+            <div class="presets" id="presets"></div>
+            <p class="hint">seed: <b id="seedOut">—</b> — один и тот же seed даёт одну и ту же форму.</p>
+          </div>
+        </details>
 
-        <div class="block">
-          <div class="block-title">Размеры на круге</div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Высота</span><output id="heightOut"></output></div>
-            <input type="range" id="heightSl" min="5" max="40" step="0.5" value="22">
+        <details class="block" open>
+          <summary class="block-title">Размеры на круге</summary>
+          <div class="block-body">
+            <div class="slider-row">
+              <div class="slider-head"><span>Высота</span><output id="heightOut"></output></div>
+              <input type="range" id="heightSl" min="5" max="40" step="0.5" value="22" aria-label="Высота на круге">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Макс. диаметр</span><output id="diamOut"></output></div>
+              <input type="range" id="diamSl" min="5" max="40" step="0.5" value="16" aria-label="Максимальный диаметр">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Детализация круга</span><output id="segOut"></output></div>
+              <input type="range" id="segSl" min="24" max="128" step="4" value="72" aria-label="Число сегментов">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Следы гончара</span><output id="ringsOut"></output></div>
+              <input type="range" id="ringsSl" min="0" max="1.5" step="0.1" value="0.4" aria-label="Глубина следов гончара">
+            </div>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Макс. диаметр</span><output id="diamOut"></output></div>
-            <input type="range" id="diamSl" min="5" max="40" step="0.5" value="16">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Детализация круга</span><output id="segOut"></output></div>
-            <input type="range" id="segSl" min="24" max="128" step="4" value="72">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Следы гончара (фактура)</span><output id="ringsOut"></output></div>
-            <input type="range" id="ringsSl" min="0" max="1.5" step="0.1" value="0.4">
-          </div>
-        </div>
+        </details>
 
-        <div class="block">
-          <div class="block-title">Стенки и ножка <button class="help-dot" data-kb="wall-thickness" title="Про толщину стенки">?</button></div>
-          <label class="check-row">
-            <span>Полая форма</span>
-            <input type="checkbox" id="hollowChk" checked>
-          </label>
-          <div class="slider-row">
-            <div class="slider-head"><span>Толщина стенки</span><output id="thickOut"></output></div>
-            <input type="range" id="thickSl" min="2" max="12" step="0.5" value="5">
+        <details class="block" open>
+          <summary class="block-title">Стенки и ножка
+            <button class="help-dot" data-kb="wall-thickness" title="Про толщину стенки" aria-label="Справка о толщине стенки">?</button>
+          </summary>
+          <div class="block-body">
+            <label class="check-row">
+              <span>Полая форма</span>
+              <input type="checkbox" id="hollowChk" checked>
+            </label>
+            <div class="slider-row">
+              <div class="slider-head"><span>Толщина стенки</span><output id="thickOut"></output></div>
+              <input type="range" id="thickSl" min="2" max="12" step="0.5" value="5" aria-label="Толщина стенки">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Высота ножки</span><output id="footHOut"></output></div>
+              <input type="range" id="footHSl" min="0" max="12" step="1" value="6" aria-label="Высота подрезки ножки">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Ширина ножки</span><output id="footKOut"></output></div>
+              <input type="range" id="footKSl" min="30" max="85" step="1" value="62" aria-label="Ширина ножки">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Припуск на подрезку</span><output id="allowOut"></output></div>
+              <input type="range" id="allowSl" min="5" max="40" step="1" value="20" aria-label="Припуск глины на подрезку">
+            </div>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Высота ножки (подрезка)</span><output id="footHOut"></output></div>
-            <input type="range" id="footHSl" min="0" max="12" step="1" value="6">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Ширина ножки</span><output id="footKOut"></output></div>
-            <input type="range" id="footKSl" min="30" max="85" step="1" value="62">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Припуск глины на подрезку</span><output id="allowOut"></output></div>
-            <input type="range" id="allowSl" min="5" max="40" step="1" value="20">
-          </div>
-        </div>
+        </details>
       </section>
 
       <!-- ---------- Материал ---------- -->
       <section class="tabpane" data-pane="mat">
-        <div class="block">
-          <div class="block-title">Библиотека масс <span class="count" id="matCount"></span>
-            <button class="help-dot" data-kb="choose-mass" title="Как выбрать массу">?</button></div>
-          <div class="chip-row" id="matFilters"></div>
-          <div class="mat-list" id="matList"></div>
-        </div>
-        <div class="block">
-          <div class="block-title">Состояние изделия</div>
-          <div class="seg" id="firingSeg">
-            <button data-f="raw" class="active">Сырая</button>
-            <button data-f="bisque">Утельный обжиг</button>
-            <button data-f="glaze">Глазурь</button>
+        <details class="block" open>
+          <summary class="block-title">Библиотека масс <span class="count" id="matCount"></span>
+            <button class="help-dot" data-kb="choose-mass" title="Как выбрать массу" aria-label="Справка о выборе массы">?</button>
+          </summary>
+          <div class="block-body">
+            <div class="chip-row" id="matFilters"></div>
+            <div class="mat-list" id="matList"></div>
           </div>
-        </div>
-        <div class="block" id="matDetail"></div>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Состояние изделия</summary>
+          <div class="block-body">
+            <div class="seg" id="firingSeg" role="group" aria-label="Состояние изделия">
+              <button data-f="raw" class="active">Сырая</button>
+              <button data-f="bisque">Утиль</button>
+              <button data-f="glaze">Глазурь</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Паспорт массы</summary>
+          <div class="block-body" id="matDetail"></div>
+        </details>
       </section>
 
       <!-- ---------- Печать ---------- -->
       <section class="tabpane" data-pane="print">
-        <div class="block">
-          <div class="block-title">Печать глиной · LDM
-            <button class="help-dot" data-kb="ldm-basics" title="Как устроена печать глиной">?</button></div>
-          <select id="printerSel"></select>
-          <div class="printer-note" id="printerNote"></div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Сопло</span><output id="nozzleOut"></output></div>
-            <input type="range" id="nozzleSl" min="0.4" max="10" step="0.1" value="3">
+        <details class="block" open>
+          <summary class="block-title">Принтер
+            <button class="help-dot" data-kb="ldm-basics" title="Как устроена печать глиной" aria-label="Справка о печати глиной">?</button>
+          </summary>
+          <div class="block-body">
+            <select id="printerSel" aria-label="Модель принтера"></select>
+            <p class="hint" id="printerNote"></p>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Высота слоя</span><output id="layerOut"></output></div>
-            <input type="range" id="layerSl" min="0.2" max="5" step="0.05" value="1.6">
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Режим печати</summary>
+          <div class="block-body">
+            <div class="slider-row">
+              <div class="slider-head"><span>Сопло</span><output id="nozzleOut"></output></div>
+              <input type="range" id="nozzleSl" min="0.4" max="10" step="0.1" value="3" aria-label="Диаметр сопла">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Высота слоя</span><output id="layerOut"></output></div>
+              <input type="range" id="layerSl" min="0.2" max="5" step="0.05" value="1.6" aria-label="Высота слоя">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Скорость подачи</span><output id="feedOut"></output></div>
+              <input type="range" id="feedSl" min="300" max="3600" step="50" value="1200" aria-label="Скорость подачи">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Ø картриджа</span><output id="cartOut"></output></div>
+              <input type="range" id="cartSl" min="10" max="75" step="1" value="48" aria-label="Диаметр картриджа">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Поток</span><output id="flowOut"></output></div>
+              <input type="range" id="flowSl" min="60" max="160" step="1" value="100" aria-label="Поток">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Предел текучести τᵧ
+                <button class="help-dot" data-kb="slump" title="Почему стенка садится" aria-label="Справка об осадке">?</button></span><output id="tauOut"></output></div>
+              <input type="range" id="tauSl" min="1" max="10" step="0.5" value="8" aria-label="Предел текучести пасты">
+            </div>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Скорость подачи</span><output id="feedOut"></output></div>
-            <input type="range" id="feedSl" min="300" max="3600" step="50" value="1200">
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">G-code</summary>
+          <div class="block-body">
+            <button class="btn primary wide" id="sliceBtn">Слайсить в G-code</button>
+            <div class="slice-res" id="sliceRes"></div>
+            <p class="note">Непрерывная спираль без ретракций — стандарт для LDM-печати глиной. Модель печатается в сыром размере, усадка обжига учтена в комментарии к коду.</p>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Ø картриджа / шнека</span><output id="cartOut"></output></div>
-            <input type="range" id="cartSl" min="10" max="75" step="1" value="48">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Поток (компенсация шнека)</span><output id="flowOut"></output></div>
-            <input type="range" id="flowSl" min="60" max="160" step="1" value="100">
-          </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Предел текучести пасты τᵧ
-              <button class="help-dot" data-kb="slump" title="Почему стенка садится">?</button></span><output id="tauOut"></output></div>
-            <input type="range" id="tauSl" min="1" max="10" step="0.5" value="8">
-          </div>
-          <button class="btn primary wide" id="sliceBtn">⚙ Слайсить в G-code (vase-спираль)</button>
-          <div class="slice-res" id="sliceRes"></div>
-          <div class="footnote">Непрерывная спираль без ретракций — стандарт для LDM-печати глиной. Модель печатается в сыром размере, усадка обжига учтена в комментарии к коду.</div>
-        </div>
+        </details>
       </section>
 
       <!-- ---------- Глазурь ---------- -->
       <section class="tabpane" data-pane="glaze">
-        <div class="block">
-          <div class="block-title">Глазурь · формула Зегера
-            <button class="help-dot" data-kb="umf" title="Как читать UMF">?</button></div>
-          <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
-          <div class="slider-row">
-            <div class="slider-head"><span>Al₂O₃ (стабилизатор)</span><output id="alOut"></output></div>
-            <input type="range" id="alSl" min="0.1" max="0.6" step="0.01" value="0.35">
+        <details class="block" open>
+          <summary class="block-title">Формула Зегера
+            <button class="help-dot" data-kb="umf" title="Как читать UMF" aria-label="Справка о формуле Зегера">?</button>
+          </summary>
+          <div class="block-body">
+            <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Al₂O₃ — стабилизатор</span><output id="alOut"></output></div>
+              <input type="range" id="alSl" min="0.1" max="0.6" step="0.01" value="0.35" aria-label="Доля глинозёма">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>SiO₂ — стеклообразователь</span><output id="siOut"></output></div>
+              <input type="range" id="siSl" min="1.5" max="7" step="0.05" value="4.2" aria-label="Доля кремнезёма">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>CaO/MgO во флюсах</span><output id="caOut"></output></div>
+              <input type="range" id="caSl" min="0" max="1" step="0.05" value="0.7" aria-label="Доля щёлочноземельных во флюсах">
+            </div>
           </div>
-          <div class="slider-row">
-            <div class="slider-head"><span>SiO₂ (стеклообразователь)</span><output id="siOut"></output></div>
-            <input type="range" id="siSl" min="1.5" max="7" step="0.05" value="4.2">
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Вердикт</summary>
+          <div class="block-body">
+            <div id="glazeVerdict"></div>
+            <div class="btn-row">
+              <button class="btn small" data-kb="crazing-shivering">Цек и отскок</button>
+              <button class="btn small" data-kb="food-safe">Посудная безопасность</button>
+            </div>
+            <p class="note">Сумма флюсов = 1,0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека или отскока относительно черепка выбранной массы.</p>
           </div>
-          <div class="slider-row" style="margin-bottom:8px">
-            <div class="slider-head"><span>Доля CaO/MgO во флюсах (1.0)</span><output id="caOut"></output></div>
-            <input type="range" id="caSl" min="0" max="1" step="0.05" value="0.7">
-          </div>
-          <div id="glazeVerdict"></div>
-          <div class="mat-actions">
-            <button class="btn small" data-kb="crazing-shivering">Цек и отскок</button>
-            <button class="btn small" data-kb="food-safe">Посудная безопасность</button>
-          </div>
-          <div class="footnote">UMF: сумма флюсов = 1.0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека / отскока относительно черепка выбранной массы.</div>
-        </div>
+        </details>
       </section>
 
       <!-- ---------- Оснастка ---------- -->
       <section class="tabpane" data-pane="tool">
-        <div class="block">
-          <div class="block-title">Способ производства
-            <button class="help-dot" data-kb="tooling-basics" title="Что мешает вынуть изделие из формы">?</button></div>
-          <div class="chip-row" id="toolProcs"></div>
-          <div class="tool-verdict" id="toolVerdict"></div>
-          <div id="toolWhy"></div>
-          <button class="btn small" id="toolAuto">Вернуть рекомендацию</button>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Технологичность</div>
-          <div class="warn-list" id="toolChecks"></div>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Числа для технолога</div>
-          <div id="toolNumbers"></div>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Размер под усадку
-            <button class="help-dot" data-kb="plaster-tooling" title="Как считается размер оснастки">?</button></div>
-          <label class="field-row"><span>Нужный диаметр после обжига, мм</span>
-            <input type="number" id="toolTarget" min="10" max="600" step="1"></label>
-          <div class="tool-note" id="toolTargetOut"></div>
-          <button class="btn small" id="toolApply">Подставить в форму</button>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Тираж и оснастка</div>
-          <label class="field-row"><span>Партия, шт</span>
-            <input type="number" id="toolBatch" min="1" max="1000000" step="10"></label>
-          <div class="tool-note" id="toolBatchOut"></div>
-        </div>
-
-
-        <div class="block">
-          <div class="block-title">Геометрия оснастки
-            <button class="help-dot" data-kb="ram-press" title="Как устроены полуформы">?</button></div>
-          <div class="seg" id="toolPartSeg">
-            <button data-part="ware" class="active">Изделие</button>
-            <button data-part="model">Модель</button>
-            <button data-part="lower">Матрица</button>
-            <button data-part="upper">Пуансон</button>
+        <details class="block" open>
+          <summary class="block-title">Способ производства
+            <button class="help-dot" data-kb="tooling-basics" title="Что мешает вынуть изделие из формы" aria-label="Справка об оснастке">?</button>
+          </summary>
+          <div class="block-body">
+            <div class="chip-row" id="toolProcs"></div>
+            <div class="tool-verdict" id="toolVerdict"></div>
+            <div id="toolWhy"></div>
+            <button class="btn small" id="toolAuto">Вернуть рекомендацию</button>
           </div>
-          <div class="tool-note" id="toolPartNote"></div>
-          <label class="field-row"><span>Стенка формы, мм</span>
-            <input type="number" id="mouldWall" min="10" max="120" step="5"></label>
-          <label class="field-row"><span>Дно формы, мм</span>
-            <input type="number" id="mouldBase" min="10" max="120" step="5"></label>
-          <label class="field-row"><span>Борт над кромкой, мм</span>
-            <input type="number" id="mouldRim" min="0" max="60" step="2"></label>
-          <div class="tool-note" id="toolStock"></div>
-          <div class="mat-actions">
-            <button class="btn small" id="toolStlModel">⬇ Модель STL</button>
-            <button class="btn small" id="toolStlLower">⬇ Матрица STL</button>
-            <button class="btn small" id="toolStlUpper">⬇ Пуансон STL</button>
-            <button class="btn small" id="toolDxf">⬇ Профили DXF</button>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Технологичность</summary>
+          <div class="block-body">
+            <div class="warn-list" id="toolChecks"></div>
           </div>
-          <div class="footnote">Полуформы строятся как тела вращения по сырому размеру: полость матрицы — наружная поверхность изделия, выступ пуансона — внутренняя. Замки, штифты, воздушные каналы и облойная канавка не строятся — их закладывает изготовитель оснастки.</div>
-        </div>
-        <div class="block">
-          <button class="btn primary wide" id="toolCard">⬇ Техкарта оснастки</button>
-          <div class="footnote">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</div>
-          <div class="footnote src-list" id="toolSrc"></div>
-        </div>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Числа для технолога</summary>
+          <div class="block-body" id="toolNumbers"></div>
+        </details>
+
+        <details class="block">
+          <summary class="block-title">Размер под усадку
+            <button class="help-dot" data-kb="plaster-tooling" title="Как считается размер оснастки" aria-label="Справка о размере оснастки">?</button>
+          </summary>
+          <div class="block-body">
+            <label class="field-row"><span>Нужный ⌀ после обжига</span>
+              <input type="number" id="toolTarget" min="10" max="600" step="1" inputmode="numeric"><i class="unit">мм</i></label>
+            <p class="tool-note" id="toolTargetOut"></p>
+            <button class="btn small" id="toolApply">Подставить в форму</button>
+          </div>
+        </details>
+
+        <details class="block">
+          <summary class="block-title">Геометрия оснастки
+            <button class="help-dot" data-kb="ram-press" title="Как устроены полуформы" aria-label="Справка о полуформах">?</button>
+          </summary>
+          <div class="block-body">
+            <div class="seg" id="toolPartSeg" role="group" aria-label="Что показывать в трёхмерном виде">
+              <button data-part="ware" class="active">Изделие</button>
+              <button data-part="model">Модель</button>
+              <button data-part="lower">Матрица</button>
+              <button data-part="upper">Пуансон</button>
+            </div>
+            <p class="tool-note" id="toolPartNote"></p>
+            <label class="field-row"><span>Стенка формы</span>
+              <input type="number" id="mouldWall" min="10" max="120" step="5" inputmode="numeric"><i class="unit">мм</i></label>
+            <label class="field-row"><span>Дно формы</span>
+              <input type="number" id="mouldBase" min="10" max="120" step="5" inputmode="numeric"><i class="unit">мм</i></label>
+            <label class="field-row"><span>Борт над кромкой</span>
+              <input type="number" id="mouldRim" min="0" max="60" step="2" inputmode="numeric"><i class="unit">мм</i></label>
+            <p class="tool-note" id="toolStock"></p>
+            <div class="btn-row">
+              <button class="btn small" id="toolStlModel">Модель STL</button>
+              <button class="btn small" id="toolStlLower">Матрица STL</button>
+              <button class="btn small" id="toolStlUpper">Пуансон STL</button>
+              <button class="btn small" id="toolDxf">Профили DXF</button>
+            </div>
+            <p class="note">Полуформы строятся как тела вращения по сырому размеру: полость матрицы — наружная поверхность изделия, выступ пуансона — внутренняя. Замки, штифты, воздушные каналы и облойная канавка не строятся: их закладывает изготовитель оснастки.</p>
+          </div>
+        </details>
+
+        <details class="block">
+          <summary class="block-title">Тираж и экономика</summary>
+          <div class="block-body">
+            <label class="field-row"><span>Партия</span>
+              <input type="number" id="toolBatch" min="1" max="1000000" step="10" inputmode="numeric"><i class="unit">шт</i></label>
+            <p class="tool-note" id="toolBatchOut"></p>
+            <label class="field-row"><span>Цикл на изделие</span>
+              <input type="number" id="econCycle" min="5" max="600" step="5" inputmode="numeric"><i class="unit">с</i></label>
+            <label class="field-row"><span>Комплект оснастки</span>
+              <input type="number" id="econTool" min="0" max="10000000" step="5000" inputmode="numeric"><i class="unit">₽</i></label>
+            <label class="field-row"><span>Ставка с накладными</span>
+              <input type="number" id="econRate" min="0" max="100000" step="50" inputmode="numeric"><i class="unit">₽/ч</i></label>
+            <label class="field-row"><span>Вручную на круге</span>
+              <input type="number" id="econManual" min="1" max="200" step="1" inputmode="numeric"><i class="unit">шт/ч</i></label>
+            <div id="econOut"></div>
+            <p class="note">Цикл, стоимость оснастки и ставка — ваши цифры, инструмент их не знает. Цена массы берётся из фасовки в паспорте и считается ориентиром.</p>
+          </div>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Выгрузка</summary>
+          <div class="block-body">
+            <button class="btn primary wide" id="toolCard">Техкарта оснастки</button>
+            <p class="note">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</p>
+            <p class="note src-list" id="toolSrc"></p>
+          </div>
+        </details>
       </section>
     </div>
 
     <div class="panel-foot">
-      <div class="foot-title">Контроль мастера</div>
+      <h2 class="foot-title">Контроль мастера</h2>
       <div class="warn-list" id="warnList"></div>
     </div>
   </aside>
 
   <!-- ================= чертёж профиля ================= -->
-  <section id="draft">
+  <section id="draft" aria-label="Чертёж профиля">
     <div class="draft-head">
-      <span>Профиль · половина сечения</span>
+      <span>Профиль · сечение</span>
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
     </div>
     <canvas id="profileCanvas"></canvas>
-    <div class="draft-hint"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</div>
+    <p class="draft-hint"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</p>
   </section>
 
   <!-- ================= 3D-модель ================= -->
-  <section id="viewport">
+  <section id="viewport" aria-label="Трёхмерный вид">
     <div class="vignette"></div>
-    <div class="overlay view-tools">
-      <button class="tool active" id="spinBtn" title="Вращение круга">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+    <div class="overlay view-tools" role="group" aria-label="Инструменты вида">
+      <button class="tool active" id="spinBtn" title="Вращение круга" aria-label="Вращение круга">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
       </button>
-      <button class="tool" id="wireBtn" title="Каркас">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><path d="M12 2v18M4 6.5l16 9M20 6.5l-16 9"/></svg>
+      <button class="tool" id="wireBtn" title="Каркас" aria-label="Каркас">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><path d="M12 2v18M4 6.5l16 9M20 6.5l-16 9"/></svg>
       </button>
-      <button class="tool" id="heatBtn" title="Анализ прочности: карта рисков осадки/обрушения при печати">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l4-6 4 3 5-8 5 6"/><path d="M3 21h18"/></svg>
+      <button class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l4-6 4 3 5-8 5 6"/><path d="M3 21h18"/></svg>
       </button>
-      <button class="tool" id="resetBtn" title="Сбросить камеру">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+      <button class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
       </button>
-      <button class="tool" id="wsBtn" title="Режим мастерской — скрыть панель">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      <button class="tool" id="wsBtn" title="Режим мастерской — скрыть панель" aria-label="Режим мастерской">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
       </button>
     </div>
     <div class="overlay cinema">
-      <button class="play-btn" id="playBtn" title="Проиграть процесс: комок → центровка → вскрытие → вытяжка → формовка → подрезка → обжиг">
-        <svg id="playIco" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3l16 9-16 9V3z"/></svg>
+      <button class="play-btn" id="playBtn" title="Проиграть процесс: комок → центровка → вскрытие → вытяжка → формовка → подрезка → обжиг" aria-label="Проиграть процесс">
+        <svg id="playIco" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3l16 9-16 9V3z"/></svg>
       </button>
-      <input type="range" id="stageSl" min="0" max="6" step="0.01" value="6" title="Этап производственного процесса">
+      <input type="range" id="stageSl" min="0" max="6" step="0.01" value="6" title="Этап производственного процесса" aria-label="Этап процесса">
       <div class="stage-lbl"><b id="stageName">Готовое изделие</b><span id="stageNum">этап 6 / 6</span></div>
     </div>
   </section>
@@ -307,22 +375,22 @@
 
 <!-- ================= метрики ================= -->
 <footer id="metrics">
+  <button id="verdictBadge" title="Показать замечания мастера"></button>
   <div class="stats" id="stats"></div>
-  <button id="verdictBadge" title="Показать все замечания мастера"></button>
 </footer>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= энциклопедия ================= -->
 <div id="kbOverlay" aria-hidden="true">
   <div class="kb-window" role="dialog" aria-label="Энциклопедия гончарного дела">
     <div class="kb-head">
-      <div class="kb-title">📖 Энциклопедия гончарного дела <span class="count" id="kbCount"></span></div>
-      <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false">
-      <button class="btn" id="kbClose" title="Закрыть (Esc)">✕</button>
+      <h2 class="kb-title">Энциклопедия <span class="count" id="kbCount"></span></h2>
+      <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false" aria-label="Поиск по энциклопедии">
+      <button class="btn" id="kbClose" title="Закрыть (Esc)" aria-label="Закрыть">✕</button>
     </div>
     <div class="kb-body">
-      <nav class="kb-nav">
+      <nav class="kb-nav" aria-label="Разделы энциклопедии">
         <div class="kb-sections" id="kbSections"></div>
         <div class="kb-list" id="kbList"></div>
       </nav>

@@ -8,7 +8,7 @@ import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
 import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
-import { initPanels, initTabs, panelsAPI } from './ui/panels.js';
+import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
 import { initGlazeLab, syncGlaze } from './ui/glazeLab.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKB, openKB } from './ui/kb.js';
@@ -55,6 +55,7 @@ $('nameInput').value=state.name;
 
 initEditor($('profileCanvas'));
 initTabs();
+initBlocks();
 initPanels();
 panelsAPI.sync();
 initKB();

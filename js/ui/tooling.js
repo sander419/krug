@@ -10,6 +10,7 @@ import { PROCESSES, byId as processById } from '../config/processes.js';
 import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
          cavityStock, wareProfiles } from '../core/mould.js';
 import { buildDXF } from '../core/dxf.js';
+import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL } from '../three/exporters.js';
 import { byId as materialById } from '../config/materials.js';
@@ -24,6 +25,7 @@ const num = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('ru
 let manualProc = null;      // выбран руками — не перебиваем рекомендацией
 let batch = 500;
 let part = 'ware';          // что показывать в 3D
+const econ = {...ECON_DEFAULTS};
 const mould = {...MOULD_DEFAULTS};
 
 const PART_NOTE = {
@@ -130,8 +132,39 @@ function render() {
   document.querySelectorAll('#toolPartSeg button').forEach(b =>
     b.classList.toggle('active', b.dataset.part === part));
 
+  renderEconomics(prod, procId, mat);
+
   $('toolSrc').innerHTML = proc.src.map(s =>
     `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>`).join('<br>');
+}
+
+const rub = v => Math.round(v).toLocaleString('ru') + ' ₽';
+
+function renderEconomics(prod, procId, mat) {
+  const ec = economics(state, prod, procId, {...econ, batch});
+  const priceRow = ec.perKg == null
+    ? `<dt>Материал</dt><dd class="dim">цена этой массы в реестре не указана</dd>`
+    : `<dt>Материал</dt><dd>${num(ec.perKg, 0)} ₽/кг · ${rub(ec.matMachine)} на изделие <span class="dim">(заготовка ${num(ec.blankKg, 2)} кг)</span></dd>`;
+
+  let verdict, cls = '';
+  if (ec.cheaper === 'machine') {
+    cls = 'win';
+    verdict = `На тираже ${num(batch, 0)} шт оснастка дешевле ручного круга на <b>${rub(ec.manualTotal - ec.machineTotal)}</b>.`;
+  } else if (ec.breakEven) {
+    verdict = `На ${num(batch, 0)} шт дешевле руками. Оснастка начинает окупаться с <b>${num(ec.breakEven, 0)} шт</b>.`;
+  } else {
+    verdict = `На этих цифрах оснастка не окупается ни при каком тираже: машинный цикл не даёт выигрыша перед руками.`;
+  }
+
+  $('econOut').innerHTML = `
+    <dl class="spec">
+      ${priceRow}
+      <dt>Машиной</dt><dd><b>${rub(ec.machinePerPiece)}</b> за штуку · ${rub(ec.machineTotal)} за партию</dd>
+      <dt>Руками</dt><dd><b>${rub(ec.manualPerPiece)}</b> за штуку · ${rub(ec.manualTotal)} за партию</dd>
+      <dt>Время</dt><dd>${num(ec.machineHours, 1)} ч машиной · ${num(ec.manualHours, 0)} ч руками <span class="dim">(${num(ec.shifts, 1)} смены)</span></dd>
+      <dt>Глина</dt><dd>${num(ec.clayKgMachine, 0)} кг на партию</dd>
+    </dl>
+    <div class="econ-verdict ${cls}">${verdict}</div>`;
 }
 
 export function initTooling() {
@@ -196,10 +229,21 @@ export function initTooling() {
     download(new Blob([buildDXF(layers, notes)], {type: 'application/dxf'}), fileName(state, 'профили.dxf'));
     toast('DXF сохранён: профили изделия, стенки, ролика и сечение матрицы');
   };
+  for (const [id, key] of [['econCycle', 'cycleSec'], ['econTool', 'toolingCostRub'],
+                           ['econRate', 'labourRubPerHour'], ['econManual', 'manualPerHour']]) {
+    const el = $(id);
+    el.value = econ[key];
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      if (!isFinite(v) || v < 0) return;
+      econ[key] = v;
+      render();
+    });
+  }
   $('toolCard').onclick = () => {
     const an = analyzeFormability(state);
     const prod = computeProduction(state);
-    const text = techCard(state, prod, an, currentProcId(an), batch);
+    const text = techCard(state, prod, an, currentProcId(an), batch, econ);
     download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
     toast('Техкарта сохранена');
   };
