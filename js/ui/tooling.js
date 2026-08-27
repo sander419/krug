@@ -2,11 +2,16 @@
 // Вкладка «Оснастка»: годится ли форма под серийное производство, какой процесс,
 // какой пресс нужен, сколько комплектов форм на тираж. Техкарта выгружается файлом.
 import { state } from '../core/state.js';
-import { onChange } from '../core/bus.js';
+import { onChange, emit as emitRefresh } from '../core/bus.js';
 import { computeProduction } from '../core/math.js';
 import { analyzeFormability, recommendProcess, checks, toolingNumbers,
          batchPlan, techCard, rawForTarget, firedFromRaw } from '../core/tooling.js';
 import { PROCESSES, byId as processById } from '../config/processes.js';
+import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
+         cavityStock, wareProfiles } from '../core/mould.js';
+import { buildDXF } from '../core/dxf.js';
+import { sceneAPI } from '../three/scene.js';
+import { exportPathSTL } from '../three/exporters.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -18,6 +23,28 @@ const num = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('ru
 
 let manualProc = null;      // выбран руками — не перебиваем рекомендацией
 let batch = 500;
+let part = 'ware';          // что показывать в 3D
+const mould = {...MOULD_DEFAULTS};
+
+const PART_NOTE = {
+  ware:  'В сцене изделие. Переключите, чтобы посмотреть оснастку — этапы «Кинотеатра» при этом не показываются.',
+  model: 'Модель (болван) — само изделие сплошным телом, по нему формуют гипс. Сырой размер.',
+  lower: 'Матрица: блок с полостью по наружной поверхности. Она же — гипсовая форма для роликового формования.',
+  upper: 'Пуансон: выступ по внутренней поверхности изделия. Зазор между полуформами и есть стенка сырца.',
+};
+
+function partPath(id) {
+  if (id === 'model') return modelPath(state);
+  if (id === 'lower') return cavityPath(state, mould);
+  if (id === 'upper') return corePath(state, mould);
+  return null;
+}
+
+function applyPreview() {
+  sceneAPI.setPreviewPath(partPath(part));
+  emitRefresh();
+}
+
 
 function currentProcId(an) {
   if (manualProc) return manualProc;
@@ -93,6 +120,16 @@ function render() {
     ? `Чтобы после обжига получить ⌀${num(+t.value, 0)} мм, на круге нужен ⌀<b>${num(rawForTarget(+t.value, mat), 1)}</b> мм`
     : '';
 
+  const stock = cavityStock(state, mould);
+  const wp = wareProfiles(state);
+  $('toolPartNote').textContent = PART_NOTE[part];
+  $('toolStock').innerHTML =
+    `Габарит матрицы: ⌀${num(stock.radiusMM * 2, 0)} × ${num(stock.heightMM, 0)} мм, ` +
+    `объём блока <b>${num(stock.grossLitres, 1)} л</b> за вычетом полости под изделие ` +
+    `<span class="dim">(расход гипса считайте по своей марке и соотношению с водой)</span>`;
+  document.querySelectorAll('#toolPartSeg button').forEach(b =>
+    b.classList.toggle('active', b.dataset.part === part));
+
   $('toolSrc').innerHTML = proc.src.map(s =>
     `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>`).join('<br>');
 }
@@ -116,6 +153,48 @@ export function initTooling() {
     sl.value = raw / 10;
     sl.dispatchEvent(new Event('input'));
     toast(`Диаметр на круге ${num(raw, 1)} мм — после обжига будет ⌀${num(target, 0)} мм`);
+  };
+  $('toolPartSeg').querySelectorAll('button').forEach(b => {
+    b.onclick = () => { part = b.dataset.part; applyPreview(); render(); };
+  });
+  for (const [id, key] of [['mouldWall', 'wallMM'], ['mouldBase', 'baseMM'], ['mouldRim', 'rimMM']]) {
+    const el = $(id);
+    el.value = mould[key];
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      if (!isFinite(v)) return;
+      mould[key] = Math.max(0, v);
+      if (part !== 'ware') applyPreview();
+      render();
+    });
+  }
+  const stl = (kind, suffix) => () => {
+    const path = partPath(kind);
+    if (!path) { toast('Для этой формы деталь не строится: нужна полая форма'); return; }
+    exportPathSTL(state, path, suffix);
+    toast(`${suffix} · сырой размер в мм`);
+  };
+  $('toolStlModel').onclick = stl('model', 'модель');
+  $('toolStlLower').onclick = stl('lower', 'матрица');
+  $('toolStlUpper').onclick = stl('upper', 'пуансон');
+  $('toolDxf').onclick = () => {
+    const wp = wareProfiles(state);
+    const roller = rollerProfile(state);
+    const layers = [
+      {name: 'IZDELIE', color: 1, points: wp.outer, closed: false},
+      {name: 'STENKA', color: 3, points: wp.inner, closed: false},
+      {name: 'MATRICA', color: 5, points: cavityPath(state, mould), closed: true},
+    ];
+    if (roller) layers.push({name: 'ROLIK', color: 2, points: roller, closed: false});
+    const mat = materialById(state.mat);
+    const notes = [
+      `KRUG: ${state.name || 'izdelie'} — profili osnastki, mm, syroy razmer`,
+      `Massa: ${mat.name} (${mat.vendor}), usadka ${mat.shrinkPct}%`,
+      `IZDELIE - naruzhnaya poverhnost, STENKA - vnutrennyaya (profil rolika),`,
+      `MATRICA - sechenie nizhney poluformy. X = radius, Y = vysota.`,
+    ];
+    download(new Blob([buildDXF(layers, notes)], {type: 'application/dxf'}), fileName(state, 'профили.dxf'));
+    toast('DXF сохранён: профили изделия, стенки, ролика и сечение матрицы');
   };
   $('toolCard').onclick = () => {
     const an = analyzeFormability(state);

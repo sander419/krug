@@ -24,8 +24,9 @@ function exportGeo(){
   return g;
 }
 
-export function exportSTL(state){
-  const g=fabricationGeo(state).toNonIndexed();
+/* Двоичный STL из любой геометрии — общий для изделия и для оснастки. */
+export function stlBlob(geometry){
+  const g=geometry.index?geometry.toNonIndexed():geometry;
   const pos=g.attributes.position,n=pos.count/3;
   const buf=new ArrayBuffer(84+n*50),dv=new DataView(buf);
   dv.setUint32(80,n,true);
@@ -39,8 +40,22 @@ export function exportSTL(state){
     for(const v of[va,vb,vc]){dv.setFloat32(off,v.x,true);dv.setFloat32(off+4,v.y,true);dv.setFloat32(off+8,v.z,true);off+=12;}
     dv.setUint16(off,0,true);off+=2;
   }
-  g.dispose();
-  download(new Blob([buf],{type:'model/stl'}), fileName(state,'stl'));
+  if(g!==geometry) g.dispose();
+  return new Blob([buf],{type:'model/stl'});
+}
+
+export function exportSTL(state){
+  const geo=fabricationGeo(state);
+  download(stlBlob(geo), fileName(state,'stl'));
+  geo.dispose();
+}
+
+/* Оснастка: контур сечения -> тело вращения -> STL. */
+export function exportPathSTL(state, path, suffix){
+  const pts=path.map(p=>new THREE.Vector2(Math.max(p.r,0.01),p.y));
+  const geo=new THREE.LatheGeometry(pts, Math.max(state.segments,48));
+  download(stlBlob(geo), fileName(state, suffix+'.stl'));
+  geo.dispose();
 }
 
 export function exportOBJ(state){

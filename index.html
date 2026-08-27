@@ -225,6 +225,32 @@
           <div class="tool-note" id="toolBatchOut"></div>
         </div>
 
+
+        <div class="block">
+          <div class="block-title">Геометрия оснастки
+            <button class="help-dot" data-kb="ram-press" title="Как устроены полуформы">?</button></div>
+          <div class="seg" id="toolPartSeg">
+            <button data-part="ware" class="active">Изделие</button>
+            <button data-part="model">Модель</button>
+            <button data-part="lower">Матрица</button>
+            <button data-part="upper">Пуансон</button>
+          </div>
+          <div class="tool-note" id="toolPartNote"></div>
+          <label class="field-row"><span>Стенка формы, мм</span>
+            <input type="number" id="mouldWall" min="10" max="120" step="5"></label>
+          <label class="field-row"><span>Дно формы, мм</span>
+            <input type="number" id="mouldBase" min="10" max="120" step="5"></label>
+          <label class="field-row"><span>Борт над кромкой, мм</span>
+            <input type="number" id="mouldRim" min="0" max="60" step="2"></label>
+          <div class="tool-note" id="toolStock"></div>
+          <div class="mat-actions">
+            <button class="btn small" id="toolStlModel">⬇ Модель STL</button>
+            <button class="btn small" id="toolStlLower">⬇ Матрица STL</button>
+            <button class="btn small" id="toolStlUpper">⬇ Пуансон STL</button>
+            <button class="btn small" id="toolDxf">⬇ Профили DXF</button>
+          </div>
+          <div class="footnote">Полуформы строятся как тела вращения по сырому размеру: полость матрицы — наружная поверхность изделия, выступ пуансона — внутренняя. Замки, штифты, воздушные каналы и облойная канавка не строятся — их закладывает изготовитель оснастки.</div>
+        </div>
         <div class="block">
           <button class="btn primary wide" id="toolCard">⬇ Техкарта оснастки</button>
           <div class="footnote">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</div>

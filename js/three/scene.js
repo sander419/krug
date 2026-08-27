@@ -9,6 +9,7 @@ import { MATERIALS, byId } from '../config/materials.js';
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, platen;
 let platenMat, lastPlatenR=0;
 let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
+let previewPath=null; // контур оснастки: пока задан, в сцене показывается он, а не изделие
 
 function rebuildPlaten(baseR){
   const rad=Math.max(baseR+35,80);
@@ -48,6 +49,17 @@ function applyHeatmap(geo,path,str){
     colors[v*3]=c.r;colors[v*3+1]=c.g;colors[v*3+2]=c.b;
   }
   geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+}
+
+/* Тело вращения из контура оснастки — тем же путём, что и изделие. */
+function buildFromPath(path, state){
+  const pts=path.map(p=>new THREE.Vector2(Math.max(p.r,0.01),p.y));
+  return {
+    path:pts,
+    geometry:new THREE.LatheGeometry(pts,Math.max(state.segments,48)),
+    scale:1,
+    baseR:Math.max(...pts.map(p=>p.x)),
+  };
 }
 
 export const sceneAPI = {
@@ -103,10 +115,14 @@ export const sceneAPI = {
     wheelGroup.add(potMesh);
   },
 
+  /* Показать в сцене оснастку (контур сечения) или вернуть изделие (null). */
+  setPreviewPath(path){ previewPath=path&&path.length>2?path:null; },
+  previewActive:()=>!!previewPath,
+
   rebuild(state, str){
-    const built=buildPot(state);
+    const built=previewPath?buildFromPath(previewPath,state):buildPot(state);
     lastProfile=built.path.map(p=>({r:p.x,y:p.y}));
-    if(state.heatmap) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
+    if(state.heatmap && !previewPath) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
     potMesh.geometry.dispose();
     potMesh.geometry=built.geometry;
     potMesh.scale.setScalar(built.scale);
