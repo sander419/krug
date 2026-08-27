@@ -51,12 +51,15 @@ function applyHeatmap(geo,path,str){
   geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
 }
 
-/* Тело вращения из контура оснастки — тем же путём, что и изделие. */
+/* Тело вращения из контура оснастки. Показываем три четверти оборота: снаружи
+   читается как блок, а вырезанная четверть открывает полость — иначе матрица
+   выглядит просто цилиндром. На экспорт STL уходит полное тело. */
 function buildFromPath(path, state){
   const pts=path.map(p=>new THREE.Vector2(Math.max(p.r,0.01),p.y));
+  const seg=Math.max(state.segments,48);
   return {
     path:pts,
-    geometry:new THREE.LatheGeometry(pts,Math.max(state.segments,48)),
+    geometry:new THREE.LatheGeometry(pts,Math.round(seg*0.75),Math.PI*0.5,Math.PI*1.5),
     scale:1,
     baseR:Math.max(...pts.map(p=>p.x)),
   };
