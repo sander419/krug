@@ -1,0 +1,5 @@
+# служебное
+.DS_Store
+Thumbs.db
+*.log
+_probe_*.html

@@ -1,0 +1,96 @@
+// file: js/ui/overlays.js
+import { state } from '../core/state.js';
+import { sceneAPI } from '../three/scene.js';
+import { STAGES, CLAYS } from '../config/data.js';
+import { atLevel } from '../core/math.js';
+
+const $=id=>document.getElementById(id);
+
+export function toast(msg){
+  const t=$('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+export function updateStats(prod,str,tris){
+  const sh=CLAYS[state.clay].shrink;
+  const Hs=(state.H/10).toFixed(1),Ds=(state.D/10).toFixed(1);
+  const Hf=(state.H*(1-sh/100)/10).toFixed(1),Df=(state.D*(1-sh/100)/10).toFixed(1);
+  const fmtG=g=>g>=1000?(g/1000).toFixed(2)+' кг':Math.round(g)+' г';
+  const sfCls=str.minSF<1.5?'bad':str.minSF<2.5?'warn':'ok';
+  $('stats').innerHTML=`
+    <div class="chip"><span class="k">Габариты · круг</span><b>${Hs}×${Ds} см</b></div>
+    <div class="chip"><span class="k">Габариты · обжиг</span><b>${Hf}×${Df} см</b></div>
+    <div class="chip"><span class="k">Объём</span><b>${Math.round(prod.volMl)} мл</b></div>
+    <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>
+    <div class="chip"><span class="k">Масса изделия</span><b>${fmtG(prod.massF)}</b></div>
+    <div class="chip"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
+    <div class="chip"><span class="k">Устойчивость</span><b>${prod.angle.toFixed(0)}°</b></div>
+    <div class="chip"><span class="k">Прочность стенки</span><b class="${sfCls}">${str.minSF.toFixed(1)}× · ${atLevel(str.minY)}</b></div>
+    <div class="chip"><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
+}
+export function updateWarnings(list){
+  $('warnList').innerHTML=list.map(w=>
+    `<div class="warn-item ${w.lvl}"><i></i><span>${w.txt}</span></div>`).join('');
+  // главный вердикт дублируем в 3D-вид: внизу панели его не видно
+  const worst=list.find(w=>w.lvl==='bad')||list.find(w=>w.lvl==='warn')||list[0];
+  const b=$('verdictBadge');
+  if(!worst){b.className='';return;}
+  const more=list.length>1?` <span style="opacity:.6">ещё ${list.length-1}</span>`:'';
+  b.innerHTML=`<i></i><span>${worst.txt}${more}</span>`;
+  b.className='on '+worst.lvl;
+}
+
+export function setStageUI(){
+  const k=Math.min(6,Math.round(state.stage));
+  $('stageName').textContent=STAGES[k];
+  $('stageNum').textContent=`этап ${k} / 6 · ${k<6?'глина на круге':'усадка −'+CLAYS[state.clay].shrink+'%'}`;
+}
+export function setCinemaSlider(v){
+  const sl=$('stageSl');
+  sl.value=v;
+  sl.style.setProperty('--fill',(v/6*100)+'%');
+}
+export function syncPlayIcon(){
+  $('playIco').innerHTML=state.playing
+    ?'<rect x="5" y="3" width="5" height="18"/><rect x="14" y="3" width="5" height="18"/>'
+    :'<path d="M6 3l16 9-16 9V3z"/>';
+}
+export function initCinema(refreshNow){
+  $('stageSl').addEventListener('input',()=>{
+    state.playing=false;syncPlayIcon();
+    state.stage=parseFloat($('stageSl').value);
+    refreshNow();setStageUI();
+  });
+  $('playBtn').addEventListener('click',()=>{
+    if(state.playing)state.playing=false;
+    else{
+      if(state.stage>=5.98)state.stage=0;
+      state.playing=true;
+    }
+    syncPlayIcon();
+  });
+  $('stageSl').value=state.stage;
+  setStageUI();
+}
+
+export function initTools(refreshNow){
+  $('spinBtn').onclick=e=>{state.spin=!state.spin;e.currentTarget.classList.toggle('active',state.spin);};
+  $('wireBtn').onclick=e=>{state.wire=!state.wire;sceneAPI.clayMaterial().wireframe=state.wire;e.currentTarget.classList.toggle('active',state.wire);};
+  $('heatBtn').onclick=e=>{
+    state.heatmap=!state.heatmap;
+    e.currentTarget.classList.toggle('active',state.heatmap);
+    sceneAPI.applyMaterial(state);
+    refreshNow();
+    toast(state.heatmap?'Карта прочности: зелёный ≥3× · жёлтый 1.5–3× · красный <1.5× запаса':'Анализ прочности выключен');
+  };
+  $('resetBtn').onclick=()=>sceneAPI.frameView(state);
+  $('verdictBadge').onclick=()=>{
+    if(document.body.classList.contains('ws')) $('wsBtn').click();
+    $('warnList').scrollIntoView({behavior:'smooth',block:'center'});
+  };
+  $('wsBtn').onclick=e=>{
+    document.body.classList.toggle('ws');
+    e.currentTarget.classList.toggle('active');
+    sceneAPI.resize();
+  };
+}
