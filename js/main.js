@@ -69,9 +69,10 @@ $('embedBtn').onclick=()=>{
   copyText(`<iframe src="${url}" title="КРУГ — 3D-витрина" style="width:100%;height:620px;border:0;border-radius:12px" loading="lazy"></iframe>`);
   toast('Код встраивания 3D-витрины скопирован (headless-плеер для e-commerce)');
 };
-$('stlBtn').onclick=()=>{exportSTL(state);toast('STL сохранён · единицы: мм · модель готова к 3D-печати');};
-$('objBtn').onclick=()=>{exportOBJ(state);toast('OBJ сохранён · единицы: мм');};
-$('glbBtn').onclick=()=>exportGLB(state,()=>toast('GLB сохранён'),()=>toast('Ошибка экспорта GLB'));
+const shrinkNow=()=>CLAYS[state.clay].shrink;
+$('stlBtn').onclick=()=>{exportSTL(state);toast('STL сохранён · сырой размер в мм, как печатать · после обжига −'+shrinkNow()+'%');};
+$('objBtn').onclick=()=>{exportOBJ(state);toast('OBJ сохранён · сырой размер в мм');};
+$('glbBtn').onclick=()=>exportGLB(state,()=>toast('GLB сохранён · вид как на экране, с учётом усадки'),()=>toast('Ошибка экспорта GLB'));
 $('snapBtn').onclick=()=>snapshot(state,()=>toast('Снимок сохранён'));
 
 let framed=false;

@@ -2,7 +2,19 @@
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { sceneAPI } from './scene.js';
+import { buildPot } from '../core/geometry.js';
 import { download, fileName } from '../core/files.js';
+
+/* Фабрикационные форматы: готовая форма в сыром размере —
+   то, что реально печатается и что совпадает с G-code. Усадка обжига
+   и кадр «Кинотеатра» в экспорт не попадают. */
+function fabricationGeo(state){
+  const saved=state.stage;
+  state.stage=6;
+  const built=buildPot(state);
+  state.stage=saved;
+  return built.geometry;
+}
 
 function exportGeo(){
   const m=sceneAPI.pot();
@@ -13,7 +25,7 @@ function exportGeo(){
 }
 
 export function exportSTL(state){
-  const g=exportGeo().toNonIndexed();
+  const g=fabricationGeo(state).toNonIndexed();
   const pos=g.attributes.position,n=pos.count/3;
   const buf=new ArrayBuffer(84+n*50),dv=new DataView(buf);
   dv.setUint32(80,n,true);
@@ -32,8 +44,8 @@ export function exportSTL(state){
 }
 
 export function exportOBJ(state){
-  const g=exportGeo(),pos=g.attributes.position,nor=g.attributes.normal,idx=g.index;
-  let s=`# КРУГ — производственный симулятор гончарных форм\n# units mm\no ${(state.name||'pot').replace(/\s/g,'_')}\n`;
+  const g=fabricationGeo(state),pos=g.attributes.position,nor=g.attributes.normal,idx=g.index;
+  let s=`# КРУГ — производственный симулятор гончарных форм\n# units mm, сырой размер (до обжига)\no ${(state.name||'pot').replace(/\s/g,'_')}\n`;
   for(let i=0;i<pos.count;i++)s+=`v ${pos.getX(i).toFixed(3)} ${pos.getY(i).toFixed(3)} ${pos.getZ(i).toFixed(3)}\n`;
   for(let i=0;i<nor.count;i++)s+=`vn ${nor.getX(i).toFixed(3)} ${nor.getY(i).toFixed(3)} ${nor.getZ(i).toFixed(3)}\n`;
   for(let i=0;i<idx.count;i+=3){
