@@ -47,6 +47,7 @@
       <button class="tab" data-tab="mat">Материал</button>
       <button class="tab" data-tab="print">Печать</button>
       <button class="tab" data-tab="glaze">Глазурь</button>
+      <button class="tab" data-tab="tool">Оснастка</button>
     </nav>
 
     <div class="panes">
@@ -184,6 +185,50 @@
             <button class="btn small" data-kb="food-safe">Посудная безопасность</button>
           </div>
           <div class="footnote">UMF: сумма флюсов = 1.0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека / отскока относительно черепка выбранной массы.</div>
+        </div>
+      </section>
+
+      <!-- ---------- Оснастка ---------- -->
+      <section class="tabpane" data-pane="tool">
+        <div class="block">
+          <div class="block-title">Способ производства
+            <button class="help-dot" data-kb="tooling-basics" title="Что мешает вынуть изделие из формы">?</button></div>
+          <div class="chip-row" id="toolProcs"></div>
+          <div class="tool-verdict" id="toolVerdict"></div>
+          <div id="toolWhy"></div>
+          <button class="btn small" id="toolAuto">Вернуть рекомендацию</button>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Технологичность</div>
+          <div class="warn-list" id="toolChecks"></div>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Числа для технолога</div>
+          <div id="toolNumbers"></div>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Размер под усадку
+            <button class="help-dot" data-kb="plaster-tooling" title="Как считается размер оснастки">?</button></div>
+          <label class="field-row"><span>Нужный диаметр после обжига, мм</span>
+            <input type="number" id="toolTarget" min="10" max="600" step="1"></label>
+          <div class="tool-note" id="toolTargetOut"></div>
+          <button class="btn small" id="toolApply">Подставить в форму</button>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Тираж и оснастка</div>
+          <label class="field-row"><span>Партия, шт</span>
+            <input type="number" id="toolBatch" min="1" max="1000000" step="10"></label>
+          <div class="tool-note" id="toolBatchOut"></div>
+        </div>
+
+        <div class="block">
+          <button class="btn primary wide" id="toolCard">⬇ Техкарта оснастки</button>
+          <div class="footnote">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</div>
+          <div class="footnote src-list" id="toolSrc"></div>
         </div>
       </section>
     </div>

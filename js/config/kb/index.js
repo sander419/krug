@@ -27,6 +27,7 @@ import { ARTICLES as forming } from './forming.js';
 import { ARTICLES as firing } from './firing.js';
 import { ARTICLES as glaze } from './glaze.js';
 import { ARTICLES as print } from './print.js';
+import { ARTICLES as production } from './production.js';
 
 export const SECTIONS = [
   {id: 'material', name: 'Материал',       ico: '🪵', note: 'Из чего масса и как её выбрать'},
@@ -35,10 +36,11 @@ export const SECTIONS = [
   {id: 'firing',   name: 'Обжиг',           ico: '🔥', note: 'Утиль, политой, конусы, усадка'},
   {id: 'glaze',    name: 'Глазурь',         ico: '🫗', note: 'UMF, цек и отскок, посуда'},
   {id: 'print',    name: 'Печать глиной',   ico: '🖨', note: 'LDM: осадка, слайсинг'},
+  {id: 'production', name: 'Производство',  ico: '🏭', note: 'Оснастка, штамповка, ролик, литьё'},
   {id: 'safety',   name: 'Безопасность',    ico: '🛡', note: 'Пыль и печь'},
 ];
 
-export const ARTICLES = [...material, ...forming, ...firing, ...glaze, ...print];
+export const ARTICLES = [...material, ...forming, ...firing, ...glaze, ...print, ...production];
 
 export const bySection = id => ARTICLES.filter(a => a.section === id);
 export const articleById = id => ARTICLES.find(a => a.id === id) || null;
@@ -94,4 +96,9 @@ export const CONTEXT_HELP = {
   glazeFit: 'crazing-shivering',
   umf: 'umf',
   ldm: 'ldm-basics',
+  tooling: 'tooling-basics',
+  ram: 'ram-press',
+  roller: 'roller-forming',
+  casting: 'casting',
+  plaster: 'plaster-tooling',
 };

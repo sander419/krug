@@ -29,6 +29,8 @@ for (const m of MATERIALS) {
   if (f.bisqueC && f.glazeC && f.bisqueC[0] > f.glazeC[1]) P(id, 'утильный обжиг горячее политого');
 
   if (!(m.shrinkPct > 0 && m.shrinkPct < 25)) P(id, `усадка ${m.shrinkPct} % вне разумного 0…25`);
+  if (m.airShrinkPct != null && !(m.airShrinkPct > 0 && m.airShrinkPct < m.shrinkPct))
+    P(id, `воздушная усадка ${m.airShrinkPct} % должна быть больше нуля и меньше полной ${m.shrinkPct} %`);
   if (!m.shrinkNote) W(id, 'нет shrinkNote — непонятно, при какой температуре усадка');
 
   if (!Array.isArray(m.absorption) || !m.absorption.length) P(id, 'нет данных о водопоглощении');

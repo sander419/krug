@@ -149,7 +149,7 @@ export const MATERIALS = [
     type: 'stoneware',
     grog: {percent: 10, grainMM: 0.3},
     firing: {bisqueC: [900, 1050], glazeC: [1200, 1230]},
-    shrinkPct: 14.5, shrinkNote: '7,3 % воздушная, 11,5 % при 1050 °С, 14,5 % при 1200 °С',
+    shrinkPct: 14.5, airShrinkPct: 7.3, shrinkNote: '7,3 % воздушная, 11,5 % при 1050 °С, 14,5 % при 1200 °С',
     absorption: [
       {tempC: 1050, pct: 13.6},
       {tempC: 1200, pct: 2},
@@ -170,7 +170,7 @@ export const MATERIALS = [
     type: 'stoneware',
     grog: {percent: 14, grainMM: 0.3},
     firing: {bisqueC: [900, 1050], glazeC: [1160, 1220]},
-    shrinkPct: 14.5, shrinkNote: '7,5 % воздушная, 11,5 % при 1050 °С, 14,5 % при 1200 °С',
+    shrinkPct: 14.5, airShrinkPct: 7.5, shrinkNote: '7,5 % воздушная, 11,5 % при 1050 °С, 14,5 % при 1200 °С',
     absorption: [
       {tempC: 1050, pct: 8.7},
       {tempC: 1200, pct: 0},

@@ -12,6 +12,7 @@ import { initPanels, initTabs, panelsAPI } from './ui/panels.js';
 import { initGlazeLab, syncGlaze } from './ui/glazeLab.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKB, openKB } from './ui/kb.js';
+import { initTooling } from './ui/tooling.js';
 import { toast, updateStats, updateWarnings, setStageUI, setCinemaSlider, syncPlayIcon, initCinema, initTools } from './ui/overlays.js';
 
 const $=id=>document.getElementById(id);
@@ -58,6 +59,7 @@ initPanels();
 panelsAPI.sync();
 initKB();
 initLibrary();
+initTooling();
 initGlazeLab();
 syncGlaze();
 sceneAPI.applyMaterial(state);
