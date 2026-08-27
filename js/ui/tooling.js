@@ -11,6 +11,7 @@ import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
          cavityStock, wareProfiles } from '../core/mould.js';
 import { buildDXF } from '../core/dxf.js';
 import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js';
+import { $, esc, num, dec, rub } from './dom.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL } from '../three/exporters.js';
@@ -19,10 +20,6 @@ import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const num = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('ru');
-const dec = v => String(v).replace('.', ',');
 
 let manualProc = null;      // выбран руками — не перебиваем рекомендацией
 let batch = 500;
@@ -143,7 +140,6 @@ function render() {
     `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>`).join('<br>');
 }
 
-const rub = v => Math.round(v).toLocaleString('ru') + ' ₽';
 
 function renderPlaster(stock) {
   const p = plasterById(plasterId);
@@ -295,4 +291,3 @@ export function initTooling() {
   render();
 }
 
-export const syncTooling = render;

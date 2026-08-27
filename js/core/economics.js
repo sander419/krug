@@ -21,7 +21,7 @@ export function pricePerKg(mat) {
 
 /* Сколько комплектов оснастки нужно на партию: ресурс формы известен не у всех
    процессов, поэтому возвращаем диапазон или честное «неизвестно». */
-export function mouldSets(procId, pieces) {
+function mouldSets(procId, pieces) {
   const proc = processById(procId);
   if (!proc.mouldLife) return {known: false, lo: 1, hi: 1};
   const [lifeLo, lifeHi] = proc.mouldLife;

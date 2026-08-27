@@ -5,8 +5,8 @@ import { STAGES } from '../config/data.js';
 import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
+import { $ } from './dom.js';
 
-const $=id=>document.getElementById(id);
 let worstHelp=null;   // статья, которую открывает бейдж вердикта
 
 export function toast(msg){

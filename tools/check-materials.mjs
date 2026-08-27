@@ -1,6 +1,8 @@
 // Проверка реестра масс: node tools/check-materials.mjs
 // Падает с кодом 1, если запись не годится в производство.
-import { MATERIALS, MATERIAL_TYPES, MATERIALS_SCHEMA, density, densityFromMoisture } from '../js/config/materials.js';
+import { MATERIALS, MATERIAL_TYPES, MATERIALS_SCHEMA, density, densityFromMoisture,
+         SOLIDS_DENSITY, DEFAULT_MOISTURE } from '../js/config/materials.js';
+import { checkContract } from './registry-contract.mjs';
 
 const problems = [];
 const warn = [];
@@ -60,7 +62,8 @@ for (const m of MATERIALS) {
   const d = density(m);
   if (!(d > 1.5 && d < 2.4)) P(id, `расчётная плотность ${d.toFixed(2)} г/см³ вне 1.5…2.4`);
   if (m.moisturePct == null && !m.est.includes('density')) P(id, 'плотность оценочная, но не отмечена в est');
-  if (!Array.isArray(m.est)) P(id, 'est должен быть массивом имён оценочных полей');
+  checkContract(m, ['moisturePct', 'priceRub', 'packKg', 'airShrinkPct', 'density', 'cte', 'colors'],
+                id, problems);
 
   if (!Array.isArray(m.src) || !m.src.length) P(id, 'нет источника (src)');
   else for (const s of m.src) {
@@ -72,6 +75,8 @@ for (const m of MATERIALS) {
 }
 
 // контроль самой формулы плотности
+if (!(SOLIDS_DENSITY > 2.4 && SOLIDS_DENSITY < 2.9)) problems.push(`плотность глинистого вещества ${SOLIDS_DENSITY} вне 2.4…2.9 г/см³`);
+if (!(DEFAULT_MOISTURE > 0.1 && DEFAULT_MOISTURE < 0.35)) problems.push(`влажность по умолчанию ${DEFAULT_MOISTURE} вне 0.1…0.35`);
 const d22 = densityFromMoisture(0.22);
 if (Math.abs(d22 - 1.923) > 0.01) problems.push(`формула плотности сломана: при 22 % влажности ${d22.toFixed(3)} вместо ≈1.923`);
 

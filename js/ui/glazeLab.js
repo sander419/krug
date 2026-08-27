@@ -4,8 +4,8 @@ import { onChange } from '../core/bus.js';
 import { evaluateGlaze } from '../core/glaze.js';
 import { byId } from '../config/materials.js';
 import { hookSlider } from './panels.js';
+import { $ } from './dom.js';
 
-const $=id=>document.getElementById(id);
 let stull, sctx, R={};
 
 function drawStull(){
@@ -47,7 +47,7 @@ function drawStull(){
   sctx.strokeStyle='#e8935f';sctx.lineWidth=2;sctx.stroke();
 }
 
-export function updateGlaze(){
+function updateGlaze(){
   const g=state.glaze, body=byId(state.mat);
   const ev=evaluateGlaze(g, body.cte);
   $('glazeVerdict').innerHTML=

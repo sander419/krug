@@ -1,6 +1,7 @@
 // file: js/core/state.js
 import { PRESETS } from '../config/data.js';
-import { MATERIALS, byId, LEGACY_CLAY_INDEX } from '../config/materials.js';
+import { MATERIALS, LEGACY_CLAY_INDEX } from '../config/materials.js';
+import { clamp } from './util.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
 export const state = {
@@ -21,9 +22,6 @@ export const state = {
   glaze: {al:0.35, si:4.2, ca:0.7},
 };
 
-export const material = () => byId(state.mat);
-
-const clampN = (v,a,b)=>Math.min(b,Math.max(a,v));
 
 export function encodeDNA(){
   const d = {v:3, name:state.name, mat:state.mat, pts:state.points, H:state.H, D:state.D,
@@ -42,28 +40,28 @@ export function applyDNAFromHash(){
     const d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
     if(d.v > 3 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
-    state.points = d.pts.map(p=>({t:clampN(+p.t||0,0,1), r:clampN(+p.r||0,0,1)}));
+    state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));
     // v3 хранит id массы, v2 — индекс из первой версии справочника
-    const wanted = d.mat || LEGACY_CLAY_INDEX[clampN(d.clay|0,0,LEGACY_CLAY_INDEX.length-1)];
+    const wanted = d.mat || LEGACY_CLAY_INDEX[clamp(d.clay|0,0,LEGACY_CLAY_INDEX.length-1)];
     state.mat = MATERIALS.some(x=>x.id===wanted) ? wanted : MATERIALS[0].id;
-    state.H = clampN(+d.H||220, 50, 400);
-    state.D = clampN(+d.D||160, 50, 400);
-    state.segments = clampN(d.seg|0||72, 24, 128);
-    state.rings = clampN(+d.ring||0, 0, 1.5);
+    state.H = clamp(+d.H||220, 50, 400);
+    state.D = clamp(+d.D||160, 50, 400);
+    state.segments = clamp(d.seg|0||72, 24, 128);
+    state.rings = clamp(+d.ring||0, 0, 1.5);
     state.hollow = !!d.hol;
-    state.wall = clampN(+d.wall||5, 2, 12);
-    state.footH = clampN(+d.fh||0, 0, 12);
-    state.footK = clampN(+d.fk||62, 30, 85);
-    state.allow = clampN(+d.al||20, 5, 40);
+    state.wall = clamp(+d.wall||5, 2, 12);
+    state.footH = clamp(+d.fh||0, 0, 12);
+    state.footK = clamp(+d.fk||62, 30, 85);
+    state.allow = clamp(+d.al||20, 5, 40);
     state.seed = d.seed|0 || 48213;
     state.activePreset = -1;
     if(d.pr) Object.assign(state.pr, {
-      printer: clampN(d.pr.printer|0,0,2),
-      nozzle: clampN(+d.pr.nozzle||3,0.4,10), lh: clampN(+d.pr.lh||1.6,0.2,5),
-      feed: clampN(+d.pr.feed||1200,300,3600), cart: clampN(+d.pr.cart||48,10,75),
-      flow: clampN(+d.pr.flow||100,60,160), tau: clampN(+d.pr.tau||8,1,10)});
+      printer: clamp(d.pr.printer|0,0,2),
+      nozzle: clamp(+d.pr.nozzle||3,0.4,10), lh: clamp(+d.pr.lh||1.6,0.2,5),
+      feed: clamp(+d.pr.feed||1200,300,3600), cart: clamp(+d.pr.cart||48,10,75),
+      flow: clamp(+d.pr.flow||100,60,160), tau: clamp(+d.pr.tau||8,1,10)});
     if(d.gz) Object.assign(state.glaze, {
-      al: clampN(+d.gz.al||.35,.1,.6), si: clampN(+d.gz.si||4.2,1.5,7), ca: clampN(+d.gz.ca||.7,0,1)});
+      al: clamp(+d.gz.al||.35,.1,.6), si: clamp(+d.gz.si||4.2,1.5,7), ca: clamp(+d.gz.ca||.7,0,1)});
     return true;
   }catch(e){ return false; }
 }

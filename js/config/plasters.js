@@ -1,9 +1,15 @@
 // file: js/config/plasters.js
-// Гипс для оснастки. Правило то же, что у масс и процессов: число — из паспорта
-// поставщика со ссылкой; чего не публикуют — null и пометка, а не выдумка.
-// Водогипсовое отношение российские поставщики обычно не печатают: его подбирают
-// под задачу, поэтому в интерфейсе оно вводится руками.
+// Гипс для оснастки. Число — из паспорта поставщика со ссылкой; чего не публикуют —
+// null и пометка, а не выдумка. Водогипсовое отношение российские поставщики обычно
+// не печатают: его подбирают под задачу, поэтому в интерфейсе оно вводится руками.
 // Проверка: node tools/check-plasters.mjs
+//
+// СОГЛАШЕНИЕ О ДАННЫХ (одинаковое во всех реестрах проекта):
+//   est     — значение посчитано или взято по типу, а не из паспорта;
+//   unknown — данных нет, надо уточнять у поставщика;
+//   na      — величина к этой записи неприменима.
+// Каждое поле, которого нет в паспорте, обязано попасть ровно в один из трёх списков —
+// иначе валидатор не пропустит запись.
 
 export const PLASTERS_SCHEMA = 1;
 
@@ -16,7 +22,6 @@ const SRC = {
   pesh: {t: 'Портал керамики — гипс Пешеланский формовочный Г-5, S-4866', u: 'https://portalkeramiki.ru/catalog/143/145/S-4866/'},
   usg:  {t: 'USG — No. 1 Pottery Plaster, submittal sheet', u: 'https://www.usg.com/content/dam/USG_Marketing_Communications/united_states/product_promotional_materials/finished_assets/usg-no1-pottery-plaster-data-en-IG1366.pdf'},
   gost: {t: 'ГОСТ 125-2018 «Вяжущие гипсовые. Технические условия»', u: 'https://allgosts.ru/91/100/gost_125-2018'},
-  samara: {t: 'Самарагипс — гипс формовочный', u: 'https://samaragips.ru/catalog/gips-dlya-proizvoditeley-sanitarno-stroitelnykh-izdeliy/gips-formovochnyi/'},
 };
 
 export const PLASTERS = [
@@ -75,7 +80,6 @@ export const PLASTERS = [
 ];
 
 export const byId = id => PLASTERS.find(p => p.id === id) || PLASTERS[0];
-export const SAMARA_SRC = SRC.samara;
 
 /* Замес по объёму формы. Объём смеси = объём порошка + объём воды, поэтому
    масса сухого гипса = V / (1/ρ + В/Г). Усадка и расширение при схватывании

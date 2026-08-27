@@ -1,10 +1,11 @@
 // Проверка реестра гипсов: node tools/check-plasters.mjs
 import { PLASTERS, PLASTERS_SCHEMA, plasterMix, PLASTER_SOLID_DENSITY } from '../js/config/plasters.js';
+import { checkContract } from './registry-contract.mjs';
 
 const problems = [];
 const warn = [];
 const seen = new Set();
-const REQUIRED = ['id', 'name', 'vendor', 'grade', 'strengthMPa', 'setMin', 'use', 'note', 'unknown', 'src'];
+const REQUIRED = ['id', 'name', 'vendor', 'grade', 'strengthMPa', 'setMin', 'use', 'note', 'est', 'unknown', 'na', 'src'];
 
 for (const p of PLASTERS) {
   const id = p.id || '(без id)';
@@ -19,12 +20,10 @@ for (const p of PLASTERS) {
 
   if (p.waterRatio != null && !(p.waterRatio >= 40 && p.waterRatio <= 120))
     problems.push(`${id}: водогипсовое отношение ${p.waterRatio} вне 40…120 частей воды на 100 гипса`);
-  if (p.waterRatio == null && !(p.unknown || []).includes('waterRatio'))
-    problems.push(`${id}: В/Г не задано и не отмечено в unknown — читатель не поймёт, что данных нет`);
+  checkContract(p, ['waterRatio', 'priceRub', 'packKg'], id, problems);
   if (p.waterRatio != null && !p.waterRatioNote) warn.push(`${id}: В/Г без пояснения, откуда взято`);
 
   if (p.priceRub != null && p.packKg == null) problems.push(`${id}: есть цена, но нет фасовки`);
-  if (p.priceRub == null && !(p.unknown || []).includes('priceRub')) warn.push(`${id}: цена не указана и не отмечена в unknown`);
   if (p.packKg != null && !(p.packKg > 0 && p.packKg < 2000)) problems.push(`${id}: фасовка ${p.packKg} кг вне разумного`);
 
   if (!Array.isArray(p.src) || !p.src.length) problems.push(`${id}: нет источника`);

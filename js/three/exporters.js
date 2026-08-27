@@ -25,7 +25,7 @@ function exportGeo(){
 }
 
 /* Двоичный STL из любой геометрии — общий для изделия и для оснастки. */
-export function stlBlob(geometry){
+function stlBlob(geometry){
   const g=geometry.index?geometry.toNonIndexed():geometry;
   const pos=g.attributes.position,n=pos.count/3;
   const buf=new ArrayBuffer(84+n*50),dv=new DataView(buf);

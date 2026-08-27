@@ -36,7 +36,7 @@ export const firedFromRaw = (rawMM, mat) => rawMM / shrinkFactor(mat).k;
    не поднутрение: считаем перегибом только тот, где радиус реально проваливается
    больше чем на `minDepth` миллиметров. Каждый оставшийся перегиб — это ещё одна
    часть жёсткой формы: изделие не вынуть цельной оснасткой через сужение. */
-export function significantExtrema(prof, minDepth = LIMITS.minUndercutMM) {
+function significantExtrema(prof, minDepth = LIMITS.minUndercutMM) {
   // сырые экстремумы вместе с концами профиля
   let pts = [{r: prof[0].r, y: prof[0].y}];
   for (let i = 1; i < prof.length - 1; i++) {

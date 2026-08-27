@@ -1,10 +1,13 @@
 // file: js/config/processes.js
 // Реестр промышленных способов формования. Правило то же, что у масс:
 // число из источника — со ссылкой в `src`; чего не нашли — `null` и честная пометка,
-// а не выдуманная цифра. Пустое поле обязано попасть в один из двух списков:
-//   est — данных не нашли, надо уточнять у изготовителя;
-//   na  — к этому процессу величина неприменима (у литья нет давления).
-// Проверка: node tools/check-processes.mjs
+// а не выдуманная цифра. Проверка: node tools/check-processes.mjs//
+// СОГЛАШЕНИЕ О ДАННЫХ (одинаковое во всех реестрах проекта):
+//   est     — значение посчитано или взято по типу, а не из паспорта;
+//   unknown — данных нет, надо уточнять у поставщика;
+//   na      — величина к этой записи неприменима.
+// Каждое поле, которого нет в паспорте, обязано попасть ровно в один из трёх списков —
+// иначе валидатор не пропустит запись.
 
 export const PROCESSES_SCHEMA = 1;
 
@@ -17,7 +20,6 @@ const SRC = {
   dorst:    {t: 'DORST Technologies — Mold Lab (оснастка для изостата)', u: 'https://www.dorst-technologies.com/en/products/mold-lab'},
   jigger:   {t: 'Digitalfire — Jiggering', u: 'https://digitalfire.com/glossary/jiggering'},
   castWiki: {t: 'Slip casting — Wikipedia', u: 'https://en.wikipedia.org/wiki/Slip_casting'},
-  shrink:   {t: 'GC Porcelain — Drying shrinkage: formula and mold design', u: 'https://gcporcelain.com/blog/drying-shrinkage-in-ceramic-tableware-formula-mold-design-and-quality-control-guide/'},
 };
 
 /* Пороги технологичности — инженерные умолчания этого инструмента, а не отраслевой
@@ -49,7 +51,7 @@ export const PROCESSES = [
     wares: 'Тарелки, миски, крышки, неглубокая посуда',
     good: ['плоские и неглубокие тела вращения', 'ровная толщина стенки', 'тиражи от сотен штук'],
     bad: ['поднутрения', 'вертикальные стенки без уклона', 'тонкий пласт'],
-    est: ['cycleSec', 'mouldLife'], na: [],
+    est: [], unknown: ['cycleSec', 'mouldLife'], na: [],
     src: [SRC.ramWiki, SRC.ramPPP, SRC.ramSite],
   },
   {
@@ -67,7 +69,7 @@ export const PROCESSES = [
     wares: 'Тарелки, блюдца, чашки — массовые линии',
     good: ['тела вращения без поднутрений', 'открытая форма', 'крупная серия'],
     bad: ['поднутрения', 'глубокие узкие формы', 'резкие переходы профиля'],
-    est: ['cycleSec', 'mouldLife'], na: ['pressureMPa'],
+    est: [], unknown: ['cycleSec', 'mouldLife'], na: ['pressureMPa'],
     src: [SRC.sacmiJig, SRC.jigger],
   },
   {
@@ -85,7 +87,7 @@ export const PROCESSES = [
     wares: 'Плоская и неглубокая посуда, круглая и некруглая',
     good: ['очень крупные тиражи', 'плоские изделия', 'стабильность размеров'],
     bad: ['пластичная масса не годится — нужен гранулят', 'оснастку в КРУГе не построить'],
-    est: ['pressureMPa', 'cycleSec', 'mouldLife'], na: [],
+    est: [], unknown: ['pressureMPa', 'cycleSec', 'mouldLife'], na: [],
     src: [SRC.sacmiIso, SRC.dorst],
   },
   {
@@ -104,10 +106,9 @@ export const PROCESSES = [
     wares: 'Сложные формы, поднутрения, ручки и носики',
     good: ['поднутрения и сложный профиль', 'малые и средние тиражи', 'тонкая стенка'],
     bad: ['долгий цикл', 'ресурс формы', 'ручная сборка формы'],
-    est: ['cycleSec'], na: ['pressureMPa'],
+    est: [], unknown: ['cycleSec'], na: ['pressureMPa'],
     src: [SRC.castWiki],
   },
 ];
 
 export const byId = id => PROCESSES.find(p => p.id === id) || PROCESSES[0];
-export const SHRINK_SRC = SRC.shrink;

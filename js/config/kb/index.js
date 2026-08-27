@@ -44,7 +44,6 @@ export const ARTICLES = [...material, ...forming, ...firing, ...glaze, ...print,
 
 export const bySection = id => ARTICLES.filter(a => a.section === id);
 export const articleById = id => ARTICLES.find(a => a.id === id) || null;
-export const sectionName = id => (SECTIONS.find(s => s.id === id) || {name: id}).name;
 
 /* плоский текст статьи — для поиска */
 function plain(a) {

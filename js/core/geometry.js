@@ -2,13 +2,12 @@
 import * as THREE from 'three';
 import { userProfileMM, radiusAt, N_SAMP } from './math.js';
 import { byId } from '../config/materials.js';
+import { clamp, smoothstep as smooth } from './util.js';
 
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-const smooth=f=>f*f*(3-2*f);
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
 /* ключевые профили этапов «Кинотеатра процесса» */
-export function keySamples(state,k){
+function keySamples(state,k){
   const H=state.H, R=state.D/2, up=userProfileMM(state);
   switch(k){
     case 0: return R01.map(u=>({r:R*1.12*Math.pow(Math.cos(u*Math.PI/2),0.85), y:u*Math.min(R*0.95,H*0.35)}));
@@ -24,7 +23,7 @@ export function stageProfile(state,u){
   return a.map((p,i)=>({r:p.r+(b[i].r-p.r)*f, y:p.y+(b[i].y-p.y)*f}));
 }
 
-export function buildPath(state,out,t,foot){
+function buildPath(state,out,t,foot){
   const H=out[out.length-1].y;
   const path=[new THREE.Vector2(0.01,0)];
   if(foot && state.footH>0){

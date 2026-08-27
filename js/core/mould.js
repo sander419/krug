@@ -82,7 +82,7 @@ export function rollerProfile(state) {
 }
 
 /* Объём изделия как сплошного тела вращения — это то, что вычитается из блока. */
-export function wareSolidLitres(state) {
+function wareSolidLitres(state) {
   const {outer} = wareProfiles(state);
   let v = 0;
   for (let i = 1; i < outer.length; i++) {
@@ -104,9 +104,3 @@ export function cavityStock(state, opt = {}) {
   return {radiusMM: Rb, heightMM: height, grossLitres: gross, netLitres: net};
 }
 
-export const PARTS = [
-  {id: 'ware',  name: 'Изделие',           build: null},
-  {id: 'model', name: 'Модель (болван)',   build: modelPath},
-  {id: 'lower', name: 'Матрица (низ)',     build: cavityPath},
-  {id: 'upper', name: 'Пуансон (верх)',    build: corePath},
-];

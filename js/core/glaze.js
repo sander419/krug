@@ -1,6 +1,6 @@
 // file: js/core/glaze.js
 // UMF (формула Зегера): флюсы = 1.0; оценка поверхности по Si:Al; прогноз CTE.
-export function glazeCTE(g){
+function glazeCTE(g){
   return 5.0 + 0.45*g.si - 3.0*g.al + 1.5*(1-g.ca);
 }
 export function evaluateGlaze(g, bodyCTE){

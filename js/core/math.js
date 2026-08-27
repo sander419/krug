@@ -4,9 +4,9 @@ import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
 
 export const N_SAMP = 90;
-export const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
+const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
 
-export function mulberry32(seed){
+function mulberry32(seed){
   let a = seed >>> 0;
   return function(){
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -55,7 +55,7 @@ export function radiusAt(samples,y){
   return samples[samples.length-1].r;
 }
 
-export const frustum=(a,b,dy)=>Math.PI*dy*(a*a+a*b+b*b)/3;
+const frustum=(a,b,dy)=>Math.PI*dy*(a*a+a*b+b*b)/3;
 
 export function floorY(state){
   return Math.min(Math.max(state.wall, state.footH>0?state.footH+1.5:0), state.H*.6);

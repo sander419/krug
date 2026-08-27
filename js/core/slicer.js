@@ -3,8 +3,8 @@
 import { userProfileMM, radiusAt } from './math.js';
 import { PRINTERS } from '../config/data.js';
 import { byId, density } from '../config/materials.js';
+import { clamp } from './util.js';
 
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
 export function sliceGCode(state){
   const pr=state.pr, P0=PRINTERS[pr.printer];

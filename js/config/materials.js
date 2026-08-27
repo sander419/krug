@@ -3,8 +3,13 @@
 //
 // ПРАВИЛО РЕЕСТРА: ни одного числа без первоисточника.
 // Всё, что взято из паспорта поставщика, стоит в полях как есть и подтверждается `src`.
-// Всё, что посчитано или оценено, перечислено в `est` — интерфейс помечает такие
-// значения как оценку. Как добавить массу — docs/ADDING-MATERIALS.md.
+// Как добавить массу — docs/ADDING-MATERIALS.md.//
+// СОГЛАШЕНИЕ О ДАННЫХ (одинаковое во всех реестрах проекта):
+//   est     — значение посчитано или взято по типу, а не из паспорта;
+//   unknown — данных нет, надо уточнять у поставщика;
+//   na      — величина к этой записи неприменима.
+// Каждое поле, которого нет в паспорте, обязано попасть ровно в один из трёх списков —
+// иначе валидатор не пропустит запись.
 
 export const MATERIALS_SCHEMA = 1;
 
@@ -55,7 +60,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка'],
     pack: 'валюшка 22 кг', packKg: 22, priceRub: 770,
     note: 'Рабочая лошадь для круга: дешёвая, пластичная, прощает ошибки. Терракотовый черепок, посуда — только под глазурь.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'airShrinkPct'], na: [],
     src: [SRC.gzhel],
   },
   {
@@ -76,7 +81,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка', 'литьё', 'набивка'],
     pack: 'брикет 20 кг', packKg: 20, priceRub: null,
     note: 'Универсальная светложгущаяся с розоватым оттенком. Годится и в шликер для литья. Диапазон широкий: на 1080 °С — пористая, к 1180 °С спекается.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'priceRub', 'airShrinkPct'], na: [],
     src: [SRC.mkf2info, SRC.mkf2shop],
   },
   {
@@ -97,7 +102,7 @@ export const MATERIALS = [
     uses: ['лепка', 'скульптура', 'круг'],
     pack: 'упаковка 2,5 кг', packKg: 2.5, priceRub: 205,
     note: 'Крупный шамот до 2 мм на красной основе: держит крупную форму и толстую стенку, но на круге дерёт руки.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'airShrinkPct'], na: [],
     src: [SRC.pg75],
   },
   {
@@ -118,7 +123,7 @@ export const MATERIALS = [
     uses: ['лепка', 'круг', 'изразцы'],
     pack: 'упаковка 5 кг', packKg: 5, priceRub: 363,
     note: 'Очень светлый черепок с желтоватым оттенком, шамот мелкий. Водопоглощение высокое даже на 1200 °С — для посуды нужна плотная глазурь.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'airShrinkPct'], na: [],
     src: [SRC.s6015],
   },
   {
@@ -139,7 +144,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка', 'скульптура'],
     pack: 'кусок 10 кг', packKg: 10, priceRub: 1281,
     note: 'Самая ходовая шамотка у гончаров: тонкий шамот 0–0,3 мм почти не мешает вытяжке, но убирает поводку. Пластичность заявлена 5 из 10.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['airShrinkPct'], na: [],
     src: [SRC.s4p],
   },
   {
@@ -160,7 +165,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка', 'посуда'],
     pack: 'упаковка 10 кг', packKg: 10, priceRub: 1386,
     note: 'Светло-кремовая с крапинками от шамота. На 1200 °С водопоглощение 2 % — уже посудная масса.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: [], na: [],
     src: [SRC.uralochka],
   },
   {
@@ -181,7 +186,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка'],
     pack: 'упаковка 10 кг', packKg: 10, priceRub: 1533,
     note: 'Тёмно-серый до чёрного черепок с тонкомолотым шамотом. На 1200 °С спекается полностью (водопоглощение 0 %).',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: [], na: [],
     src: [SRC.chugun],
   },
   {
@@ -203,7 +208,7 @@ export const MATERIALS = [
     uses: ['круг', 'лепка', 'станочная формовка'],
     pack: 'упаковка 10 кг', packKg: 10, priceRub: 1197,
     note: 'Белый плотный черепок, вакуумированная масса. Усадка 16,5 % — закладывайте размер с запасом, тонкие детали ведёт.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'airShrinkPct'], na: [],
     src: [SRC.tihoretsk],
   },
   {
@@ -221,7 +226,7 @@ export const MATERIALS = [
     uses: ['круг', 'мелкая пластика', 'формовка'],
     pack: 'упаковка 2 кг / мешок 20 кг', packKg: 2, priceRub: 714,
     note: 'Пластичный фарфор из Цзиндэчжэня, каолин 58 %. Самый белый и полупрозрачный, но на круге не прощает ни воды, ни спешки.',
-    est: ['density', 'cte', 'colors'],
+    est: ['density', 'cte', 'colors'], unknown: ['moisturePct', 'airShrinkPct'], na: [],
     src: [SRC.snezhny],
   },
 ];
@@ -249,7 +254,6 @@ export function tablewareReady(m) {
 }
 
 export const byId = id => MATERIALS.find(m => m.id === id) || MATERIALS[0];
-export const indexOfId = id => Math.max(0, MATERIALS.findIndex(m => m.id === id));
 export const typeName = t => (MATERIAL_TYPES[t] || {name: t}).name;
 
 /* Старые ДНК-ссылки (v2) хранили индекс массы 0..3 из первой версии справочника. */

@@ -10,9 +10,9 @@ import { sceneAPI } from '../three/scene.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
+import { $ } from './dom.js';
+import { clamp } from '../core/util.js';
 
-const $=id=>document.getElementById(id);
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const S={};
 
 /* ---------- вкладки панели ---------- */

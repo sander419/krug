@@ -14,8 +14,8 @@ import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
 import { toast, updateStats, updateWarnings, setStageUI, setCinemaSlider, syncPlayIcon, initCinema, initTools } from './ui/overlays.js';
+import { $ } from './ui/dom.js';
 
-const $=id=>document.getElementById(id);
 
 /* ---------- пакетная пересборка (один rAF на серию изменений) ---------- */
 let rafPending=false;

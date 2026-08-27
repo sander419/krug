@@ -4,13 +4,10 @@
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { MATERIALS, MATERIAL_TYPES, byId, density, densityIsEstimated,
-         tablewareReady, typeName } from '../config/materials.js';
+         tablewareReady, typeName, absorptionAt } from '../config/materials.js';
 import { sceneAPI } from '../three/scene.js';
 import { openArticle } from './kb.js';
-
-const $=id=>document.getElementById(id);
-const hex=n=>'#'+n.toString(16).padStart(6,'0');
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+import { $, esc, hex } from './dom.js';
 
 let filterType='all', onlyTableware=false;
 
@@ -21,7 +18,7 @@ function matches(m){
 }
 
 function rowHTML(m){
-  const top=[...m.absorption].sort((a,b)=>a.tempC-b.tempC).pop();
+  const top=absorptionAt(m, m.firing.glazeC[1]);   // на верхней температуре политого
   const grog=m.grog.percent>0?`шамот ${m.grog.percent} % · ${m.grog.grainMM} мм`:'без шамота';
   return `<button class="mat-row${m.id===state.mat?' active':''}" data-id="${m.id}" title="${esc(m.vendor)}">
     <span class="mat-dot" style="background:${hex(m.colors.raw)}"></span>
@@ -84,7 +81,7 @@ function renderDetail(){
   });
 }
 
-export function selectMaterial(id){
+function selectMaterial(id){
   if(!MATERIALS.some(m=>m.id===id))return;
   state.mat=id;
   syncLibrary();

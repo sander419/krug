@@ -1,10 +1,11 @@
 // Проверка реестра процессов: node tools/check-processes.mjs
 import { PROCESSES, PROCESSES_SCHEMA, LIMITS } from '../js/config/processes.js';
+import { checkContract } from './registry-contract.mjs';
 
 const problems = [];
 const warn = [];
 const seen = new Set();
-const REQUIRED = ['id', 'name', 'short', 'what', 'tooling', 'wares', 'good', 'bad', 'est', 'na', 'src'];
+const REQUIRED = ['id', 'name', 'short', 'what', 'tooling', 'wares', 'good', 'bad', 'est', 'unknown', 'na', 'src'];
 
 for (const p of PROCESSES) {
   const id = p.id || '(без id)';
@@ -27,12 +28,7 @@ for (const p of PROCESSES) {
     else if (!p.mouldLifeNote) warn.push(`${id}: ресурс формы без пояснения`);
   }
 
-  // главное правило: пустое поле объяснено — либо данных нет (est), либо неприменимо (na)
-  for (const f of ['pressureMPa', 'cycleSec', 'mouldLife'])
-    if (p[f] === null && !(p.est || []).includes(f) && !(p.na || []).includes(f))
-      problems.push(`${id}: ${f} пустое и не объяснено — добавьте в est (данных нет) или в na (неприменимо)`);
-  for (const f of (p.na || []))
-    if (p[f] !== null) problems.push(`${id}: ${f} помечено как неприменимое, но значение задано`);
+  checkContract(p, ['pressureMPa', 'cycleSec', 'mouldLife'], id, problems);
 
   if (typeof p.allowsUndercut !== 'boolean') problems.push(`${id}: allowsUndercut должен быть true/false`);
   if (!Array.isArray(p.src) || !p.src.length) problems.push(`${id}: нет источника`);

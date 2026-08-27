@@ -8,6 +8,8 @@ import { stageProfile } from '../core/geometry.js';
 import { byId } from '../config/materials.js';
 import { sceneAPI } from '../three/scene.js';
 import { emit } from '../core/bus.js';
+import { clamp } from '../core/util.js';
+import { $ } from './dom.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let mode='1:1';                 // '1:1' | 'fit'
@@ -15,12 +17,11 @@ let modeChosen=false;
 let view={pxPerMM:1, baseY:0, axisX:34};
 let lastKey='';
 
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const PAD={l:34, r:16, t:18, b:26};
 
 /* насколько канва чертежа ниже верха 3D-вида */
 function vOffset(){
-  const vp=document.getElementById('viewport');
+  const vp=$('viewport');
   if(!vp||!ec) return 0;
   return ec.getBoundingClientRect().top - vp.getBoundingClientRect().top;
 }
@@ -156,7 +157,7 @@ export function drawEditor(){
     }
   });
 
-  const badge=document.getElementById('draftScale');
+  const badge=$('draftScale');
   if(badge) badge.textContent = mode==='fit' ? 'по размеру' :
     (view.fits ? '1:1 с моделью' : '1:1 · не помещается');
 }
@@ -201,7 +202,7 @@ export function initEditor(canvas){
   ec=canvas;ectx=ec.getContext('2d');
   new ResizeObserver(resizeEditor).observe(ec);
 
-  const toggle=document.getElementById('draftScale');
+  const toggle=$('draftScale');
   if(toggle) toggle.onclick=()=>{mode=mode==='1:1'?'fit':'1:1';modeChosen=true;lastKey='';drawEditor();};
 
   ec.addEventListener('contextmenu',e=>e.preventDefault());

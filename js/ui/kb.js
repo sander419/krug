@@ -2,9 +2,8 @@
 // Энциклопедия: разделы, поиск, статья. Контент — js/config/kb/, UI ничего не знает
 // про конкретные статьи и растёт вместе с базой.
 import { ARTICLES, SECTIONS, bySection, articleById, search, CONTEXT_HELP } from '../config/kb/index.js';
+import { $, esc } from './dom.js';
 
-const $=id=>document.getElementById(id);
-const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let current=null, currentSection=SECTIONS[0].id, lastQuery='';
 
 /* блоки статьи -> html. В тексте разрешены только <b> и <i>, поэтому экранируем
@@ -101,7 +100,7 @@ export function openKB(){
   o.setAttribute('aria-hidden','false');
   if(!current) openArticle(ARTICLES[0].id);
 }
-export function closeKB(){
+function closeKB(){
   const o=$('kbOverlay');
   o.classList.remove('open');
   o.setAttribute('aria-hidden','true');
