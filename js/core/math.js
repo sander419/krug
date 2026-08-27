@@ -95,7 +95,7 @@ export function computeProduction(state){
   }
   const yCom=areaSum>0?ySum/areaSum:state.H/2;
   const angle=Math.atan2(baseR,Math.max(yCom,1))*180/Math.PI;
-  return {massF,massN,waste:massN-massF,volMl:vPiece,angle,baseR};
+  return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,angle,baseR};
 }
 
 /* запас прочности по пределу текучести (упрощённая модель осадки) */

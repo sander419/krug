@@ -20,7 +20,8 @@ export function updateStats(prod,str,tris){
   $('stats').innerHTML=`
     <div class="chip"><span class="k">Габариты · круг</span><b>${Hs}×${Ds} см</b></div>
     <div class="chip"><span class="k">Габариты · обжиг</span><b>${Hf}×${Df} см</b></div>
-    <div class="chip"><span class="k">Объём</span><b>${Math.round(prod.volMl)} мл</b></div>
+    <div class="chip"><span class="k">Вместимость</span><b>${state.hollow?Math.round(prod.capMl)+' мл':'— сплошная'}</b></div>
+    <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b></div>
     <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>
     <div class="chip"><span class="k">Масса изделия</span><b>${fmtG(prod.massF)}</b></div>
     <div class="chip"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
