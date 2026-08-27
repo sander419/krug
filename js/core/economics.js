@@ -68,7 +68,9 @@ export function economics(state, prod, procId, opt = {}) {
   }
 
   const at = totalFor(e.batch);
+  const toolingTotal = e.toolingCostRub * at.sets.hi;
   return {
+    toolingTotal,
     perKg, blankKg, manualKg,
     matMachine, matManual,
     labourMachine, labourManual,

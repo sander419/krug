@@ -142,6 +142,7 @@ const rub = v => Math.round(v).toLocaleString('ru') + ' ₽';
 
 function renderEconomics(prod, procId, mat) {
   const ec = economics(state, prod, procId, {...econ, batch});
+  const proc = processById(procId);
   const priceRow = ec.perKg == null
     ? `<dt>Материал</dt><dd class="dim">цена этой массы в реестре не указана</dd>`
     : `<dt>Материал</dt><dd>${num(ec.perKg, 0)} ₽/кг · ${rub(ec.matMachine)} на изделие <span class="dim">(заготовка ${num(ec.blankKg, 2)} кг)</span></dd>`;
@@ -152,6 +153,8 @@ function renderEconomics(prod, procId, mat) {
     verdict = `На тираже ${num(batch, 0)} шт оснастка дешевле ручного круга на <b>${rub(ec.manualTotal - ec.machineTotal)}</b>.`;
   } else if (ec.breakEven) {
     verdict = `На ${num(batch, 0)} шт дешевле руками. Оснастка начинает окупаться с <b>${num(ec.breakEven, 0)} шт</b>.`;
+  } else if (ec.sets.known && ec.sets.hi > 1) {
+    verdict = `Оснастка не окупается: форма живёт ${proc.mouldLife[0]}–${proc.mouldLife[1]} циклов, и на партию нужно <b>${ec.sets.lo}–${ec.sets.hi}</b> комплектов. Её стоимость растёт вместе с тиражом, а не размазывается по нему. Проверьте цену комплекта: у гипсовой формы она совсем не та, что у пресс-формы.`;
   } else {
     verdict = `На этих цифрах оснастка не окупается ни при каком тираже: машинный цикл не даёт выигрыша перед руками.`;
   }
@@ -159,6 +162,7 @@ function renderEconomics(prod, procId, mat) {
   $('econOut').innerHTML = `
     <dl class="spec">
       ${priceRow}
+      <dt>Оснастка</dt><dd>${ec.sets.known ? `${ec.sets.lo}–${ec.sets.hi} комплектов` : '1 комплект'} · ${rub(ec.toolingTotal)} <span class="dim">(ресурс ${ec.sets.known ? proc.mouldLife.join('–') + ' циклов' : 'не подтверждён'})</span></dd>
       <dt>Машиной</dt><dd><b>${rub(ec.machinePerPiece)}</b> за штуку · ${rub(ec.machineTotal)} за партию</dd>
       <dt>Руками</dt><dd><b>${rub(ec.manualPerPiece)}</b> за штуку · ${rub(ec.manualTotal)} за партию</dd>
       <dt>Время</dt><dd>${num(ec.machineHours, 1)} ч машиной · ${num(ec.manualHours, 0)} ч руками <span class="dim">(${num(ec.shifts, 1)} смены)</span></dd>
