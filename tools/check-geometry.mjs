@@ -12,6 +12,7 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { economics, pricePerKg } from '../js/core/economics.js';
+import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -78,6 +79,11 @@ for (const [name, pts, H, D] of CASES) {
 
   const stock = cavityStock(state);
   if (!fin(stock.grossLitres) || stock.grossLitres <= 0) P(`${name}: габарит матрицы посчитан неверно`);
+  if (!(stock.netLitres > 0 && stock.netLitres < stock.grossLitres))
+    P(`${name}: тело формы ${stock.netLitres} л должно быть меньше блока ${stock.grossLitres} л и больше нуля`);
+  const mix = plasterMix(stock.netLitres, 70);
+  if (!fin(mix.plasterKg) || mix.plasterKg <= 0) P(`${name}: замес гипса не посчитан`);
+  if (Math.abs(mix.waterL - mix.plasterKg * 0.7) > 1e-9) P(`${name}: вода не сходится с В/Г`);
 
   const dxf = buildDXF([
     {name: 'IZDELIE', points: wp.outer},

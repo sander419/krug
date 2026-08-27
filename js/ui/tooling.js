@@ -10,6 +10,7 @@ import { PROCESSES, byId as processById } from '../config/processes.js';
 import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
          cavityStock, wareProfiles } from '../core/mould.js';
 import { buildDXF } from '../core/dxf.js';
+import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL } from '../three/exporters.js';
@@ -21,12 +22,15 @@ import { openArticle } from './kb.js';
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const num = (v, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toLocaleString('ru');
+const dec = v => String(v).replace('.', ',');
 
 let manualProc = null;      // выбран руками — не перебиваем рекомендацией
 let batch = 500;
 let part = 'ware';          // что показывать в 3D
 const econ = {...ECON_DEFAULTS};
 const mould = {...MOULD_DEFAULTS};
+let plasterId = PLASTERS[0].id;
+let waterRatio = 70;      // частей воды на 100 частей гипса
 
 const PART_NOTE = {
   ware:  'В сцене изделие. Переключите, чтобы посмотреть оснастку — этапы «Кинотеатра» при этом не показываются.',
@@ -126,11 +130,12 @@ function render() {
   const wp = wareProfiles(state);
   $('toolPartNote').textContent = PART_NOTE[part];
   $('toolStock').innerHTML =
-    `Габарит матрицы: ⌀${num(stock.radiusMM * 2, 0)} × ${num(stock.heightMM, 0)} мм, ` +
-    `объём блока <b>${num(stock.grossLitres, 1)} л</b> за вычетом полости под изделие ` +
-    `<span class="dim">(расход гипса считайте по своей марке и соотношению с водой)</span>`;
+    `Габарит матрицы: <b>⌀${num(stock.radiusMM * 2, 0)} × ${num(stock.heightMM, 0)} мм</b>. ` +
+    `Блок ${num(stock.grossLitres, 1)} л, тело формы <b>${num(stock.netLitres, 1)} л</b> ` +
+    `<span class="dim">(за вычетом полости под изделие)</span>`;
   document.querySelectorAll('#toolPartSeg button').forEach(b =>
     b.classList.toggle('active', b.dataset.part === part));
+  renderPlaster(stock);
 
   renderEconomics(prod, procId, mat);
 
@@ -139,6 +144,23 @@ function render() {
 }
 
 const rub = v => Math.round(v).toLocaleString('ru') + ' ₽';
+
+function renderPlaster(stock) {
+  const p = plasterById(plasterId);
+  const known = p.waterRatio != null;
+  $('plasterNote').innerHTML =
+    `${esc(p.grade)} · прочность <b>${p.strengthMPa} МПа</b> · схватывание ${p.setMin.map(dec).join('–')} мин` +
+    `<br><span class="dim">${esc(p.note)}</span>` +
+    (known ? '' : '<br><span class="dim">Водогипсовое отношение поставщик не публикует — подберите под свою задачу и впишите.</span>');
+
+  const mix = plasterMix(stock.netLitres, waterRatio);
+  const cost = p.priceRub && p.packKg ? mix.plasterKg * (p.priceRub / p.packKg) : null;
+  $('plasterMix').innerHTML =
+    `На матрицу нужно <b>${num(mix.plasterKg, 1)} кг</b> гипса и <b>${num(mix.waterL, 1)} л</b> воды ` +
+    `<span class="dim">(тело формы ${num(stock.netLitres, 1)} л без полости)</span>` +
+    (cost ? `<br>Материал формы ≈ ${rub(cost)} по цене ${Math.round(p.priceRub / p.packKg)} ₽/кг` : '') +
+    `<br><span class="dim">Замешать и разлить надо за ${dec(p.setMin[0])}–${dec(p.setMin[1])} минут: после конца схватывания раствор уже не течёт.</span>`;
+}
 
 function renderEconomics(prod, procId, mat) {
   const ec = economics(state, prod, procId, {...econ, batch});
@@ -205,6 +227,24 @@ export function initTooling() {
       render();
     });
   }
+  const sel = $('plasterSel');
+  sel.innerHTML = PLASTERS.map(p => `<option value="${p.id}">${esc(p.name)} · ${esc(p.vendor)}</option>`).join('');
+  sel.value = plasterId;
+  const applyPlaster = () => {
+    const p = plasterById(plasterId);
+    if (p.waterRatio != null) waterRatio = p.waterRatio;
+    $('plasterWR').value = waterRatio;
+    render();
+  };
+  sel.addEventListener('change', () => { plasterId = sel.value; applyPlaster(); });
+  $('plasterWR').addEventListener('input', () => {
+    const v = parseFloat($('plasterWR').value);
+    if (!isFinite(v) || v < 20 || v > 200) return;
+    waterRatio = v;
+    render();
+  });
+  applyPlaster();
+
   const stl = (kind, suffix) => () => {
     const path = partPath(kind);
     if (!path) { toast('Для этой формы деталь не строится: нужна полая форма'); return; }
@@ -247,7 +287,7 @@ export function initTooling() {
   $('toolCard').onclick = () => {
     const an = analyzeFormability(state);
     const prod = computeProduction(state);
-    const text = techCard(state, prod, an, currentProcId(an), batch, econ);
+    const text = techCard(state, prod, an, currentProcId(an), batch, econ, {mould, plasterId, waterRatio});
     download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
     toast('Техкарта сохранена');
   };

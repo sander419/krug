@@ -6,6 +6,8 @@ import { userProfileMM, floorY } from './math.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById, LIMITS } from '../config/processes.js';
 import { economics } from './economics.js';
+import { cavityStock } from './mould.js';
+import { byId as plasterById, plasterMix } from '../config/plasters.js';
 
 const DEG = 180 / Math.PI;
 
@@ -252,7 +254,11 @@ export function batchPlan(procId, pieces) {
 }
 
 /* ---------- техкарта текстом ---------- */
-export function techCard(state, prod, an, procId, pieces, econOpt = {}) {
+export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt = {}) {
+  const stock = cavityStock(state, mouldOpt.mould || {});
+  const plaster = plasterById(mouldOpt.plasterId);
+  const wr = mouldOpt.waterRatio || plaster.waterRatio || 70;
+  const mix = plasterMix(stock.netLitres, wr);
   const n = toolingNumbers(state, prod, an, procId);
   const ch = checks(state, an, procId);
   const bp = batchPlan(procId, pieces);
@@ -302,6 +308,9 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}) {
   else L.push('- На этих цифрах оснастка не окупается ни при каком тираже');
   L.push('');
   L.push('## Оснастка');
+  L.push(`- Габарит матрицы: ⌀${fmt(stock.radiusMM * 2)} × ${fmt(stock.heightMM)} мм, тело формы ${fmt(stock.netLitres)} л`);
+  L.push(`- Гипс: ${plaster.name} (${plaster.vendor}), ${plaster.strengthMPa} МПа, схватывание ${plaster.setMin.join('–')} мин`);
+  L.push(`- Замес при В/Г ${wr}: ${fmt(mix.plasterKg)} кг гипса и ${fmt(mix.waterL)} л воды`);
   L.push(`- ${n.proc.tooling}`);
   L.push('');
   L.push('## Оговорки');

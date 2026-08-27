@@ -81,6 +81,17 @@ export function rollerProfile(state) {
   return inner.length >= 2 ? clean(inner) : null;
 }
 
+/* Объём изделия как сплошного тела вращения — это то, что вычитается из блока. */
+export function wareSolidLitres(state) {
+  const {outer} = wareProfiles(state);
+  let v = 0;
+  for (let i = 1; i < outer.length; i++) {
+    const a = outer[i - 1].r, b = outer[i].r, dy = outer[i].y - outer[i - 1].y;
+    v += Math.PI * dy * (a * a + a * b + b * b) / 3;
+  }
+  return v / 1e6;
+}
+
 /* Габариты куска гипса под матрицу — чтобы понимать расход. */
 export function cavityStock(state, opt = {}) {
   const o = {...MOULD_DEFAULTS, ...opt};
@@ -88,7 +99,9 @@ export function cavityStock(state, opt = {}) {
   const Rb = maxR + o.wallMM;
   const height = H + o.rimMM + o.baseMM;
   const grossMM3 = Math.PI * Rb * Rb * height;
-  return {radiusMM: Rb, heightMM: height, grossLitres: grossMM3 / 1e6};
+  const gross = grossMM3 / 1e6;
+  const net = Math.max(0.01, gross - wareSolidLitres(state));   // полость под изделие вычитается
+  return {radiusMM: Rb, heightMM: height, grossLitres: gross, netLitres: net};
 }
 
 export const PARTS = [
