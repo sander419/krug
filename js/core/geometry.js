@@ -1,7 +1,7 @@
 // file: js/core/geometry.js
 import * as THREE from 'three';
 import { userProfileMM, radiusAt, N_SAMP } from './math.js';
-import { CLAYS } from '../config/data.js';
+import { byId } from '../config/materials.js';
 
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const smooth=f=>f*f*(3-2*f);
@@ -75,7 +75,7 @@ export function buildPot(state){
 
   const path=buildPath(state,prof,t,foot);
   const geometry=new THREE.LatheGeometry(path,state.segments);
-  const shrink=CLAYS[state.clay].shrink;
+  const shrink=byId(state.mat).shrinkPct;
   const scale=1-(u>5?smooth(u-5)*shrink/100:0);
   return {path, geometry, scale, baseR};
 }

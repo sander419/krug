@@ -1,16 +1,33 @@
 // file: js/ui/panels.js
+// Панель управления: вкладки-блоки, пресеты, размеры, печать.
+// Материал живёт в library.js, глазурь — в glazeLab.js, энциклопедия — в kb.js.
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
-import { PRESETS, CLAYS, PRINTERS } from '../config/data.js';
+import { PRESETS, PRINTERS } from '../config/data.js';
 import { seededForm } from '../core/math.js';
 import { sliceGCode } from '../core/slicer.js';
 import { sceneAPI } from '../three/scene.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
+import { openArticle } from './kb.js';
 
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const S={};
+
+/* ---------- вкладки панели ---------- */
+export function initTabs(){
+  const tabs=[...document.querySelectorAll('.tab')];
+  const show=id=>{
+    tabs.forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+    document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===id));
+    try{localStorage.setItem('krug.tab',id);}catch(_){}
+  };
+  tabs.forEach(t=>t.onclick=()=>show(t.dataset.tab));
+  let saved=null;
+  try{saved=localStorage.getItem('krug.tab');}catch(_){}
+  show(tabs.some(t=>t.dataset.tab===saved)?saved:'form');
+}
 
 /* ползунок с точным вводом по двойному клику (CAD-режим) */
 export function hookSlider(id,outId,fmt,apply){
@@ -67,32 +84,6 @@ function buildPresets(){
   el.appendChild(rnd);
 }
 
-function buildClays(){
-  const el=$('swatches');
-  CLAYS.forEach((c,i)=>{
-    const b=document.createElement('button');
-    b.className='swatch'+(i===state.clay?' active':'');
-    b.style.background='#'+c.raw.toString(16).padStart(6,'0');
-    b.title=`${c.name} · усадка ${c.shrink}% · CTE ${c.cte}·10⁻⁶/°C`;
-    b.onclick=()=>{
-      state.clay=i;
-      document.querySelectorAll('.swatch').forEach((x,j)=>x.classList.toggle('active',j===i));
-      $('swatchName').textContent=`${c.name} · усадка ${c.shrink}% · CTE ${c.cte}·10⁻⁶/°C`;
-      sceneAPI.applyMaterial(state);
-      emit();
-    };
-    el.appendChild(b);
-  });
-  $('swatchName').textContent=`${CLAYS[state.clay].name} · усадка ${CLAYS[state.clay].shrink}% · CTE ${CLAYS[state.clay].cte}·10⁻⁶/°C`;
-  $('firingSeg').querySelectorAll('button').forEach(b=>{
-    b.onclick=()=>{
-      state.firing=b.dataset.f;
-      document.querySelectorAll('#firingSeg button').forEach(x=>x.classList.toggle('active',x===b));
-      sceneAPI.applyMaterial(state);
-    };
-  });
-}
-
 function buildPrintPanel(){
   const sel=$('printerSel');
   PRINTERS.forEach((p,i)=>{
@@ -121,7 +112,9 @@ function buildPrintPanel(){
     const grams=stats.grams>=1000?(stats.grams/1000).toFixed(2)+' кг':Math.round(stats.grams)+' г';
     res.innerHTML=`Готово: <b>${stats.layers} слоёв</b> · путь <b>${stats.lenM.toFixed(0)} м</b> · ≈<b>${time}</b> · паста <b>${grams}</b>`
       +(warnings.length?'<br>'+warnings.map(w=>`<span class="${w.cls}">⚠ ${w.txt}</span>`).join('<br>')
-      :'<br><span style="color:var(--ok)">✓ Технология печати соблюдена</span>');
+      :'<br><span style="color:var(--ok)">✓ Технология печати соблюдена</span>')
+      +`<br><button class="btn small" id="sliceHelp">Как читать эти числа</button>`;
+    $('sliceHelp').onclick=()=>openArticle('ldm-slicing');
     download(new Blob([text],{type:'text/plain'}), fileName(state,'gcode'));
     toast(`G-code сгенерирован: ${stats.layers} слоёв vase-спирали без ретракций`);
   };
@@ -138,8 +131,10 @@ export function initPanels(){
   S.footK=hookSlider('footKSl','footKOut',v=>v+'%',v=>{state.footK=v;emit();});
   S.allow=hookSlider('allowSl','allowOut',v=>v+'%',v=>{state.allow=v;emit();});
   $('hollowChk').addEventListener('change',e=>{state.hollow=e.target.checked;emit();});
-  buildClays();
   buildPrintPanel();
+  document.querySelectorAll('[data-kb]').forEach(b=>{
+    if(!b.onclick) b.onclick=()=>openArticle(b.dataset.kb);
+  });
 }
 
 /* синхронизация UI с состоянием (после загрузки ДНК) */
@@ -154,8 +149,5 @@ export const panelsAPI = {
     $('printerNote').textContent=PRINTERS[state.pr.printer].note;
     $('seedOut').textContent=state.seed;
     document.querySelectorAll('.preset').forEach((el,j)=>el.classList.toggle('active',j===state.activePreset));
-    document.querySelectorAll('.swatch').forEach((el,j)=>el.classList.toggle('active',j===state.clay));
-    document.querySelectorAll('#firingSeg button').forEach(b=>b.classList.toggle('active',b.dataset.f===state.firing));
-    $('swatchName').textContent=`${CLAYS[state.clay].name} · усадка ${CLAYS[state.clay].shrink}% · CTE ${CLAYS[state.clay].cte}·10⁻⁶/°C`;
   }
 };

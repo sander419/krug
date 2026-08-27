@@ -1,10 +1,13 @@
 // file: js/ui/overlays.js
 import { state } from '../core/state.js';
 import { sceneAPI } from '../three/scene.js';
-import { STAGES, CLAYS } from '../config/data.js';
+import { STAGES } from '../config/data.js';
+import { byId } from '../config/materials.js';
+import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
 
 const $=id=>document.getElementById(id);
+let worstHelp=null;   // статья, которую открывает бейдж вердикта
 
 export function toast(msg){
   const t=$('toast');t.textContent=msg;t.classList.add('show');
@@ -12,7 +15,7 @@ export function toast(msg){
 }
 
 export function updateStats(prod,str,tris){
-  const sh=CLAYS[state.clay].shrink;
+  const sh=byId(state.mat).shrinkPct;
   const Hs=(state.H/10).toFixed(1),Ds=(state.D/10).toFixed(1);
   const Hf=(state.H*(1-sh/100)/10).toFixed(1),Df=(state.D*(1-sh/100)/10).toFixed(1);
   const fmtG=g=>g>=1000?(g/1000).toFixed(2)+' кг':Math.round(g)+' г';
@@ -31,9 +34,15 @@ export function updateStats(prod,str,tris){
 }
 export function updateWarnings(list){
   $('warnList').innerHTML=list.map(w=>
-    `<div class="warn-item ${w.lvl}"><i></i><span>${w.txt}</span></div>`).join('');
+    `<div class="warn-item ${w.lvl}"><i></i><span>${w.txt}</span>`+
+    (w.help?`<button class="why" data-help="${w.help}" title="Открыть статью">почему</button>`:'')+
+    `</div>`).join('');
+  $('warnList').querySelectorAll('[data-help]').forEach(b=>{
+    b.onclick=()=>openContextHelp(b.dataset.help);
+  });
   // главный вердикт дублируем в 3D-вид: внизу панели его не видно
   const worst=list.find(w=>w.lvl==='bad')||list.find(w=>w.lvl==='warn')||list[0];
+  worstHelp=worst&&worst.help||null;
   const b=$('verdictBadge');
   if(!worst){b.className='';return;}
   const more=list.length>1?` <span style="opacity:.6">ещё ${list.length-1}</span>`:'';
@@ -44,7 +53,7 @@ export function updateWarnings(list){
 export function setStageUI(){
   const k=Math.min(6,Math.round(state.stage));
   $('stageName').textContent=STAGES[k];
-  $('stageNum').textContent=`этап ${k} / 6 · ${k<6?'глина на круге':'усадка −'+CLAYS[state.clay].shrink+'%'}`;
+  $('stageNum').textContent=`этап ${k} / 6 · ${k<6?'глина на круге':'усадка −'+byId(state.mat).shrinkPct+'%'}`;
 }
 export function setCinemaSlider(v){
   const sl=$('stageSl');
@@ -86,6 +95,7 @@ export function initTools(refreshNow){
   };
   $('resetBtn').onclick=()=>sceneAPI.frameView(state);
   $('verdictBadge').onclick=()=>{
+    if(worstHelp){ openContextHelp(worstHelp); return; }
     if(document.body.classList.contains('ws')) $('wsBtn').click();
     $('warnList').scrollIntoView({behavior:'smooth',block:'center'});
   };

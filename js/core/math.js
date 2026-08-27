@@ -1,7 +1,7 @@
 // file: js/core/math.js
 // Чистое математическое ядро. Единицы: мм, граммы.
 import * as THREE from 'three';
-import { CLAYS } from '../config/data.js';
+import { byId, density } from '../config/materials.js';
 
 export const N_SAMP = 90;
 export const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -81,8 +81,7 @@ export function computeProduction(state){
   }
   const vRec = footOn ? Math.PI*Math.pow(baseR*state.footK/100,2)*state.footH*0.65 : 0;
   const vPiece=Math.max(0,vOut-vCav-vRec)/1000;             // см³
-  const clay=CLAYS[state.clay];
-  const massF=vPiece*clay.density;                          // г
+  const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;
   for(let i=1;i<out.length;i++){
@@ -101,7 +100,7 @@ export function computeProduction(state){
 /* запас прочности по пределу текучести (упрощённая модель осадки) */
 export function computeStrength(state){
   const out=userProfileMM(state);
-  const wall=state.wall, rho=CLAYS[state.clay].density;
+  const wall=state.wall, rho=density(byId(state.mat));
   const area=out.map(o=>Math.PI*(o.r*o.r-(state.hollow?Math.pow(Math.max(o.r-wall,0),2):0)));
   const wAbove=new Array(out.length).fill(0);
   let acc=0;
@@ -127,18 +126,18 @@ export const atLevel=y=>y<10?'у основания':(y/10).toFixed(0)+' см';
 
 export function computeWarnings(state, prod, str){
   const w=[];
-  if(state.hollow && state.wall<3) w.push({lvl:'warn',txt:'Стенка тоньше 3 мм — порвётся при вытяжке.'});
-  if(prod.angle<12) w.push({lvl:'bad',txt:`Неустойчива: опрокинется уже при наклоне ${prod.angle.toFixed(0)}°. Расширьте основание.`});
-  if(state.H/state.D>2.6) w.push({lvl:'warn',txt:'Форма слишком высокая относительно диаметра — сложно центровать.'});
+  if(state.hollow && state.wall<3) w.push({lvl:'warn',help:'thinWall',txt:'Стенка тоньше 3 мм — порвётся при вытяжке.'});
+  if(prod.angle<12) w.push({lvl:'bad',help:'unstable',txt:`Неустойчива: опрокинется уже при наклоне ${prod.angle.toFixed(0)}°. Расширьте основание.`});
+  if(state.H/state.D>2.6) w.push({lvl:'warn',help:'tooTall',txt:'Форма слишком высокая относительно диаметра — сложно центровать.'});
   const out=userProfileMM(state);
   let over=0;
   for(let i=1;i<out.length;i++){
     const dy=out[i].y-out[i-1].y;
     if(dy>0.1 && (out[i].r-out[i-1].r)/dy < -1.35) over++;
   }
-  if(over/(out.length-1)>.12) w.push({lvl:'warn',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
-  if(str.minSF<1.5) w.push({lvl:'bad',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
-  else if(str.minSF<2.5) w.push({lvl:'warn',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
+  if(over/(out.length-1)>.12) w.push({lvl:'warn',help:'overhang',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
+  if(str.minSF<1.5) w.push({lvl:'bad',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
+  else if(str.minSF<2.5) w.push({lvl:'warn',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична, устойчива и печатаема.'});
   return w;
 }

@@ -1,5 +1,6 @@
 // file: js/core/state.js
 import { PRESETS } from '../config/data.js';
+import { MATERIALS, byId, LEGACY_CLAY_INDEX } from '../config/materials.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
 export const state = {
@@ -11,7 +12,8 @@ export const state = {
   hollow: true, wall: 5,        // мм
   footH: 6, footK: 62,          // мм / %
   allow: 20,                    // % припуск
-  clay: 0, firing: 'raw',
+  mat: 'gzhel-red',             // id массы из js/config/materials.js
+  firing: 'raw',
   seed: 48213,
   stage: 6, playing: false,
   spin: true, wire: false, heatmap: false,
@@ -19,10 +21,12 @@ export const state = {
   glaze: {al:0.35, si:4.2, ca:0.7},
 };
 
+export const material = () => byId(state.mat);
+
 const clampN = (v,a,b)=>Math.min(b,Math.max(a,v));
 
 export function encodeDNA(){
-  const d = {v:2, name:state.name, clay:state.clay, pts:state.points, H:state.H, D:state.D,
+  const d = {v:3, name:state.name, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze};
@@ -36,10 +40,12 @@ export function applyDNAFromHash(){
   if(!m) return false;
   try{
     const d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
-    if(d.v > 2 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
+    if(d.v > 3 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clampN(+p.t||0,0,1), r:clampN(+p.r||0,0,1)}));
-    state.clay = clampN(d.clay|0, 0, 3);
+    // v3 хранит id массы, v2 — индекс из первой версии справочника
+    const wanted = d.mat || LEGACY_CLAY_INDEX[clampN(d.clay|0,0,LEGACY_CLAY_INDEX.length-1)];
+    state.mat = MATERIALS.some(x=>x.id===wanted) ? wanted : MATERIALS[0].id;
     state.H = clampN(+d.H||220, 50, 400);
     state.D = clampN(+d.D||160, 50, 400);
     state.segments = clampN(d.seg|0||72, 24, 128);

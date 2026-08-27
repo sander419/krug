@@ -4,10 +4,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildPot } from '../core/geometry.js';
 import { computeStrength } from '../core/math.js';
-import { CLAYS } from '../config/data.js';
+import { MATERIALS, byId } from '../config/materials.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, platen;
 let platenMat, lastPlatenR=0;
+let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
 
 function rebuildPlaten(baseR){
   const rad=Math.max(baseR+35,80);
@@ -96,7 +97,7 @@ export const sceneAPI = {
 
     platenMat=new THREE.MeshStandardMaterial({color:0x332a23,roughness:.62,metalness:.25});
 
-    clayMat=new THREE.MeshStandardMaterial({color:CLAYS[0].raw,roughness:.92,side:THREE.DoubleSide});
+    clayMat=new THREE.MeshStandardMaterial({color:MATERIALS[0].colors.raw,roughness:.92,side:THREE.DoubleSide});
     potMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
     potMesh.castShadow=potMesh.receiveShadow=true;
     wheelGroup.add(potMesh);
@@ -104,6 +105,7 @@ export const sceneAPI = {
 
   rebuild(state, str){
     const built=buildPot(state);
+    lastProfile=built.path.map(p=>({r:p.x,y:p.y}));
     if(state.heatmap) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
     potMesh.geometry.dispose();
     potMesh.geometry=built.geometry;
@@ -121,7 +123,7 @@ export const sceneAPI = {
     if(state.heatmap){
       clayMat.color.set(0xffffff);clayMat.roughness=.6;clayMat.metalness=0;return;
     }
-    const c=CLAYS[state.clay], m=state.firing;
+    const c=byId(state.mat).colors, m=state.firing;
     clayMat.color.setHex(m==='raw'?c.raw:m==='bisque'?c.bisque:c.glaze);
     clayMat.roughness=m==='raw'?.92:m==='bisque'?.88:.25;
     clayMat.metalness=m==='glaze'?.05:0;
@@ -137,8 +139,35 @@ export const sceneAPI = {
     controls.update();
   },
 
+  /* Экранная привязка чертежа к модели: где на экране низ и верх силуэта изделия
+     и сколько пикселей приходится на миллиметр рецепта. Считается по видимой стороне
+     профиля, а не по оси — иначе перспектива даёт расхождение до четверти размера. */
+  screenScale(state){
+    const h=container.clientHeight;
+    if(!h||!camera||!potMesh) return null;
+    const sc=potMesh.scale.x||1;
+    // направление «на камеру» в плоскости круга: ближняя сторона силуэта
+    const dir=new THREE.Vector3().subVectors(camera.position,controls.target);
+    dir.y=0;
+    if(dir.lengthSq()<1e-6) dir.set(0,0,1);
+    dir.normalize();
+    const prof=lastProfile.length?lastProfile:[{r:state.D/2,y:0},{r:state.D/2,y:state.H}];
+    const v=new THREE.Vector3();
+    let yMin=Infinity,yMax=-Infinity;
+    for(const p of prof){
+      v.set(dir.x*p.r*sc, p.y*sc, dir.z*p.r*sc).project(camera);
+      const y=(1-v.y)/2*h;
+      if(y<yMin)yMin=y;
+      if(y>yMax)yMax=y;
+    }
+    const pxPerMM=(yMax-yMin)/Math.max(state.H,10);
+    return {pxPerMM, baseY:yMax, ok:isFinite(pxPerMM)&&pxPerMM>0.05&&isFinite(yMax)};
+  },
+
   resize(){
-    const w=container.clientWidth,h=container.clientHeight;
+    // страховка от обратной связи «канва растит контейнер»: буфер не больше окна
+    const w=Math.max(1,Math.min(container.clientWidth,innerWidth));
+    const h=Math.max(1,Math.min(container.clientHeight,innerHeight));
     renderer.setSize(w,h);
     camera.aspect=w/h;camera.updateProjectionMatrix();
   },

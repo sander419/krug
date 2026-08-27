@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>КРУГ · Производственный симулятор гончарных форм + LDM-слайсер</title>
-<meta name="description" content="КРУГ — параметрический симулятор гончарных форм в браузере: профиль, масса глины, устойчивость, прочность при LDM-печати, G-code и экспорт STL/OBJ/GLB.">
+<meta name="description" content="КРУГ — параметрический симулятор гончарных форм в браузере: чертёж профиля 1:1 с 3D-моделью, библиотека керамических масс с рынка РФ, масса глины, устойчивость, прочность при LDM-печати, G-code, экспорт STL/OBJ/GLB и энциклопедия гончарного дела.">
 <meta name="theme-color" content="#171310">
 <meta property="og:type" content="website">
 <meta property="og:title" content="КРУГ — симулятор гончарных форм">
-<meta property="og:description" content="Рисуете профиль — получаете 3D-форму, массу глины, проверку на осадку, G-code для глиняного 3D-принтера и экспорт модели.">
+<meta property="og:description" content="Рисуете профиль — получаете 3D-форму, массу глины, проверку на осадку, G-code для глиняного 3D-принтера, библиотеку масс и энциклопедию гончарного дела.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="styles.css">
@@ -23,6 +23,7 @@
   </div>
   <div class="head-right">
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false">
+    <button class="btn" id="kbBtn" title="Энциклопедия гончарного дела">📖 Знания</button>
     <button class="btn" id="snapBtn" title="Снимок вида в PNG">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
       Снимок
@@ -39,142 +40,173 @@
 </header>
 
 <main>
-  <aside>
-    <div class="section">
-      <div class="section-title">Пресеты</div>
-      <div class="presets" id="presets"></div>
-      <div class="seed-line">seed: <b id="seedOut">—</b> · один seed = одна и та же форма</div>
+  <!-- ================= панель управления ================= -->
+  <aside id="panel">
+    <nav class="tabs">
+      <button class="tab active" data-tab="form">Форма</button>
+      <button class="tab" data-tab="mat">Материал</button>
+      <button class="tab" data-tab="print">Печать</button>
+      <button class="tab" data-tab="glaze">Глазурь</button>
+    </nav>
+
+    <div class="panes">
+      <!-- ---------- Форма ---------- -->
+      <section class="tabpane active" data-pane="form">
+        <div class="block">
+          <div class="block-title">Пресеты</div>
+          <div class="presets" id="presets"></div>
+          <div class="seed-line">seed: <b id="seedOut">—</b> · один seed = одна и та же форма</div>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Размеры на круге</div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Высота</span><output id="heightOut"></output></div>
+            <input type="range" id="heightSl" min="5" max="40" step="0.5" value="22">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Макс. диаметр</span><output id="diamOut"></output></div>
+            <input type="range" id="diamSl" min="5" max="40" step="0.5" value="16">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Детализация круга</span><output id="segOut"></output></div>
+            <input type="range" id="segSl" min="24" max="128" step="4" value="72">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Следы гончара (фактура)</span><output id="ringsOut"></output></div>
+            <input type="range" id="ringsSl" min="0" max="1.5" step="0.1" value="0.4">
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="block-title">Стенки и ножка <button class="help-dot" data-kb="wall-thickness" title="Про толщину стенки">?</button></div>
+          <label class="check-row">
+            <span>Полая форма</span>
+            <input type="checkbox" id="hollowChk" checked>
+          </label>
+          <div class="slider-row">
+            <div class="slider-head"><span>Толщина стенки</span><output id="thickOut"></output></div>
+            <input type="range" id="thickSl" min="2" max="12" step="0.5" value="5">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Высота ножки (подрезка)</span><output id="footHOut"></output></div>
+            <input type="range" id="footHSl" min="0" max="12" step="1" value="6">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Ширина ножки</span><output id="footKOut"></output></div>
+            <input type="range" id="footKSl" min="30" max="85" step="1" value="62">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Припуск глины на подрезку</span><output id="allowOut"></output></div>
+            <input type="range" id="allowSl" min="5" max="40" step="1" value="20">
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Материал ---------- -->
+      <section class="tabpane" data-pane="mat">
+        <div class="block">
+          <div class="block-title">Библиотека масс <span class="count" id="matCount"></span>
+            <button class="help-dot" data-kb="choose-mass" title="Как выбрать массу">?</button></div>
+          <div class="chip-row" id="matFilters"></div>
+          <div class="mat-list" id="matList"></div>
+        </div>
+        <div class="block">
+          <div class="block-title">Состояние изделия</div>
+          <div class="seg" id="firingSeg">
+            <button data-f="raw" class="active">Сырая</button>
+            <button data-f="bisque">Утельный обжиг</button>
+            <button data-f="glaze">Глазурь</button>
+          </div>
+        </div>
+        <div class="block" id="matDetail"></div>
+      </section>
+
+      <!-- ---------- Печать ---------- -->
+      <section class="tabpane" data-pane="print">
+        <div class="block">
+          <div class="block-title">Печать глиной · LDM
+            <button class="help-dot" data-kb="ldm-basics" title="Как устроена печать глиной">?</button></div>
+          <select id="printerSel"></select>
+          <div class="printer-note" id="printerNote"></div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Сопло</span><output id="nozzleOut"></output></div>
+            <input type="range" id="nozzleSl" min="0.4" max="10" step="0.1" value="3">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Высота слоя</span><output id="layerOut"></output></div>
+            <input type="range" id="layerSl" min="0.2" max="5" step="0.05" value="1.6">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Скорость подачи</span><output id="feedOut"></output></div>
+            <input type="range" id="feedSl" min="300" max="3600" step="50" value="1200">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Ø картриджа / шнека</span><output id="cartOut"></output></div>
+            <input type="range" id="cartSl" min="10" max="75" step="1" value="48">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Поток (компенсация шнека)</span><output id="flowOut"></output></div>
+            <input type="range" id="flowSl" min="60" max="160" step="1" value="100">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Предел текучести пасты τᵧ
+              <button class="help-dot" data-kb="slump" title="Почему стенка садится">?</button></span><output id="tauOut"></output></div>
+            <input type="range" id="tauSl" min="1" max="10" step="0.5" value="8">
+          </div>
+          <button class="btn primary wide" id="sliceBtn">⚙ Слайсить в G-code (vase-спираль)</button>
+          <div class="slice-res" id="sliceRes"></div>
+          <div class="footnote">Непрерывная спираль без ретракций — стандарт для LDM-печати глиной. Модель печатается в сыром размере, усадка обжига учтена в комментарии к коду.</div>
+        </div>
+      </section>
+
+      <!-- ---------- Глазурь ---------- -->
+      <section class="tabpane" data-pane="glaze">
+        <div class="block">
+          <div class="block-title">Глазурь · формула Зегера
+            <button class="help-dot" data-kb="umf" title="Как читать UMF">?</button></div>
+          <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
+          <div class="slider-row">
+            <div class="slider-head"><span>Al₂O₃ (стабилизатор)</span><output id="alOut"></output></div>
+            <input type="range" id="alSl" min="0.1" max="0.6" step="0.01" value="0.35">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>SiO₂ (стеклообразователь)</span><output id="siOut"></output></div>
+            <input type="range" id="siSl" min="1.5" max="7" step="0.05" value="4.2">
+          </div>
+          <div class="slider-row" style="margin-bottom:8px">
+            <div class="slider-head"><span>Доля CaO/MgO во флюсах (1.0)</span><output id="caOut"></output></div>
+            <input type="range" id="caSl" min="0" max="1" step="0.05" value="0.7">
+          </div>
+          <div id="glazeVerdict"></div>
+          <div class="mat-actions">
+            <button class="btn small" data-kb="crazing-shivering">Цек и отскок</button>
+            <button class="btn small" data-kb="food-safe">Посудная безопасность</button>
+          </div>
+          <div class="footnote">UMF: сумма флюсов = 1.0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека / отскока относительно черепка выбранной массы.</div>
+        </div>
+      </section>
     </div>
 
-    <div class="section">
-      <div class="section-title">Профиль · этап «Формовка»</div>
-      <div class="editor-wrap"><canvas id="profileCanvas"></canvas></div>
-      <div class="editor-hint">
-        <b>Перетаскивайте</b> точки · <b>двойной клик</b> — новая точка · <b>ПКМ</b> — удалить.
-        Значения ползунков: <b>двойной клик по цифре</b> — точный ввод (режим CAD).
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Размеры</div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Высота на круге</span><output id="heightOut"></output></div>
-        <input type="range" id="heightSl" min="5" max="40" step="0.5" value="22">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Макс. диаметр на круге</span><output id="diamOut"></output></div>
-        <input type="range" id="diamSl" min="5" max="40" step="0.5" value="16">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Детализация круга</span><output id="segOut"></output></div>
-        <input type="range" id="segSl" min="24" max="128" step="4" value="72">
-      </div>
-      <div class="slider-row" style="margin-bottom:0">
-        <div class="slider-head"><span>Следы гончара (фактура)</span><output id="ringsOut"></output></div>
-        <input type="range" id="ringsSl" min="0" max="1.5" step="0.1" value="0.4">
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Стенки и ножка</div>
-      <div class="switch-row">
-        <span>Полая форма</span>
-        <label class="switch"><input type="checkbox" id="hollowChk" checked><i></i></label>
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Толщина стенки</span><output id="thickOut"></output></div>
-        <input type="range" id="thickSl" min="2" max="12" step="0.5" value="5">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Высота ножки (подрезка)</span><output id="footHOut"></output></div>
-        <input type="range" id="footHSl" min="0" max="12" step="1" value="6">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Ширина ножки</span><output id="footKOut"></output></div>
-        <input type="range" id="footKSl" min="30" max="85" step="1" value="62">
-      </div>
-      <div class="slider-row" style="margin-bottom:0">
-        <div class="slider-head"><span>Припуск глины на подрезку</span><output id="allowOut"></output></div>
-        <input type="range" id="allowSl" min="5" max="40" step="1" value="20">
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Глина и обжиг</div>
-      <div class="swatches" id="swatches"></div>
-      <div class="swatch-name" id="swatchName"></div>
-      <div class="seg" id="firingSeg">
-        <button data-f="raw" class="active">Сырая</button>
-        <button data-f="bisque">Утельный обжиг</button>
-        <button data-f="glaze">Глазурь</button>
-      </div>
-      <div class="footnote">Все внутренние расчёты — в мм и граммах. Усадка применяется на этапе «Обжиг».</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Печать глиной · LDM</div>
-      <select id="printerSel" title="Профиль керамического принтера"></select>
-      <div class="printer-note" id="printerNote"></div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Сопло</span><output id="nozzleOut"></output></div>
-        <input type="range" id="nozzleSl" min="0.4" max="10" step="0.1" value="3">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Высота слоя</span><output id="layerOut"></output></div>
-        <input type="range" id="layerSl" min="0.2" max="5" step="0.05" value="1.6">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Скорость подачи</span><output id="feedOut"></output></div>
-        <input type="range" id="feedSl" min="300" max="3600" step="100" value="1200">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Ø картриджа / шнека</span><output id="cartOut"></output></div>
-        <input type="range" id="cartSl" min="10" max="75" step="1" value="48">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Поток (компенсация шнека)</span><output id="flowOut"></output></div>
-        <input type="range" id="flowSl" min="60" max="160" step="1" value="100">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Предел текучести пасты τᵧ</span><output id="tauOut"></output></div>
-        <input type="range" id="tauSl" min="1" max="10" step="0.5" value="8">
-      </div>
-      <button class="btn primary wide" id="sliceBtn">⚙ Слайсить в G-code (vase-спираль)</button>
-      <div class="slice-res" id="sliceRes"></div>
-      <div class="footnote">Непрерывная спираль без ретракций — стандарт для LDM-печати глиной. Модель печатается в сыром размере, усадка обжига учтена в комментарии к коду.</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Глазурь · формула Зегера</div>
-      <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
-      <div class="slider-row">
-        <div class="slider-head"><span>Al₂O₃ (стабилизатор)</span><output id="alOut"></output></div>
-        <input type="range" id="alSl" min="0.1" max="0.6" step="0.01" value="0.35">
-      </div>
-      <div class="slider-row">
-        <div class="slider-head"><span>SiO₂ (стеклообразователь)</span><output id="siOut"></output></div>
-        <input type="range" id="siSl" min="1.5" max="7" step="0.05" value="4.2">
-      </div>
-      <div class="slider-row" style="margin-bottom:8px">
-        <div class="slider-head"><span>Доля CaO/MgO во флюсах (1.0)</span><output id="caOut"></output></div>
-        <input type="range" id="caSl" min="0" max="1" step="0.05" value="0.7">
-      </div>
-      <div id="glazeVerdict"></div>
-      <div class="footnote">UMF: сумма флюсов = 1.0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека / отскока относительно черепка.</div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Контроль мастера</div>
+    <div class="panel-foot">
+      <div class="foot-title">Контроль мастера</div>
       <div class="warn-list" id="warnList"></div>
     </div>
   </aside>
 
+  <!-- ================= чертёж профиля ================= -->
+  <section id="draft">
+    <div class="draft-head">
+      <span>Профиль · половина сечения</span>
+      <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
+    </div>
+    <canvas id="profileCanvas"></canvas>
+    <div class="draft-hint"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</div>
+  </section>
+
+  <!-- ================= 3D-модель ================= -->
   <section id="viewport">
     <div class="vignette"></div>
-    <div class="overlay stats-col">
-      <div class="stats" id="stats"></div>
-      <button id="verdictBadge" title="Показать все замечания мастера"></button>
-    </div>
     <div class="overlay view-tools">
       <button class="tool active" id="spinBtn" title="Вращение круга">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
@@ -188,7 +220,7 @@
       <button class="tool" id="resetBtn" title="Сбросить камеру">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
       </button>
-      <button class="tool" id="wsBtn" title="Режим мастерской — крупный просмотр">
+      <button class="tool" id="wsBtn" title="Режим мастерской — скрыть панель">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
       </button>
     </div>
@@ -202,7 +234,31 @@
   </section>
 </main>
 
+<!-- ================= метрики ================= -->
+<footer id="metrics">
+  <div class="stats" id="stats"></div>
+  <button id="verdictBadge" title="Показать все замечания мастера"></button>
+</footer>
+
 <div id="toast"></div>
+
+<!-- ================= энциклопедия ================= -->
+<div id="kbOverlay" aria-hidden="true">
+  <div class="kb-window" role="dialog" aria-label="Энциклопедия гончарного дела">
+    <div class="kb-head">
+      <div class="kb-title">📖 Энциклопедия гончарного дела <span class="count" id="kbCount"></span></div>
+      <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false">
+      <button class="btn" id="kbClose" title="Закрыть (Esc)">✕</button>
+    </div>
+    <div class="kb-body">
+      <nav class="kb-nav">
+        <div class="kb-sections" id="kbSections"></div>
+        <div class="kb-list" id="kbList"></div>
+      </nav>
+      <div class="kb-content" id="kbBody"></div>
+    </div>
+  </div>
+</div>
 
 <script type="importmap">
 {

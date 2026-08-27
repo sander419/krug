@@ -10,15 +10,6 @@ export const PRESETS = [
   { ico:'🫙', name:'Банка',   pts:[{t:0,r:.74},{t:.1,r:.9},{t:.45,r:1},{t:.78,r:.9},{t:.92,r:.7},{t:1,r:.72}] },
 ];
 
-// shrink — полная усадка обжига, %; density — плотность сырой массы, г/см³;
-// cte — коэффициент теплового расширения черепка, ×10⁻⁶/°C
-export const CLAYS = [
-  {name:'Красная глина',    raw:0xb4643c, bisque:0xc9825b, glaze:0xa9c4b1, shrink:11, density:1.9, cte:6.8},
-  {name:'Шамотистая глина', raw:0x9c8570, bisque:0xb3a08c, glaze:0x6f8fae, shrink:12, density:2.0, cte:5.6},
-  {name:'Фарфор',           raw:0xe6ddd0, bisque:0xf0e9dd, glaze:0xdfe6ea, shrink:14, density:1.9, cte:6.2},
-  {name:'Тёмная масса',     raw:0x4a3830, bisque:0x5a463c, glaze:0x3a5a8c, shrink:11, density:2.0, cte:5.8},
-];
-
 // bed — рабочая камера [ширина, глубина, высота], мм
 export const PRINTERS = [
   {name:'3D PotterBot Micro 10', nozzle:3.0, lh:1.6, feed:1200, cart:48, bed:[152,152,254],  note:'Поршневой экструдер (ram) · жёсткая глина · сопла 1–10 мм'},

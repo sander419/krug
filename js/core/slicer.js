@@ -1,7 +1,8 @@
 // file: js/core/slicer.js
 // LDM-слайсер: непрерывная vase-спираль без ретракций.
 import { userProfileMM, radiusAt } from './math.js';
-import { PRINTERS, CLAYS } from '../config/data.js';
+import { PRINTERS } from '../config/data.js';
+import { byId, density } from '../config/materials.js';
 
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 
@@ -17,7 +18,7 @@ export function sliceGCode(state){
   const ePerMM=(pr.lh*bead*flow)/cartArea;
 
   const L=[];
-  const shrink=CLAYS[state.clay].shrink;
+  const mat=byId(state.mat), shrink=mat.shrinkPct;
   L.push('; ============================================');
   L.push(`; КРУГ — LDM G-code · ${state.name||'форма'}`);
   L.push(`; принтер: ${P0.name} (${P0.note})`);
@@ -93,7 +94,7 @@ export function sliceGCode(state){
   if(state.wall>bead*1.6 && P===4) warns.push({cls:'w',txt:'Стенка заметно толще бусины — периметров может не хватить.'});
 
   const volMM=pathLen*pr.lh*bead;
-  const grams=volMM/1000*CLAYS[state.clay].density;
+  const grams=volMM/1000*density(mat);
   const mins=pathLen/pr.feed;
   return {
     text: L.join('\n'),

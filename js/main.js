@@ -4,12 +4,14 @@ import * as THREE from 'three';
 import { state, encodeDNA, applyDNAFromHash } from './core/state.js';
 import { onChange } from './core/bus.js';
 import { computeProduction, computeStrength, computeWarnings } from './core/math.js';
-import { CLAYS } from './config/data.js';
+import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
-import { initEditor, drawEditor } from './ui/editor.js';
-import { initPanels, panelsAPI } from './ui/panels.js';
+import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
+import { initPanels, initTabs, panelsAPI } from './ui/panels.js';
 import { initGlazeLab, syncGlaze } from './ui/glazeLab.js';
+import { initLibrary, syncLibrary } from './ui/library.js';
+import { initKB, openKB } from './ui/kb.js';
 import { toast, updateStats, updateWarnings, setStageUI, setCinemaSlider, syncPlayIcon, initCinema, initTools } from './ui/overlays.js';
 
 const $=id=>document.getElementById(id);
@@ -51,11 +53,15 @@ applyDNAFromHash();
 $('nameInput').value=state.name;
 
 initEditor($('profileCanvas'));
+initTabs();
 initPanels();
 panelsAPI.sync();
+initKB();
+initLibrary();
 initGlazeLab();
 syncGlaze();
 sceneAPI.applyMaterial(state);
+$('kbBtn').onclick=()=>openKB();
 initCinema(refreshNow);
 initTools(refreshNow);
 
@@ -69,7 +75,7 @@ $('embedBtn').onclick=()=>{
   copyText(`<iframe src="${url}" title="КРУГ — 3D-витрина" style="width:100%;height:620px;border:0;border-radius:12px" loading="lazy"></iframe>`);
   toast('Код встраивания 3D-витрины скопирован (headless-плеер для e-commerce)');
 };
-const shrinkNow=()=>CLAYS[state.clay].shrink;
+const shrinkNow=()=>byId(state.mat).shrinkPct;
 $('stlBtn').onclick=()=>{exportSTL(state);toast('STL сохранён · сырой размер в мм, как печатать · после обжига −'+shrinkNow()+'%');};
 $('objBtn').onclick=()=>{exportOBJ(state);toast('OBJ сохранён · сырой размер в мм');};
 $('glbBtn').onclick=()=>exportGLB(state,()=>toast('GLB сохранён · вид как на экране, с учётом усадки'),()=>toast('Ошибка экспорта GLB'));
@@ -96,9 +102,10 @@ const clock=new THREE.Clock();
     setStageUI();
     if(state.stage>=6){
       state.playing=false;syncPlayIcon();
-      toast('Обжиг завершён: усадка −'+CLAYS[state.clay].shrink+'%');
+      toast('Обжиг завершён: усадка −'+byId(state.mat).shrinkPct+'%');
     }
   }
   sceneAPI.spinStep(dt,state);
   sceneAPI.render();
+  syncEditorScale();      // чертёж держит масштаб 3D-вида
 })();

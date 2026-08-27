@@ -2,7 +2,7 @@
 import { state } from '../core/state.js';
 import { onChange } from '../core/bus.js';
 import { evaluateGlaze } from '../core/glaze.js';
-import { CLAYS } from '../config/data.js';
+import { byId } from '../config/materials.js';
 import { hookSlider } from './panels.js';
 
 const $=id=>document.getElementById(id);
@@ -48,7 +48,7 @@ function drawStull(){
 }
 
 export function updateGlaze(){
-  const g=state.glaze, body=CLAYS[state.clay];
+  const g=state.glaze, body=byId(state.mat);
   const ev=evaluateGlaze(g, body.cte);
   $('glazeVerdict').innerHTML=
     `<div>UMF: флюсы <b>1.0</b> · Al₂O₃ <b>${g.al.toFixed(2)}</b> · SiO₂ <b>${g.si.toFixed(2)}</b> · Si:Al <b>${ev.ratio.toFixed(1)}</b></div>`+
@@ -60,7 +60,12 @@ export function updateGlaze(){
 
 export function initGlazeLab(){
   stull=$('stullCanvas');sctx=stull.getContext('2d');
-  new ResizeObserver(drawStull).observe($('stullWrap'));
+  let pending=false;
+  new ResizeObserver(()=>{
+    if(pending)return;
+    pending=true;
+    setTimeout(()=>{pending=false;drawStull();},0);
+  }).observe($('stullWrap'));
   onChange(updateGlaze);   // смена глины меняет CTE черепка — вердикт пересчитать
   R.al=hookSlider('alSl','alOut',v=>v.toFixed(2),v=>{state.glaze.al=v;updateGlaze();});
   R.si=hookSlider('siSl','siOut',v=>v.toFixed(2),v=>{state.glaze.si=v;updateGlaze();});
