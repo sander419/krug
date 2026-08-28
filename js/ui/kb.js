@@ -58,7 +58,7 @@ function renderNav(){
       <span>${s.ico}</span>${esc(s.name)}<i>${bySection(s.id).length}</i>
     </button>`).join('');
   $('kbSections').querySelectorAll('[data-sec]').forEach(b=>{
-    b.onclick=()=>{currentSection=b.dataset.sec;lastQuery='';$('kbSearch').value='';renderList();renderNav();};
+    b.onclick=()=>{currentSection=b.dataset.sec;lastQuery='';$('kbSearch').value='';renderList();renderNav();setReading(false);};
   });
 }
 
@@ -74,6 +74,10 @@ function renderList(){
   bindGo(box);
 }
 
+/* На телефоне список и статья не помещаются рядом: открытая статья прячет список,
+   вернуться — кнопкой «Список». На широком экране класс ничего не меняет. */
+const setReading=on=>$('kbOverlay').classList.toggle('reading',on);
+
 export function openArticle(id){
   const a=articleById(id);
   if(!a)return;
@@ -86,6 +90,7 @@ export function openArticle(id){
   body.innerHTML=articleHTML(a);
   body.scrollTop=0;
   bindGo(body);
+  setReading(true);
 }
 
 export function openContextHelp(key){
@@ -110,10 +115,12 @@ export function initKB(){
   renderNav();
   renderList();
   $('kbClose').onclick=closeKB;
+  $('kbBack').onclick=()=>setReading(false);
   $('kbOverlay').addEventListener('click',e=>{if(e.target.id==='kbOverlay')closeKB();});
   $('kbSearch').addEventListener('input',e=>{
     lastQuery=e.target.value.trim();
     renderList();
+    setReading(false);
   });
   document.addEventListener('keydown',e=>{
     if(e.key==='Escape'&&$('kbOverlay').classList.contains('open'))closeKB();

@@ -12,6 +12,7 @@ import { clamp } from '../core/util.js';
 import { $ } from './dom.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
+let pressTimer=null, lastTap=0, lastTapPt=null;
 let mode='1:1';                 // '1:1' | 'fit'
 let modeChosen=false;
 let view={pxPerMM:1, baseY:0, axisX:34};
@@ -162,6 +163,13 @@ export function drawEditor(){
     (view.fits ? '1:1 с моделью' : '1:1 · не помещается');
 }
 
+/** Масштаб чертежа снаружи: '1:1' — как в 3D-виде, 'fit' — вписать в канву. */
+export function setEditorMode(m){
+  if(m!=='1:1'&&m!=='fit')return;
+  if(mode===m)return;
+  mode=m;modeChosen=true;lastKey='';drawEditor();
+}
+
 /* пересчёт при движении камеры: перерисовываем только когда масштаб реально изменился */
 export function syncEditorScale(){
   if(mode!=='1:1'||!eW)return;
@@ -192,10 +200,25 @@ function resizeEditor(){
   resizePending=true;
   setTimeout(()=>{resizePending=false;drawEditor();},0);
 }
+const coarse=()=>matchMedia('(pointer:coarse)').matches;
 function hitPoint(px,py){
-  let best=-1,bd=15;
+  let best=-1,bd=coarse()?26:15;
   state.points.forEach((p,i)=>{const q=ptToPx(p);const d=Math.hypot(q.x-px,q.y-py);if(d<bd){bd=d;best=i;}});
   return best;
+}
+
+function addPointAt(px,py){
+  const c=pxToPt(px,py);
+  if(c.t<=.02||c.t>=.98)return;
+  state.points.push({t:c.t,r:c.r});
+  state.points.sort((a,b)=>a.t-b.t);
+  state.activePreset=-1;emit();
+}
+function removePoint(i){
+  if(i>0&&i<state.points.length-1){
+    state.points.splice(i,1);state.activePreset=-1;emit();
+    if(navigator.vibrate)navigator.vibrate(15);
+  }
 }
 
 export function initEditor(canvas){
@@ -217,11 +240,23 @@ export function initEditor(canvas){
       return;
     }
     if(idx>=0){dragIdx=idx;try{ec.setPointerCapture(e.pointerId);}catch(_){}}
+    if(e.pointerType==='mouse')return;
+    // на телефоне правой кнопки нет: удаление — долгим нажатием, добавление — двойным касанием
+    clearTimeout(pressTimer);
+    if(idx>0&&idx<state.points.length-1){
+      pressTimer=setTimeout(()=>{dragIdx=-1;removePoint(idx);},520);
+    }else if(idx<0){
+      const now=Date.now();
+      if(now-lastTap<340&&lastTapPt&&Math.hypot(lastTapPt.x-px,lastTapPt.y-py)<30){
+        addPointAt(px,py);lastTap=0;lastTapPt=null;
+      }else{lastTap=now;lastTapPt={x:px,y:py};}
+    }
   });
   ec.addEventListener('pointermove',e=>{
     const rect=ec.getBoundingClientRect();
     const px=e.clientX-rect.left,py=e.clientY-rect.top;
     if(dragIdx>=0){
+      clearTimeout(pressTimer);
       const p=state.points[dragIdx],c=pxToPt(px,py);
       p.r=c.r;
       if(dragIdx===0)p.t=0;
@@ -234,14 +269,10 @@ export function initEditor(canvas){
       ec.style.cursor=h>=0?'grab':'crosshair';
     }
   });
-  ec.addEventListener('pointerup',()=>dragIdx=-1);
-  ec.addEventListener('pointercancel',()=>dragIdx=-1);
+  ec.addEventListener('pointerup',()=>{clearTimeout(pressTimer);dragIdx=-1;});
+  ec.addEventListener('pointercancel',()=>{clearTimeout(pressTimer);dragIdx=-1;});
   ec.addEventListener('dblclick',e=>{
     const rect=ec.getBoundingClientRect();
-    const c=pxToPt(e.clientX-rect.left,e.clientY-rect.top);
-    if(c.t<=.02||c.t>=.98)return;
-    state.points.push({t:c.t,r:c.r});
-    state.points.sort((a,b)=>a.t-b.t);
-    state.activePreset=-1;emit();
+    addPointAt(e.clientX-rect.left,e.clientY-rect.top);
   });
 }

@@ -3,3 +3,6 @@
 Thumbs.db
 *.log
 _*.html
+
+# снимки вёрстки
+out/

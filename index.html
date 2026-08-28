@@ -21,7 +21,9 @@
     <div class="brand-name">КРУГ</div>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
-  <div class="head-right">
+  <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" aria-label="Ещё действия">⋯</button>
+  <div class="head-right" id="headMenu">
+    <span class="menu-cap">Название изделия</span>
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
     <button class="btn" id="kbBtn" title="Энциклопедия гончарного дела">📖 Знания</button>
     <button class="btn" id="snapBtn" title="Снимок вида в PNG">
@@ -29,7 +31,7 @@
       <span class="btn-label">Снимок</span>
     </button>
     <button class="btn" id="dnaBtn" title="ДНК формы — рецепт передаётся ссылкой">🧬 <span class="btn-label">ДНК</span></button>
-    <button class="btn" id="embedBtn" title="Код встраивания 3D-витрины (iframe)">&lt;/&gt;</button>
+    <button class="btn" id="embedBtn" title="Код встраивания 3D-витрины (iframe)">&lt;/&gt; <span class="btn-label">Встроить</span></button>
     <div class="export-group" role="group" aria-label="Экспорт модели">
       <span class="export-label">Экспорт</span>
       <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
@@ -42,6 +44,7 @@
 <main>
   <!-- ================= панель управления ================= -->
   <aside id="panel">
+    <button class="sheet-grip" id="sheetGrip" aria-label="Развернуть или свернуть панель настроек"><i></i></button>
     <nav class="tabs" aria-label="Разделы настроек">
       <button class="tab active" data-tab="form">Форма</button>
       <button class="tab" data-tab="mat">Масса</button>
@@ -50,6 +53,7 @@
       <button class="tab" data-tab="tool">Оснастка</button>
     </nav>
 
+    <div class="panel-scroll">
     <div class="panes">
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
@@ -337,7 +341,13 @@
       <h2 class="foot-title">Контроль мастера</h2>
       <div class="warn-list" id="warnList"></div>
     </div>
+    </div>
   </aside>
+
+  <div class="stage-switch" id="stageSwitch" role="group" aria-label="Что показывать на экране">
+    <button data-view="3d" class="active">Модель</button>
+    <button data-view="draft">Профиль</button>
+  </div>
 
   <!-- ================= чертёж профиля ================= -->
   <section id="draft" aria-label="Чертёж профиля">
@@ -346,7 +356,10 @@
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
     </div>
     <canvas id="profileCanvas"></canvas>
-    <p class="draft-hint"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</p>
+    <p class="draft-hint">
+      <span class="on-mouse"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</span>
+      <span class="on-touch"><b>Тяните</b> точки · <b>двойное касание</b> — новая · <b>долгое</b> — удалить</span>
+    </p>
   </section>
 
   <!-- ================= 3D-модель ================= -->
@@ -391,6 +404,7 @@
 <div id="kbOverlay" aria-hidden="true">
   <div class="kb-window" role="dialog" aria-label="Энциклопедия гончарного дела">
     <div class="kb-head">
+      <button class="btn kb-back" id="kbBack" title="Вернуться к списку статей">← Список</button>
       <h2 class="kb-title">Энциклопедия <span class="count" id="kbCount"></span></h2>
       <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false" aria-label="Поиск по энциклопедии">
       <button class="btn" id="kbClose" title="Закрыть (Esc)" aria-label="Закрыть">✕</button>

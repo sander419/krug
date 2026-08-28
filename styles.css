@@ -72,6 +72,9 @@ header{
 .btn-row{display:flex;flex-wrap:wrap;gap:8px;}
 .export-group{display:flex;gap:6px;align-items:center;}
 .export-label{font-size:var(--fs-xs);color:var(--muted);}
+/* подпись поля в меню шапки: на широком экране поле и так стоит в ряду действий */
+.menu-cap{display:none;font-size:var(--fs-xs);color:var(--muted);}
+#embedBtn .btn-label{display:none;}
 
 /* ===================== каркас ===================== */
 main{
@@ -440,6 +443,7 @@ dl.spec dd.src a:hover{color:#fff;}
   background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;
   box-shadow:0 26px 70px rgba(0,0,0,.6);
 }
+.kb-back{display:none;}
 .kb-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);background:#1e1712;}
 .kb-title{font-size:var(--fs-md);letter-spacing:.03em;display:flex;align-items:baseline;gap:8px;}
 .kb-title .count{font-family:'Manrope',system-ui,sans-serif;font-size:var(--fs-xs);color:var(--muted);letter-spacing:0;}
@@ -512,35 +516,152 @@ dl.spec dd.src a:hover{color:#fff;}
 }
 .kb-link:hover{border-color:var(--accent);}
 
+/* ---------- появляется только на телефоне ---------- */
+.stage-switch,.sheet-grip,.head-more{display:none;}
+/* на десктопе обёртка прозрачна: .panes и .panel-foot остаются детьми #panel */
+.panel-scroll{display:contents;}
+.draft-hint .on-touch{display:none;}
+@media (pointer:coarse){
+  /* палец толще курсора: ползунки, переключатели и подсказки под касание */
+  .draft-hint .on-mouse{display:none;}
+  .draft-hint .on-touch{display:inline;}
+  input[type=range]{height:6px;}
+  input[type=range]::-webkit-slider-thumb{width:24px;height:24px;border-width:3px;}
+  input[type=range]::-moz-range-thumb{width:24px;height:24px;border-width:3px;}
+  .slider-row{gap:10px;}
+  .help-dot{width:28px;height:28px;}
+  .seg button,.chip-btn{min-height:38px;}
+  .btn.small{min-height:36px;}
+  .warn-item .why{min-height:32px;padding:4px 12px;}
+}
+
 /* ===================== адаптив ===================== */
 @media (max-width:1180px){
   :root{--panelW:322px;--draftW:clamp(180px, 22vw, 260px);}
   .kb-body{grid-template-columns:252px 1fr;}
 }
 @media (max-width:940px){
-  /* на телефоне колонки становятся стопкой, а страница — прокручиваемой:
-     иначе панели управления не остаётся высоты */
-  body{overflow:auto;}
-  main{display:flex;flex-direction:column;}
-  #viewport{order:1;height:46vh;min-height:280px;flex:none;}
-  #draft{order:2;height:300px;flex:none;border-right:none;border-bottom:1px solid var(--line);}
-  #panel{order:3;border-right:none;border-bottom:1px solid var(--line);height:auto;}
-  .panes{overflow:visible;}
-  .panel-foot{max-height:none;}
-  .mat-list{max-height:none;}
-  body.ws #panel{display:flex;}
+  /* Телефон: страница не прокручивается. Сверху сцена (модель или чертёж —
+     переключателем), под ней строка метрик, снизу лист настроек высотой --sheetH.
+     Раньше здесь была стопка с прокруткой: панель сжималась до 1 px и её
+     содержимое вываливалось поверх страницы, до ползунков было не добраться. */
+  :root{
+    --sheetH:46vh;--sheetH:46svh;
+    --metricsH:46px;--panelW:100%;
+  }
+  html,body{height:100vh;height:100svh;}
+  body{overflow:hidden;}
+
+  /* шапка в одну строку, всё лишнее — под кнопку «ещё» */
+  header{padding:8px 12px;gap:10px;flex-wrap:nowrap;position:relative;}
   .brand-sub{display:none;}
-  .stage-lbl{min-width:0;}
-  .view-tools{top:auto;bottom:12px;right:10px;flex-direction:column;}
-  .tool{width:36px;height:36px;}
-  .cinema{left:12px;transform:none;padding:8px 12px;gap:10px;max-width:calc(100% - 68px);}
-  #stageSl{width:min(240px,42vw);}
-  #metrics{position:sticky;bottom:0;z-index:4;padding:7px 10px;}
-  #verdictBadge{max-width:none;}
-  .kb-window{height:92vh;}
+  .head-more{
+    display:inline-flex;justify-content:center;margin-left:auto;
+    min-width:46px;min-height:42px;font-size:20px;line-height:1;padding:0;
+  }
+  body.menu-open .head-more{border-color:var(--accent);color:var(--accent2);}
+  .head-right{
+    position:absolute;top:calc(100% + 6px);right:8px;left:8px;z-index:20;margin-left:0;
+    display:none;flex-direction:column;align-items:stretch;gap:8px;flex-wrap:nowrap;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:12px;box-shadow:0 18px 40px rgba(0,0,0,.55);
+  }
+  body.menu-open .head-right{display:flex;}
+  .head-right .btn{justify-content:center;min-height:44px;}
+  #nameInput{width:100%;}
+  .menu-cap{display:block;margin-bottom:-2px;}
+  .export-group{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .export-label{display:block;grid-column:1/-1;margin-bottom:-2px;}
+  /* в меню у кнопок есть место на подпись — иконка без слова непонятна */
+  #snapBtn .btn-label,#embedBtn .btn-label{display:inline;}
+
+  /* сцена: модель и чертёж занимают одно место, переключаются */
+  main{display:flex;flex-direction:column;position:relative;
+       padding-bottom:calc(var(--sheetH) + var(--metricsH));}
+  #viewport,#draft{flex:1;min-height:0;}
+  #draft{border-right:none;}
+  body:not(.view-draft) #draft{display:none;}
+  body.view-draft #viewport{display:none;}
+  .stage-switch{
+    display:flex;position:absolute;top:10px;left:10px;z-index:4;gap:2px;
+    background:var(--chip);backdrop-filter:blur(8px);
+    border:1px solid var(--line);border-radius:12px;padding:3px;
+  }
+  .stage-switch button{
+    min-height:36px;padding:6px 13px;border:none;background:none;color:var(--muted);
+    border-radius:9px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;
+  }
+  .stage-switch button.active{background:var(--accent);color:#221007;}
+  /* заголовок чертежа не нужен: переключатель над ним уже подписан «Профиль»,
+     а масштаб 1:1 не к чему привязывать — модели на экране нет */
+  .draft-head{display:none;}
+
+  /* инструменты вида — строкой сверху справа, чтобы не съедать высоту сцены */
+  .view-tools{top:10px;right:10px;flex-direction:row;gap:6px;flex-wrap:nowrap;}
+  .tool{width:40px;height:40px;}
+  #wsBtn{display:none;}                     /* лист сворачивается ручкой, кнопка не нужна */
+
+  /* кинотеатр: подпись строкой над ползунком, иначе не влезает */
+  .cinema{
+    left:10px;right:10px;bottom:10px;transform:none;max-width:none;
+    flex-wrap:wrap;gap:10px 12px;padding:9px 12px;
+  }
+  .stage-lbl{order:-1;flex-basis:100%;min-width:0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+  .stage-lbl b{display:inline;}
+  #stageSl{width:auto;flex:1;min-width:0;}
+  .play-btn{width:44px;height:44px;}
+
+  body.stage-tight .cinema{display:none;}   /* сцене осталась полоска — панель уступает место */
+
+  /* метрики — узкой полосой между сценой и листом */
+  #metrics{
+    position:fixed;left:0;right:0;bottom:var(--sheetH);z-index:6;
+    height:var(--metricsH);min-height:0;padding:0 10px;gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  /* вердикт не вытесняет чипы: одна строка с многоточием, метрики видно рядом */
+  #verdictBadge{max-width:52%;min-height:30px;padding:5px 10px;}
+  #verdictBadge span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chip{padding:5px 10px;min-height:30px;}
+
+  /* лист настроек */
+  #panel{
+    position:fixed;left:0;right:0;bottom:0;z-index:7;height:var(--sheetH);
+    border-right:none;border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+    box-shadow:0 -14px 34px rgba(0,0,0,.5);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  body.ws #panel{display:flex;}
+  .sheet-grip{
+    display:flex;align-items:center;justify-content:center;flex:none;
+    height:26px;border:none;background:none;cursor:grab;touch-action:none;
+  }
+  .sheet-grip i{display:block;width:46px;height:4px;border-radius:3px;background:#5a4132;}
+  .sheet-grip:active i{background:var(--accent);}
+  .tabs{padding:2px 6px 0;}
+  .tab{min-height:44px;padding:8px 7px;font-size:var(--fs-xs);}
+  /* прокручивается всё вместе: настройки и контроль мастера */
+  .panel-scroll{
+    display:flex;flex-direction:column;flex:1;min-height:0;
+    overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  }
+  .panes{flex:none;overflow:visible;}
+  .tabpane{padding:var(--gap-3) var(--gap-3) var(--gap-3);}
+  .panel-foot{max-height:none;flex:none;}
+  .mat-list{max-height:none;}
+  .presets{grid-template-columns:1fr 1fr;}
+
+  #toast{bottom:calc(var(--sheetH) + var(--metricsH) + 14px);}
+
+  /* энциклопедия во весь экран: список и статья по очереди, а не в две трети экрана */
+  #kbOverlay{padding:0;}
+  #kbOverlay.reading .kb-nav{display:none;}
+  #kbOverlay.reading #kbSearch{display:none;}
+  #kbOverlay.reading .kb-back{display:inline-flex;}
+  #kbOverlay.reading .kb-title{font-size:var(--fs-sm);}
+  .kb-window{height:100%;width:100%;border-radius:0;border:none;}
   .kb-body{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
   .kb-nav{border-right:none;border-bottom:1px solid var(--line);max-height:38vh;}
-  #kbOverlay{padding:10px;}
   .kb-content{padding:18px 16px 32px;}
 }
 @media (max-width:640px){
@@ -548,14 +669,28 @@ dl.spec dd.src a:hover{color:#fff;}
   input,select,textarea{font-size:16px;}
   .field-row input{width:112px;}
   header{padding:9px 12px;gap:8px;}
-  #nameInput{width:130px;}
-  .export-label{display:none;}
   .btn{padding:7px 10px;}
-  #snapBtn .btn-label{display:none;}
   #kbSearch{width:100%;order:3;margin-left:0;}
+  .stage-switch button{padding:6px 10px;}
   .kb-head{flex-wrap:wrap;}
   .kb-article h3{font-size:20px;}
 }
+/* Телефон боком: лист снизу не годится — от сцены осталась бы полоска.
+   Настройки становятся правой колонкой в обычном потоке, метрики — полосой внизу. */
+@media (max-width:940px) and (orientation:landscape) and (max-height:560px){
+  :root{--sheetH:0px;--sideW:min(46vw,360px);}
+  main{flex-direction:row-reverse;padding:0;}
+  #panel{
+    position:static;flex:none;width:var(--sideW);height:auto;
+    border-radius:0;border-top:none;border-left:1px solid var(--line);box-shadow:none;
+  }
+  #viewport,#draft{flex:1;}
+  .sheet-grip{display:none;}
+  #metrics{position:static;height:auto;min-height:44px;}
+  #toast{bottom:60px;}
+  body.stage-tight .cinema{display:flex;}
+}
+
 @media (prefers-reduced-motion:reduce){
   *{transition-duration:.01ms !important;animation-duration:.01ms !important;}
 }

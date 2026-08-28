@@ -65,6 +65,17 @@ function buildFromPath(path, state){
   };
 }
 
+/* Какую долю высоты вида закрывает панель кинотеатра. На широком экране она мала
+   и ничего не меняет; на телефоне занимает треть — изделие пришлось бы разглядывать
+   сквозь неё, поэтому вид отъезжает и приподнимает изделие над панелью. */
+function bottomInset(){
+  const c=document.querySelector('.cinema');
+  const h=container&&container.clientHeight;
+  if(!c||!h)return 0;
+  const r=c.getBoundingClientRect().height/h;
+  return r>0.18?Math.min(r,0.4):0;
+}
+
 export const sceneAPI = {
   init(el){
     container=el;
@@ -152,9 +163,10 @@ export const sceneAPI = {
     const H=state.H, D=Math.max(state.D,60);
     const a=camera.aspect||1;
     const k=a<1.1?1.1/Math.max(a,0.4):1;      // узкий экран — отъехать, иначе изделие не влезает
-    const dist=(Math.max(H,D)*1.5+140)*k;
+    const inset=bottomInset();                // на телефоне низ вида закрыт кинотеатром
+    const dist=(Math.max(H,D)*1.5+140)*k*(1+inset*0.9);
     camera.position.set(dist*.62,H*.62+60,dist*.86);
-    controls.target.set(0,H*.45,0);
+    controls.target.set(0,H*(.45-inset*.55),0);
     controls.update();
   },
 

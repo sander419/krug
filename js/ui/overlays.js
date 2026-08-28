@@ -6,6 +6,7 @@ import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
 import { $ } from './dom.js';
+import { openSheet } from './mobile.js';
 
 let worstHelp=null;   // статья, которую открывает бейдж вердикта
 
@@ -97,6 +98,7 @@ export function initTools(refreshNow){
   $('verdictBadge').onclick=()=>{
     if(worstHelp){ openContextHelp(worstHelp); return; }
     if(document.body.classList.contains('ws')) $('wsBtn').click();
+    openSheet();
     $('warnList').scrollIntoView({behavior:'smooth',block:'center'});
   };
   $('wsBtn').onclick=e=>{

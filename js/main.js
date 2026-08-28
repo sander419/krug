@@ -8,6 +8,7 @@ import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
 import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
+import { initMobile } from './ui/mobile.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
 import { initGlazeLab, syncGlaze } from './ui/glazeLab.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
@@ -65,6 +66,7 @@ initGlazeLab();
 syncGlaze();
 sceneAPI.applyMaterial(state);
 $('kbBtn').onclick=()=>openKB();
+initMobile();
 initCinema(refreshNow);
 initTools(refreshNow);
 
