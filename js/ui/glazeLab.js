@@ -8,6 +8,7 @@ import { GLAZES, GLAZE_FAMILIES, byGlazeId, firingFit } from '../config/glazes.j
 import { sceneAPI } from '../three/scene.js';
 import { hookSlider } from './panels.js';
 import { $, esc, hex } from './dom.js';
+import { pal } from './palette.js';
 
 let stull, sctx, R={}, filterFamily='all';
 
@@ -21,8 +22,9 @@ function drawStull(){
   sctx.setTransform(dp,0,0,dp,0,0);
   const X=al=>14+(al-0.1)/(0.6-0.1)*(w-28);
   const Y=si=>h-16-(si-1.5)/(7-1.5)*(h-32);
+  const P=pal();
   sctx.clearRect(0,0,w,h);
-  sctx.strokeStyle='rgba(216,112,63,.12)';
+  sctx.strokeStyle=P.accent(.16);
   for(let al=0.2;al<=0.6;al+=0.1){sctx.beginPath();sctx.moveTo(X(al),12);sctx.lineTo(X(al),h-14);sctx.stroke();}
   for(let si=2;si<=7;si+=1){sctx.beginPath();sctx.moveTo(12,Y(si));sctx.lineTo(w-12,Y(si));sctx.stroke();}
   const blob=(al,si,rx,ry,col)=>{
@@ -31,23 +33,23 @@ function drawStull(){
     sctx.ellipse(X(al),Y(si),RX,RY,0,0,Math.PI*2);
     sctx.fillStyle=col;sctx.fill();
   };
-  blob(0.16,2.1,0.13,1.1,'rgba(217,92,74,.22)');
-  blob(0.45,3.4,0.16,1.5,'rgba(224,166,63,.24)');
-  blob(0.36,4.7,0.16,1.3,'rgba(216,160,90,.14)');
-  blob(0.26,5.7,0.2,1.7,'rgba(143,181,115,.26)');
-  sctx.fillStyle='rgba(241,231,218,.55)';sctx.font='9px Manrope';
+  blob(0.16,2.1,0.13,1.1,P.bad(.24));
+  blob(0.45,3.4,0.16,1.5,P.warn(.26));
+  blob(0.36,4.7,0.16,1.3,P.accent2(.18));
+  blob(0.26,5.7,0.2,1.7,P.ok(.28));
+  sctx.fillStyle=P.text(.6);sctx.font='9px Manrope';
   sctx.fillText('недоплав',X(0.16)-18,Y(2.1));
   sctx.fillText('мат',X(0.45)-9,Y(3.4));
   sctx.fillText('сатин',X(0.36)-13,Y(4.7));
   sctx.fillText('глянец',X(0.26)-14,Y(5.9));
-  sctx.fillStyle='rgba(216,112,63,.7)';
+  sctx.fillStyle=P.accent(.8);
   sctx.fillText('Al₂O₃ →',w-52,h-4);
   sctx.save();sctx.translate(8,46);sctx.rotate(-Math.PI/2);sctx.fillText('SiO₂ →',0,0);sctx.restore();
   const gx=X(state.glaze.al),gy=Y(state.glaze.si);
-  sctx.strokeStyle='#f1e7da';sctx.lineWidth=1.2;
+  sctx.strokeStyle=P.text();sctx.lineWidth=1.2;
   sctx.beginPath();sctx.moveTo(gx-9,gy);sctx.lineTo(gx+9,gy);sctx.moveTo(gx,gy-9);sctx.lineTo(gx,gy+9);sctx.stroke();
   sctx.beginPath();sctx.arc(gx,gy,5.5,0,Math.PI*2);
-  sctx.strokeStyle='#e8935f';sctx.lineWidth=2;sctx.stroke();
+  sctx.strokeStyle=P.accent2();sctx.lineWidth=2;sctx.stroke();
 }
 
 /* ---------- ассортимент ---------- */

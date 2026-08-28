@@ -10,6 +10,7 @@ import { coatProfile } from '../core/glazeCoat.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
+let groundMat, baseMat, shaftMat, hemi;   // меняются вместе с темой
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
 let platenMat, lastPlatenR=0;
@@ -194,19 +195,21 @@ export const sceneAPI = {
     Object.assign(dir.shadow.camera,{left:-600,right:600,top:600,bottom:-600,far:1600});
     dir.shadow.bias=-0.0004;
     scene.add(dir);
-    scene.add(new THREE.HemisphereLight(0xbfa98f,0x241a12,.5));
+    hemi=new THREE.HemisphereLight(0xbfa98f,0x241a12,.5);
+    scene.add(hemi);
 
-    const ground=new THREE.Mesh(new THREE.CircleGeometry(1200,48),new THREE.ShadowMaterial({opacity:.38}));
+    groundMat=new THREE.ShadowMaterial({opacity:.38});
+    const ground=new THREE.Mesh(new THREE.CircleGeometry(1200,48),groundMat);
     ground.rotation.x=-Math.PI/2;ground.position.y=-15.6;ground.receiveShadow=true;
     scene.add(ground);
 
-    const base=new THREE.Mesh(new THREE.CylinderGeometry(18,68,46,40),
-      new THREE.MeshStandardMaterial({color:0x241d18,roughness:.7,metalness:.35}));
+    baseMat=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.7,metalness:.35});
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(18,68,46,40),baseMat);
     base.position.y=-38;base.receiveShadow=true;scene.add(base);
 
     wheelGroup=new THREE.Group();scene.add(wheelGroup);
-    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(12,12,44,24),
-      new THREE.MeshStandardMaterial({color:0x3a322b,roughness:.5,metalness:.7}));
+    shaftMat=new THREE.MeshStandardMaterial({color:0x3a322b,roughness:.5,metalness:.7});
+    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(12,12,44,24),shaftMat);
     shaft.position.y=-37;wheelGroup.add(shaft);
 
     platenMat=new THREE.MeshStandardMaterial({color:0x332a23,roughness:.62,metalness:.25});
@@ -216,6 +219,38 @@ export const sceneAPI = {
     potMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
     potMesh.castShadow=potMesh.receiveShadow=true;
     wheelGroup.add(potMesh);
+  },
+
+  /* Сцена живёт по ту же сторону переключателя тем, что и вёрстка: на светлой
+     теме круг и тень другие, иначе посреди светлой страницы висит чёрная дыра. */
+  applyTheme(t){
+    const light = t==='light';
+    scene.fog.color.setHex(light?0xe4dacb:0x16110d);
+    groundMat.opacity = light?0.18:0.38;
+    baseMat.color.setHex(light?0x8d7f70:0x241d18);
+    shaftMat.color.setHex(light?0xa2968a:0x3a322b);
+    platenMat.color.setHex(light?0x9b8b7a:0x332a23);
+    hemi.color.setHex(light?0xfff4e6:0xbfa98f);
+    hemi.groundColor.setHex(light?0xcbbba6:0x241a12);
+    hemi.intensity = light?0.85:0.5;
+    renderer.toneMappingExposure = light?0.95:1.05;
+    renderer.shadowMap.needsUpdate=true;
+    camDirty=true;
+  },
+
+  /* Приблизить или отдалить кнопкой: колесо мыши есть не у всех, а на ноутбуке
+     тачпадом попасть в нужный масштаб трудно. k>1 — ближе. */
+  zoomBy(k){
+    const dir=new THREE.Vector3().subVectors(camera.position,controls.target);
+    const d=Math.min(Math.max(dir.length()/k,controls.minDistance),controls.maxDistance);
+    camera.position.copy(controls.target).addScaledVector(dir.normalize(),d);
+    controls.update();
+    camDirty=true;
+  },
+  /* Насколько модель заполняет кадр: 1.0 — вписана целиком. */
+  zoomLevel(){
+    const i=this.fitInfo();
+    return i&&i.have>0 ? i.need/i.have : 1;
   },
 
   /* Показать в сцене оснастку (контур сечения) или вернуть изделие (null). */

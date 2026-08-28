@@ -95,6 +95,16 @@ export function initTools(refreshNow){
     toast(state.heatmap?'Карта прочности: зелёный ≥3× · жёлтый 1.5–3× · красный <1.5× запаса':'Анализ прочности выключен');
   };
   $('resetBtn').onclick=()=>sceneAPI.frameView();
+  $('zoomInBtn').onclick=()=>sceneAPI.zoomBy(1.25);
+  $('zoomOutBtn').onclick=()=>sceneAPI.zoomBy(1/1.25);
+  $('fitBtn').onclick=()=>sceneAPI.refit();
+  // те же действия с клавиатуры: руки на клавишах, мышь на форме
+  addEventListener('keydown',e=>{
+    if(e.target.matches('input,select,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+    if(e.key==='+'||e.key==='=') sceneAPI.zoomBy(1.25);
+    else if(e.key==='-'||e.key==='_') sceneAPI.zoomBy(1/1.25);
+    else if(e.key==='0') sceneAPI.refit();
+  });
   $('verdictBadge').onclick=()=>{
     if(worstHelp){ openContextHelp(worstHelp); return; }
     if(document.body.classList.contains('ws')) $('wsBtn').click();

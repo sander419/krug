@@ -10,6 +10,7 @@ import { sceneAPI } from '../three/scene.js';
 import { emit } from '../core/bus.js';
 import { clamp } from '../core/util.js';
 import { $ } from './dom.js';
+import { pal } from './palette.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let pressTimer=null, lastTap=0, lastTapPt=null;
@@ -72,6 +73,7 @@ function gridStep(){
 
 export function drawEditor(){
   if(!eW||!ectx)return;
+  const P=pal();
   view=computeView();
   ectx.setTransform(dpr,0,0,dpr,0,0);
   ectx.clearRect(0,0,eW,eH);
@@ -80,7 +82,7 @@ export function drawEditor(){
   const topY=Math.max(PAD.t, view.baseY-state.H*px-24);
 
   /* сетка в миллиметрах */
-  ectx.strokeStyle='rgba(216,112,63,.08)';ectx.lineWidth=1;
+  ectx.strokeStyle=P.accent(.10);ectx.lineWidth=1;
   for(let mm=step; mm*px<eW-view.axisX+40; mm+=step){
     const x=view.axisX+mm*px;
     if(x>eW-2)break;
@@ -92,13 +94,13 @@ export function drawEditor(){
   }
 
   /* планшайба и ось вращения */
-  ectx.strokeStyle='rgba(232,147,95,.55)';ectx.lineWidth=1.5;
+  ectx.strokeStyle=P.accent2(.55);ectx.lineWidth=1.5;
   ectx.beginPath();ectx.moveTo(view.axisX-14,view.baseY);ectx.lineTo(eW-6,view.baseY);ectx.stroke();
-  ectx.setLineDash([5,4]);ectx.lineWidth=1.3;ectx.strokeStyle='rgba(232,147,95,.45)';
+  ectx.setLineDash([5,4]);ectx.lineWidth=1.3;ectx.strokeStyle=P.accent2(.45);
   ectx.beginPath();ectx.moveTo(view.axisX,view.baseY+8);ectx.lineTo(view.axisX,topY);ectx.stroke();
   ectx.setLineDash([]);
 
-  ectx.save();ectx.fillStyle='rgba(216,112,63,.6)';ectx.font='9px Manrope, system-ui, sans-serif';
+  ectx.save();ectx.fillStyle=P.accent(.7);ectx.font='9px Manrope, system-ui, sans-serif';
   ectx.translate(view.axisX-12,(view.baseY+topY)/2);ectx.rotate(-Math.PI/2);ectx.textAlign='center';
   ectx.fillText('ОСЬ ВРАЩЕНИЯ',0,0);ectx.restore();
 
@@ -108,7 +110,7 @@ export function drawEditor(){
     const shrink=state.stage>5?1-(state.stage-5)*byId(state.mat).shrinkPct/100:1;
     ectx.beginPath();
     prof.forEach((o,i)=>{const q=mmToPx(o.r*shrink,o.y*shrink);i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y);});
-    ectx.strokeStyle='rgba(241,231,218,.28)';ectx.lineWidth=1.4;ectx.setLineDash([3,3]);ectx.stroke();ectx.setLineDash([]);
+    ectx.strokeStyle=P.text(.3);ectx.lineWidth=1.4;ectx.setLineDash([3,3]);ectx.stroke();ectx.setLineDash([]);
   }
 
   /* тело изделия: наружный контур + внутренняя стенка */
@@ -119,7 +121,7 @@ export function drawEditor(){
   for(const q of outer)ectx.lineTo(q.x,q.y);
   ectx.lineTo(view.axisX,outer[outer.length-1].y);
   ectx.closePath();
-  ectx.fillStyle='rgba(216,112,63,.14)';ectx.fill();
+  ectx.fillStyle=P.accent(.16);ectx.fill();
 
   if(state.hollow){
     const floor=floorY(state);
@@ -127,18 +129,18 @@ export function drawEditor(){
     if(inner.length>1){
       ectx.beginPath();
       inner.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
-      ectx.strokeStyle='rgba(241,231,218,.42)';ectx.lineWidth=1.3;ectx.stroke();
+      ectx.strokeStyle=P.text(.45);ectx.lineWidth=1.3;ectx.stroke();
       const f=mmToPx(0,floor), f2=mmToPx(Math.max(out[0].r-state.wall,0),floor);
       ectx.beginPath();ectx.moveTo(f.x,f.y);ectx.lineTo(f2.x,f2.y);ectx.stroke();
     }
   }
   ectx.beginPath();
   outer.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
-  ectx.strokeStyle='#e8935f';ectx.lineWidth=2.4;
-  ectx.shadowColor='rgba(232,147,95,.5)';ectx.shadowBlur=7;ectx.stroke();ectx.shadowBlur=0;
+  ectx.strokeStyle=P.accent2();ectx.lineWidth=2.4;
+  ectx.shadowColor=P.accent2(.5);ectx.shadowBlur=7;ectx.stroke();ectx.shadowBlur=0;
 
   /* размерные подписи */
-  ectx.fillStyle='rgba(241,231,218,.6)';ectx.font='10px Manrope, system-ui, sans-serif';
+  ectx.fillStyle=P.text(.65);ectx.font='10px Manrope, system-ui, sans-serif';
   ectx.textAlign='left';
   ectx.fillText((state.H/10).toFixed(1)+' см', view.axisX+4, Math.max(topY+11, view.baseY-state.H*px-6));
   ectx.fillText('⌀ '+(state.D/10).toFixed(1)+' см', view.axisX+4, view.baseY+14);
@@ -147,13 +149,13 @@ export function drawEditor(){
   state.points.forEach((p,i)=>{
     const q=ptToPx(p), end=(i===0||i===state.points.length-1);
     ectx.beginPath();ectx.arc(q.x,q.y,i===hoverIdx?8:6.5,0,Math.PI*2);
-    ectx.fillStyle=end?'#f4e3d2':'#d8703f';ectx.fill();
-    ectx.lineWidth=2;ectx.strokeStyle='#1b1410';ectx.stroke();
+    ectx.fillStyle=end?P.text(.92):P.accent();ectx.fill();
+    ectx.lineWidth=2;ectx.strokeStyle=P.sunken();ectx.stroke();
     if(i===hoverIdx){
       ectx.beginPath();ectx.arc(q.x,q.y,11,0,Math.PI*2);
-      ectx.strokeStyle='rgba(232,147,95,.5)';ectx.lineWidth=1.4;ectx.stroke();
+      ectx.strokeStyle=P.accent2(.5);ectx.lineWidth=1.4;ectx.stroke();
       const rmm=(p.r*mmPerNorm()).toFixed(1), ymm=(p.t*state.H).toFixed(0);
-      ectx.fillStyle='rgba(241,231,218,.85)';ectx.font='10px Manrope, system-ui, sans-serif';
+      ectx.fillStyle=P.text(.85);ectx.font='10px Manrope, system-ui, sans-serif';
       ectx.fillText(`⌀${(rmm*2).toFixed(0)} · ${ymm} мм`, q.x+13, q.y-9);
     }
   });

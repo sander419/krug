@@ -23,9 +23,14 @@
   </div>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" aria-label="Ещё действия">⋯</button>
   <div class="head-right" id="headMenu">
+    <div class="view-group" role="group" aria-label="Вид">
+      <button class="btn icon" id="themeBtn" title="Тема">◐</button>
+      <button class="btn icon" id="uiDownBtn" title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
+      <button class="btn icon" id="uiUpBtn" title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
+    </div>
     <span class="menu-cap">Название изделия</span>
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
-    <button class="btn" id="kbBtn" title="Энциклопедия гончарного дела">📖 Знания</button>
+    <button class="btn" id="kbBtn" title="Обучение: энциклопедия гончарного дела">📖 Обучение</button>
     <button class="btn" id="snapBtn" title="Снимок вида в PNG">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
       <span class="btn-label">Снимок</span>
@@ -390,6 +395,15 @@
       <button class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l4-6 4 3 5-8 5 6"/><path d="M3 21h18"/></svg>
       </button>
+      <button class="tool" id="zoomInBtn" title="Приблизить (+)" aria-label="Приблизить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M20 20l-4.3-4.3"/></svg>
+      </button>
+      <button class="tool" id="zoomOutBtn" title="Отдалить (−)" aria-label="Отдалить">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-4.3-4.3"/></svg>
+      </button>
+      <button class="tool" id="fitBtn" title="Вписать в кадр (0)" aria-label="Вписать в кадр">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      </button>
       <button class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
       </button>
@@ -415,24 +429,32 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<!-- ================= энциклопедия ================= -->
-<div id="kbOverlay" aria-hidden="true">
-  <div class="kb-window" role="dialog" aria-label="Энциклопедия гончарного дела">
-    <div class="kb-head">
-      <button class="btn kb-back" id="kbBack" title="Вернуться к списку статей">← Список</button>
-      <h2 class="kb-title">Энциклопедия <span class="count" id="kbCount"></span></h2>
-      <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false" aria-label="Поиск по энциклопедии">
-      <button class="btn" id="kbClose" title="Закрыть (Esc)" aria-label="Закрыть">✕</button>
-    </div>
-    <div class="kb-body">
-      <nav class="kb-nav" aria-label="Разделы энциклопедии">
-        <div class="kb-sections" id="kbSections"></div>
-        <div class="kb-list" id="kbList"></div>
-      </nav>
-      <div class="kb-content" id="kbBody"></div>
+<!-- ================= обучение ================= -->
+<section id="learn" aria-hidden="true" aria-label="Обучение">
+  <div class="learn-head">
+    <button class="btn" id="learnBack" title="Вернуться к работе (Esc)">← В мастерскую</button>
+    <div class="learn-crumbs" id="learnCrumbs"></div>
+    <div class="learn-search">
+      <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false" aria-label="Поиск по обучению">
+      <span class="count" id="kbCount"></span>
     </div>
   </div>
-</div>
+
+  <div class="learn-body">
+    <nav class="learn-nav" aria-label="Разделы обучения">
+      <button class="learn-home" id="learnHome">Обзор курса</button>
+      <div class="kb-sections" id="kbSections"></div>
+      <div class="kb-list" id="kbList"></div>
+    </nav>
+
+    <div class="learn-main" id="learnMain">
+      <div class="learn-progress"><i id="learnBar"></i></div>
+      <div class="kb-content" id="kbBody"></div>
+    </div>
+
+    <aside class="learn-aside" id="learnAside" aria-label="Навигация по статье"></aside>
+  </div>
+</section>
 
 <script type="importmap">
 {
