@@ -1,12 +1,15 @@
 // file: js/ui/glazeLab.js
 import { state } from '../core/state.js';
-import { onChange } from '../core/bus.js';
+import { onChange, emit } from '../core/bus.js';
 import { evaluateGlaze } from '../core/glaze.js';
+import { coatWarnings } from '../core/glazeCoat.js';
 import { byId } from '../config/materials.js';
+import { GLAZES, GLAZE_FAMILIES, byGlazeId, firingFit } from '../config/glazes.js';
+import { sceneAPI } from '../three/scene.js';
 import { hookSlider } from './panels.js';
-import { $ } from './dom.js';
+import { $, esc, hex } from './dom.js';
 
-let stull, sctx, R={};
+let stull, sctx, R={}, filterFamily='all';
 
 function drawStull(){
   if(!stull||!sctx)return;
@@ -47,9 +50,81 @@ function drawStull(){
   sctx.strokeStyle='#e8935f';sctx.lineWidth=2;sctx.stroke();
 }
 
+/* ---------- ассортимент ---------- */
+function rowHTML(g){
+  const fam=GLAZE_FAMILIES[g.family];
+  const cone=g.cone[0]===g.cone[1]?`конус ${g.cone[0]}`:`конус ${g.cone[0]}–${g.cone[1]}`;
+  const look=g.look;
+  const surface=look.gloss>0.85?'глянец':look.gloss>0.45?'сатин':'мат';
+  const cover=look.opacity>0.8?'кроющая':look.opacity>0.35?'полукроющая':'прозрачная';
+  return `<button class="mat-row${g.id===state.glazeId?' active':''}" data-gid="${g.id}" title="${esc(fam.note)}">
+    <span class="mat-dot glz-dot" style="--a:${hex(g.color)};--b:${hex(g.breakColor??g.color)};
+      --gloss:${(0.15+0.75*look.gloss).toFixed(2)}"></span>
+    <span class="mat-main">
+      <span class="mat-name">${esc(g.name)}</span>
+      <span class="mat-sub">${esc(fam.name)} · ${cone} · ${g.tempC[0]}–${g.tempC[1]} °С</span>
+      <span class="mat-sub dim">${cover} · ${surface}${look.flow>0.7?' · сильно течёт':look.flow>0.45?' · течёт':''}</span>
+    </span>
+  </button>`;
+}
+function renderGlazeList(){
+  const list=GLAZES.filter(g=>filterFamily==='all'||g.family===filterFamily);
+  $('glzList').innerHTML=list.length?list.map(rowHTML).join(''):'<div class="empty">В этом семействе пока пусто.</div>';
+  $('glzList').querySelectorAll('[data-gid]').forEach(b=>{b.onclick=()=>selectGlaze(b.dataset.gid);});
+  $('glzCount').textContent=`${GLAZES.length} семейств`;
+}
+
+/** Выбор глазури: подставляет её UMF в лабораторию и сразу показывает на изделии. */
+export function selectGlaze(id){
+  const g=GLAZES.find(x=>x.id===id);
+  if(!g)return;
+  state.glazeId=id;
+  if(g.umf){                       // у сигиллаты формулы нет — ползунки не трогаем
+    state.glaze.al=g.umf.al;state.glaze.si=g.umf.si;state.glaze.ca=g.umf.ca;
+    syncGlaze();
+  }
+  state.firing='glaze';            // смотреть глазурь на утиле бессмысленно
+  document.querySelectorAll('#firingSeg button').forEach(x=>x.classList.toggle('active',x.dataset.f==='glaze'));
+  renderGlazeList();
+  sceneAPI.applyMaterial(state);
+  emit();                          // пересборка вернёт свежую толщину плёнки
+  updateGlaze();
+}
+
+/* ---------- как ляжет на форму ---------- */
+export function updateCoatPanel(){
+  const g=byGlazeId(state.glazeId), body=byId(state.mat);
+  const st=sceneAPI.coatStats()||{runMax:1,sharpest:0};
+  const fit=firingFit(g,body);
+  const w=coatWarnings(g,st);
+  const na=g.na.includes('umf');
+  const risk=`<p class="note">${esc(g.risk)}</p>`;
+  const rows=[
+    ['Плёнка', `${g.look.opacity>0.8?'кроющая':g.look.opacity>0.35?'полукроющая':'прозрачная'} · ${
+      g.look.gloss>0.85?'глянец':g.look.gloss>0.45?'сатин':'мат'}`],
+    ['Натёк у подошвы', `<b>${st.runMax.toFixed(2)}×</b> от толщины на плече`],
+    ['Пробой ребра', g.look.breakEdge>0.6?'сильный — кромка вспыхнет черепком'
+      :g.look.breakEdge>0.3?'умеренный':'почти нет'],
+    ['Рельеф формы', st.sharpest>0.45?'острый — есть за что зацепиться'
+      :st.sharpest>0.2?'мягкий':'гладкая, глазури нечего подчеркнуть'],
+  ];
+  $('glzCoat').innerHTML=
+    `<p class="mat-note">${esc(g.note)}</p>`+
+    `<dl class="spec">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`+
+    (fit?`<div class="tool-verdict ${fit.lvl}"><b>${esc(fit.txt)}</b>
+       <span>${esc(body.name)} · ${esc(g.name)}</span></div>`:'')+
+    (na?'<p class="note">Это не глазурь: стеклофазы нет, формулу Зегера считать не к чему.</p>':'')+
+    (w.length?`<div class="warn-list">${w.map(x=>
+      `<div class="warn-item ${x.lvl}"><i></i><span>${esc(x.txt)}</span></div>`).join('')}</div>`:'')+
+    risk+
+    `<p class="note src-list">Источники: ${g.src.map(sc=>
+      `<a href="${esc(sc.u)}" target="_blank" rel="noopener">${esc(sc.t)}</a>`).join(' · ')}</p>`;
+}
+
 function updateGlaze(){
   const g=state.glaze, body=byId(state.mat);
   const ev=evaluateGlaze(g, body.cte);
+  updateCoatPanel();
   $('glazeVerdict').innerHTML=
     `<div>UMF: флюсы <b>1.0</b> · Al₂O₃ <b>${g.al.toFixed(2)}</b> · SiO₂ <b>${g.si.toFixed(2)}</b> · Si:Al <b>${ev.ratio.toFixed(1)}</b></div>`+
     `<div>Поверхность (конус 6): <span class="${ev.surface.c}">${ev.surface.t}</span></div>`+
@@ -59,6 +134,18 @@ function updateGlaze(){
 }
 
 export function initGlazeLab(){
+  const fams=[['all','Все']].concat(Object.entries(GLAZE_FAMILIES).map(([k,v])=>[k,v.name]));
+  $('glzFilters').innerHTML=fams.map(([k,n])=>
+    `<button class="chip-btn${k==='all'?' active':''}" data-fam="${k}">${esc(n)}</button>`).join('');
+  $('glzFilters').querySelectorAll('[data-fam]').forEach(b=>{
+    b.onclick=()=>{
+      filterFamily=b.dataset.fam;
+      $('glzFilters').querySelectorAll('[data-fam]').forEach(x=>x.classList.toggle('active',x===b));
+      renderGlazeList();
+    };
+  });
+  renderGlazeList();
+
   stull=$('stullCanvas');sctx=stull.getContext('2d');
   let pending=false;
   new ResizeObserver(()=>{

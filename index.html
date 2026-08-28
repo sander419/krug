@@ -201,6 +201,21 @@
       <!-- ---------- Глазурь ---------- -->
       <section class="tabpane" data-pane="glaze">
         <details class="block" open>
+          <summary class="block-title">Ассортимент <span class="count" id="glzCount"></span>
+            <button class="help-dot" data-kb="glaze-families" title="Чем семейства отличаются" aria-label="Справка о семействах глазурей">?</button>
+          </summary>
+          <div class="block-body">
+            <div class="chip-row" id="glzFilters"></div>
+            <div class="mat-list" id="glzList"></div>
+          </div>
+        </details>
+
+        <details class="block" open>
+          <summary class="block-title">Как ляжет на форму</summary>
+          <div class="block-body" id="glzCoat"></div>
+        </details>
+
+        <details class="block">
           <summary class="block-title">Формула Зегера
             <button class="help-dot" data-kb="umf" title="Как читать UMF" aria-label="Справка о формуле Зегера">?</button>
           </summary>

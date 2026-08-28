@@ -5,8 +5,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildPot } from '../core/geometry.js';
 import { computeStrength } from '../core/math.js';
 import { MATERIALS, byId } from '../config/materials.js';
+import { byGlazeId } from '../config/glazes.js';
+import { coatProfile } from '../core/glazeCoat.js';
+import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 
-let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, platen;
+let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
+let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let platenMat, lastPlatenR=0;
 let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
 let previewPath=null; // контур оснастки: пока задан, в сцене показывается он, а не изделие
@@ -49,6 +53,18 @@ function applyHeatmap(geo,path,str){
     colors[v*3]=c.r;colors[v*3+1]=c.g;colors[v*3+2]=c.b;
   }
   geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+}
+
+/* Толщина глазури по вершинам. LatheGeometry раскладывает вершины по сегментам,
+   внутри сегмента — по точкам контура, поэтому индекс точки это v % n. */
+function applyCoat(geo, path, state){
+  const g=byGlazeId(state.glazeId);
+  const {coat, runMax, sharpest}=coatProfile(path.map(p=>({r:p.x,y:p.y})), g.look);
+  const n=path.length, cnt=geo.attributes.position.count;
+  const a=new Float32Array(cnt);
+  for(let v=0;v<cnt;v++) a[v]=coat[v%n];
+  geo.setAttribute('aCoat', new THREE.BufferAttribute(a,1));
+  return {runMax, sharpest};
 }
 
 /* Тело вращения из контура оснастки. Показываем три четверти оборота: снаружи
@@ -124,6 +140,7 @@ export const sceneAPI = {
     platenMat=new THREE.MeshStandardMaterial({color:0x332a23,roughness:.62,metalness:.25});
 
     clayMat=new THREE.MeshStandardMaterial({color:MATERIALS[0].colors.raw,roughness:.92,side:THREE.DoubleSide});
+    glazeMat=createGlazeMaterial();
     potMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
     potMesh.castShadow=potMesh.receiveShadow=true;
     wheelGroup.add(potMesh);
@@ -137,6 +154,7 @@ export const sceneAPI = {
     const built=previewPath?buildFromPath(previewPath,state):buildPot(state);
     lastProfile=built.path.map(p=>({r:p.x,y:p.y}));
     if(state.heatmap && !previewPath) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
+    lastCoat=previewPath?null:applyCoat(built.geometry, built.path, state);
     potMesh.geometry.dispose();
     potMesh.geometry=built.geometry;
     potMesh.scale.setScalar(built.scale);
@@ -150,6 +168,13 @@ export const sceneAPI = {
       clayMat.vertexColors=state.heatmap;
       clayMat.needsUpdate=true;
     }
+    // политое изделие показываем шейдером глазури, всё остальное — глиной
+    const glazed = state.firing==='glaze' && !state.heatmap && !previewPath;
+    potMesh.material = glazed ? glazeMat : clayMat;
+    if(glazed){
+      applyGlazeLook(glazeMat, byGlazeId(state.glazeId), byId(state.mat).colors.bisque);
+      return;
+    }
     if(state.heatmap){
       clayMat.color.set(0xffffff);clayMat.roughness=.6;clayMat.metalness=0;return;
     }
@@ -158,6 +183,9 @@ export const sceneAPI = {
     clayMat.roughness=m==='raw'?.92:m==='bisque'?.88:.25;
     clayMat.metalness=m==='glaze'?.05:0;
   },
+
+  /* Что вышло с покрытием на этой форме: для замечаний мастера. */
+  coatStats:()=>lastCoat,
 
   frameView(state){
     const H=state.H, D=Math.max(state.D,60);

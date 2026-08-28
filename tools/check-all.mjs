@@ -12,6 +12,7 @@ const CHECKS = [
   ['Массы',        'check-materials.mjs'],
   ['Процессы',     'check-processes.mjs'],
   ['Гипсы',        'check-plasters.mjs'],
+  ['Глазури',      'check-glazes.mjs'],
   ['Энциклопедия', 'check-kb.mjs'],
   ['Геометрия',    'check-geometry.mjs'],
 ];

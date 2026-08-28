@@ -10,7 +10,9 @@ import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js'
 import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
-import { initGlazeLab, syncGlaze } from './ui/glazeLab.js';
+import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
+import { coatWarnings } from './core/glazeCoat.js';
+import { byGlazeId } from './config/glazes.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
@@ -25,7 +27,14 @@ function refreshNow(){
   const {tris}=sceneAPI.rebuild(state,str);
   const prod=computeProduction(state);
   updateStats(prod,str,tris);
-  updateWarnings(computeWarnings(state,prod,str));
+  // замечания по глазури зависят от формы, поэтому считаются после пересборки
+  let warn=computeWarnings(state,prod,str);
+  if(state.firing==='glaze'){
+    const cw=coatWarnings(byGlazeId(state.glazeId), sceneAPI.coatStats()||{runMax:1,sharpest:0});
+    if(cw.length) warn=warn.filter(w=>w.lvl!=='ok').concat(cw);
+  }
+  updateWarnings(warn);
+  updateCoatPanel();
   drawEditor();
   scheduleHash();
 }

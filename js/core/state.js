@@ -1,6 +1,7 @@
 // file: js/core/state.js
 import { PRESETS } from '../config/data.js';
 import { MATERIALS, LEGACY_CLAY_INDEX } from '../config/materials.js';
+import { GLAZES } from '../config/glazes.js';
 import { clamp } from './util.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
@@ -20,11 +21,12 @@ export const state = {
   spin: true, wire: false, heatmap: false,
   pr: {printer:0, nozzle:3.0, lh:1.6, feed:1200, cart:48, flow:100, tau:8},
   glaze: {al:0.35, si:4.2, ca:0.7},
+  glazeId: 'clear-gloss',       // id из js/config/glazes.js
 };
 
 
 export function encodeDNA(){
-  const d = {v:3, name:state.name, mat:state.mat, pts:state.points, H:state.H, D:state.D,
+  const d = {v:4, name:state.name, gid:state.glazeId, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze};
@@ -38,7 +40,7 @@ export function applyDNAFromHash(){
   if(!m) return false;
   try{
     const d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
-    if(d.v > 3 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
+    if(d.v > 4 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));
     // v3 хранит id массы, v2 — индекс из первой версии справочника
@@ -60,6 +62,8 @@ export function applyDNAFromHash(){
       nozzle: clamp(+d.pr.nozzle||3,0.4,10), lh: clamp(+d.pr.lh||1.6,0.2,5),
       feed: clamp(+d.pr.feed||1200,300,3600), cart: clamp(+d.pr.cart||48,10,75),
       flow: clamp(+d.pr.flow||100,60,160), tau: clamp(+d.pr.tau||8,1,10)});
+    // v3 и старше глазури не знали — остаётся прозрачная по умолчанию
+    if(d.gid && GLAZES.some(g=>g.id===d.gid)) state.glazeId=d.gid;
     if(d.gz) Object.assign(state.glaze, {
       al: clamp(+d.gz.al||.35,.1,.6), si: clamp(+d.gz.si||4.2,1.5,7), ca: clamp(+d.gz.ca||.7,0,1)});
     return true;
