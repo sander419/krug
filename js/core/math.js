@@ -2,6 +2,7 @@
 // Чистое математическое ядро. Единицы: мм, граммы.
 import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
+import { revision } from './bus.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -38,10 +39,18 @@ export function sampleProfile(pts, n=N_SAMP){
   return sm;
 }
 
+/* Выборка профиля в миллиметрах. Зависит только от рецепта, поэтому считается
+   один раз на правку: за кадр её просят геометрия, масса, прочность и чертёж,
+   а сплайн на 90 точек — самая дорогая операция ядра. */
+let profCache=null, profKey='';
 export function userProfileMM(state){
+  const key=revision()+'|'+state.H+'|'+state.D+'|'+state.points.length;
+  if(profCache && profKey===key) return profCache;
   const sm=sampleProfile(state.points);
   const maxR=Math.max(1e-6,...sm.map(s=>s.x));
-  return sm.map(s=>({r:s.x/maxR*state.D/2, y:s.y*state.H}));
+  profCache=sm.map(s=>({r:s.x/maxR*state.D/2, y:s.y*state.H}));
+  profKey=key;
+  return profCache;
 }
 
 export function radiusAt(samples,y){

@@ -98,11 +98,11 @@ $('snapBtn').onclick=()=>snapshot(state,()=>toast('Снимок сохранён
 let framed=false;
 new ResizeObserver(()=>{
   sceneAPI.resize();
-  if(!framed){framed=true;sceneAPI.frameView(state);}   // аспект известен только после раскладки
+  if(!framed){framed=true;sceneAPI.frameView();}   // аспект известен только после раскладки
 }).observe($('viewport'));
 onChange(scheduleRefresh);
 refreshNow();
-sceneAPI.frameView(state);
+sceneAPI.frameView();
 
 /* ---------- цикл рендера ---------- */
 const clock=new THREE.Clock();
@@ -121,5 +121,7 @@ const clock=new THREE.Clock();
   }
   sceneAPI.spinStep(dt,state);
   sceneAPI.render();
-  syncEditorScale();      // чертёж держит масштаб 3D-вида
+  // чертёж пересчитывается только когда камера или модель сдвинулись:
+  // проекция всего профиля в каждом кадре — заметная часть кадрового бюджета
+  if(sceneAPI.consumeCamDirty()) syncEditorScale();
 })();

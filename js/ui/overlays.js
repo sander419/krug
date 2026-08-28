@@ -94,7 +94,7 @@ export function initTools(refreshNow){
     refreshNow();
     toast(state.heatmap?'Карта прочности: зелёный ≥3× · жёлтый 1.5–3× · красный <1.5× запаса':'Анализ прочности выключен');
   };
-  $('resetBtn').onclick=()=>sceneAPI.frameView(state);
+  $('resetBtn').onclick=()=>sceneAPI.frameView();
   $('verdictBadge').onclick=()=>{
     if(worstHelp){ openContextHelp(worstHelp); return; }
     if(document.body.classList.contains('ws')) $('wsBtn').click();

@@ -11,6 +11,8 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
          MOULD_DEFAULTS } from '../js/core/mould.js';
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
+import { buildPot } from '../js/core/geometry.js';
+import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
 import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';
 
@@ -141,7 +143,54 @@ if (!isFinite(noPrice.machineTotal)) P('без цены материала ра�
 if (!economics(state, prodCup, 'casting', {batch: 500}).sets.known) P('у литья ресурс формы должен быть известен');
 if (economics(state, prodCup, 'ram', {batch: 500}).sets.known) P('у штамповки ресурс формы неизвестен — не выдумывать');
 
+/* ---------- тело вращения и «Кинотеатр» ---------- */
+setShape(PRESETS[1].pts, 220, 160);
+state.hollow = true; state.wall = 5; state.footH = 6; state.segments = 48;
+
+// знаковый объём: положительный — нормали фасетов наружу, слайсер такой STL примет
+function signedVolume(g) {
+  const p = g.attributes.position, idx = g.index;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  let v = 0;
+  for (let i = 0; i < idx.count; i += 3) {
+    a.fromBufferAttribute(p, idx.getX(i)); b.fromBufferAttribute(p, idx.getX(i + 1)); c.fromBufferAttribute(p, idx.getX(i + 2));
+    v += a.dot(b.clone().cross(c)) / 6;
+  }
+  return v;
+}
+state.stage = 6;
+const potBuilt = buildPot(state);
+if (!(signedVolume(potBuilt.geometry) > 0)) P('нормали тела вращения смотрят внутрь: STL уйдёт вывернутым');
+const lathe = new THREE.LatheGeometry(potBuilt.path, state.segments);
+const vRef = signedVolume(lathe), vOwn = signedVolume(potBuilt.geometry);
+if (Math.abs(vRef - vOwn) / Math.abs(vRef) > 1e-6)
+  P(`свой построитель разошёлся с LatheGeometry: ${vOwn.toFixed(0)} против ${vRef.toFixed(0)}`);
+
+// «Кинотеатр» не должен дёргаться: ни один шаг этапа не меняет объём рывком
+let prevV = null, worst = 0, worstAt = 0;
+for (let u = 0; u <= 6.0001; u += 0.05) {
+  state.stage = u;
+  const v = Math.abs(signedVolume(buildPot(state).geometry));
+  if (!Number.isFinite(v)) { P(`этап ${u.toFixed(2)}: объём не число`); break; }
+  if (prevV !== null) {
+    const jump = Math.abs(v - prevV) / Math.max(prevV, 1);
+    if (jump > worst) { worst = jump; worstAt = u; }
+  }
+  prevV = v;
+}
+if (worst > 0.12) P(`на этапе ${worstAt.toFixed(2)} объём прыгает на ${(worst * 100).toFixed(0)} % за шаг 0.05 — форма меняется рывком`);
+state.stage = 6;
+
+// буферы переиспользуются: при неизменной топологии объект геометрии остаётся прежним
+const gA = buildPot(state).geometry;
+const gB = buildPot(state, gA).geometry;
+if (gA !== gB) P('геометрия пересоздаётся там, где топология не менялась');
+state.D = 170;
+if (buildPot(state, gB).geometry !== gB) P('изменение размера не должно менять топологию');
+state.D = 160;
+
 console.log(`\nУсилие пресса: ⌀200 → ${f200.toFixed(1)} тс, ⌀400 → ${f400.toFixed(1)} тс (растёт как площадь)`);
+console.log(`Кинотеатр: самый резкий шаг меняет объём на ${(worst * 100).toFixed(1)} % (порог 12 %)`);
 console.log(`Экономика (чашка, Гжель): 10 шт — ${Math.round(small.machinePerPiece)} ₽/шт машиной против ${Math.round(small.manualPerPiece)} ₽/шт руками; 20 000 шт — ${Math.round(big.machinePerPiece)} против ${Math.round(big.manualPerPiece)}; окупаемость с ${small.breakEven} шт`);
 if (problems.length) {
   console.log('\nОШИБКИ:');

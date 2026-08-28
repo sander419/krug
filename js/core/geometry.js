@@ -3,64 +3,78 @@ import * as THREE from 'three';
 import { userProfileMM, radiusAt, N_SAMP } from './math.js';
 import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
+import { buildLathe } from './lathe.js';
 
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
 /* ключевые профили этапов «Кинотеатра процесса» */
-function keySamples(state,k){
-  const H=state.H, R=state.D/2, up=userProfileMM(state);
+function keySamples(state,k,up){
+  const H=state.H, R=state.D/2;
   switch(k){
     case 0: return R01.map(u=>({r:R*1.12*Math.pow(Math.cos(u*Math.PI/2),0.85), y:u*Math.min(R*0.95,H*0.35)}));
     case 1: return R01.map(u=>({r:R*0.52*(1-0.55*u)+R*0.06*Math.sin(u*Math.PI), y:u*H*1.15}));
     case 2: return R01.map(u=>({r:R*0.5+0.012*u*R, y:u*H*0.72}));
     case 3: return R01.map(u=>({r:R*0.54, y:u*H*0.9}));
-    default: return up;
+    default: return up();
   }
 }
 export function stageProfile(state,u){
   const k=Math.floor(clamp(u,0,6)), f=smooth(clamp(u-k,0,1));
-  const a=keySamples(state,Math.min(k,6)), b=keySamples(state,Math.min(k+1,6));
+  let cached=null;
+  const up=()=>cached||(cached=userProfileMM(state));   // ранним этапам он не нужен вовсе
+  const a=keySamples(state,Math.min(k,6),up), b=keySamples(state,Math.min(k+1,6),up);
+  if(a===b) return a.map(p=>({r:p.r,y:p.y}));           // на готовом изделии смешивать нечего
   return a.map((p,i)=>({r:p.r+(b[i].r-p.r)*f, y:p.y+(b[i].y-p.y)*f}));
 }
 
-function buildPath(state,out,t,foot){
+/* Контур сечения: снизу вверх снаружи, затем сверху вниз изнутри.
+   Полость и подрезка ножки не включаются рывком, а растут: `deep` — глубина
+   вскрытия, `open` — ширина полости, `cut` — насколько подрезана ножка.
+   Внутренняя стенка берётся своей равномерной выборкой, а не точками наружного
+   профиля: так число точек контура не пляшет от кадра к кадру и тело вращения
+   пересобирается в уже выделенных буферах. */
+function buildPath(state,out,{t,open,deep,cut}){
   const H=out[out.length-1].y;
-  const path=[new THREE.Vector2(0.01,0)];
-  if(foot && state.footH>0){
-    const br=out[0].r, fk=state.footK/100, fh=state.footH;
-    path.push(new THREE.Vector2(0.01,fh));
-    path.push(new THREE.Vector2(Math.max(br*fk*0.85,0.5),fh));
-    path.push(new THREE.Vector2(br*fk,fh*0.5));
-    path.push(new THREE.Vector2(br,0.2));
+  const P=[];
+  const V=(r,y)=>P.push(new THREE.Vector2(Math.max(r,0.01),y));
+  const br=out[0].r, fk=state.footK/100;
+  // 0.15 мм остаётся всегда: нулевая ножка слепила бы точки в одну
+  const fh=state.footH>0?state.footH*cut+0.15:0;
+
+  V(0.01,0);
+  if(fh>0){
+    V(0.01,fh);
+    V(Math.max(br*fk*0.85,0.5),fh);
+    V(br*fk,fh*0.5);
+    V(br,0.2);
   }
-  for(const o of out) path.push(new THREE.Vector2(Math.max(o.r,0.12),o.y));
-  if(t>0){
-    const rimIn=Math.max(out[out.length-1].r-t,0.2);
-    path.push(new THREE.Vector2(rimIn,H));
-    const floor=Math.min(Math.max(t, foot&&state.footH>0?state.footH+1.5:0), H*.6);
-    for(let i=out.length-1;i>=0;i--){
-      const o=out[i];
-      if(o.y<floor) break;
-      path.push(new THREE.Vector2(Math.max(o.r-t,0.15),o.y));
+  for(const o of out) V(o.r,o.y);
+
+  const fhFinal=state.footH>0?state.footH+1.5:0;   // дно считаем по готовой ножке
+  const floorFinal=Math.min(Math.max(t,fhFinal),H*.6);
+  if(state.hollow && deep>0.02){
+    const floorNow=H-(H-floorFinal)*deep;
+    const M=out.length;
+    for(let k=0;k<=M;k++){
+      const y=H-(H-floorNow)*(k/M);
+      V((radiusAt(out,y)-t)*open, y);
     }
-    const rf=Math.max(radiusAt(out,floor)-t,0.15);
-    path.push(new THREE.Vector2(rf,floor));
-    path.push(new THREE.Vector2(0.01,floor));
-  } else {
-    path.push(new THREE.Vector2(0.01,H));
+    V(0.01,floorNow);
+  }else{
+    V(0.01,H);
   }
-  const clean=[path[0]];
-  for(let i=1;i<path.length;i++) if(path[i].distanceTo(path[i-1])>0.01) clean.push(path[i]);
+
+  const clean=[P[0]];
+  for(let i=1;i<P.length;i++) if(P[i].distanceTo(P[i-1])>0.01) clean.push(P[i]);
   return clean;
 }
 
-/* собирает геометрию для текущего этапа; возвращает {path, geometry, scale, baseR} */
-export function buildPot(state){
+/* собирает геометрию для текущего этапа; возвращает {path, geometry, scale, baseR}.
+   `reuse` — геометрия прошлой сборки: при неизменной топологии буферы заполняются
+   на месте, ничего не выделяется. */
+export function buildPot(state, reuse){
   const u=state.stage;
   const prof=stageProfile(state,u);
-  const hollowNow=state.hollow && u>=2;
-  const t=hollowNow?state.wall*(1+1.4*clamp((4-u)/2,0,1)):0;
-  const foot=u>=5 && state.footH>0;
   const baseR=prof[0].r;
 
   const amp=state.rings;
@@ -72,8 +86,15 @@ export function buildPot(state){
     }
   }
 
-  const path=buildPath(state,prof,t,foot);
-  const geometry=new THREE.LatheGeometry(path,state.segments);
+  // вскрытие: сначала палец идёт вглубь, потом полость расходится вширь.
+  // Раньше здесь стоял порог u>=2 — полость появлялась целиком за один кадр.
+  const deep=state.hollow?smooth(clamp((u-2)/0.85,0,1)):0;
+  const open=state.hollow?smooth(clamp((u-2.05)/1.05,0,1)):0;
+  const cut=smooth(clamp(u-5,0,1));
+  const t=state.wall*(1+1.4*clamp((4-u)/2,0,1));
+
+  const path=buildPath(state,prof,{t,open,deep,cut});
+  const geometry=buildLathe(path,state.segments,reuse);
   const shrink=byId(state.mat).shrinkPct;
   const scale=1-(u>5?smooth(u-5)*shrink/100:0);
   return {path, geometry, scale, baseR};

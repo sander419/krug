@@ -81,7 +81,7 @@ function buildPresets(){
       $('nameInput').value=pr.name;
       document.querySelectorAll('.preset').forEach((x,j)=>x.classList.toggle('active',j===i));
       emit();
-      sceneAPI.frameView(state);
+      sceneAPI.frameView();
     };
     el.appendChild(b);
   });
@@ -96,7 +96,7 @@ function buildPresets(){
     document.querySelectorAll('.preset').forEach(x=>x.classList.remove('active'));
     $('seedOut').textContent=state.seed;
     emit();
-    sceneAPI.frameView(state);
+    sceneAPI.frameView();
   };
   el.appendChild(rnd);
 }

@@ -11,6 +11,7 @@ import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
+let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
 let platenMat, lastPlatenR=0;
 let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
 let previewPath=null; // контур оснастки: пока задан, в сцене показывается он, а не изделие
@@ -26,10 +27,21 @@ function rebuildPlaten(baseR){
   wheelGroup.add(platen);
 }
 
+function ensureAttr(geo,name,size){
+  const cnt=geo.attributes.position.count;
+  let a=geo.attributes[name];
+  if(!a||a.count!==cnt||a.itemSize!==size){
+    a=new THREE.BufferAttribute(new Float32Array(cnt*size),size);
+    geo.setAttribute(name,a);
+  }
+  a.needsUpdate=true;
+  return a;
+}
+
 function applyHeatmap(geo,path,str){
   const n=path.length;
   const cnt=geo.attributes.position.count;
-  const colors=new Float32Array(cnt*3);
+  const colors=ensureAttr(geo,'color',3).array;
   const c=new THREE.Color();
   const sfAt=y=>{
     const ys=str.y;
@@ -52,7 +64,6 @@ function applyHeatmap(geo,path,str){
     c.copy(sfColor(sfAt(path[v%n].y)));
     colors[v*3]=c.r;colors[v*3+1]=c.g;colors[v*3+2]=c.b;
   }
-  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
 }
 
 /* Толщина глазури по вершинам. LatheGeometry раскладывает вершины по сегментам,
@@ -61,10 +72,64 @@ function applyCoat(geo, path, state){
   const g=byGlazeId(state.glazeId);
   const {coat, runMax, sharpest}=coatProfile(path.map(p=>({r:p.x,y:p.y})), g.look);
   const n=path.length, cnt=geo.attributes.position.count;
-  const a=new Float32Array(cnt);
+  const a=ensureAttr(geo,'aCoat',1).array;
   for(let v=0;v<cnt;v++) a[v]=coat[v%n];
-  geo.setAttribute('aCoat', new THREE.BufferAttribute(a,1));
   return {runMax, sharpest};
+}
+
+/* Габариты содержимого сцены с учётом усадки. */
+function modelBox(){
+  const g=potMesh.geometry;
+  if(!g.boundingBox) g.computeBoundingBox();
+  const b=g.boundingBox;
+  if(!b) return null;
+  const s=potMesh.scale.x||1;
+  return {
+    minY:b.min.y*s, maxY:b.max.y*s,
+    radius:Math.max(Math.abs(b.min.x),Math.abs(b.max.x),Math.abs(b.min.z),Math.abs(b.max.z))*s,
+  };
+}
+
+/* Расстояние, с которого модель целиком помещается в кадр: по вертикали с оглядкой
+   на панель кинотеатра, по горизонтали — на пропорции окна. */
+function fitDistance(box){
+  const vFov=camera.fov*Math.PI/180;
+  const usable=Math.max(0.35,1-bottomInset()*0.95);
+  const distV=(box.maxY-box.minY)/2/Math.tan(vFov/2)/usable;
+  const hFov=2*Math.atan(Math.tan(vFov/2)*Math.max(camera.aspect||1,0.2));
+  const distH=box.radius/Math.tan(hFov/2);
+  return Math.max(distV,distH)*1.22+box.radius;
+}
+
+const DEFAULT_DIR=new THREE.Vector3(.57,.29,.79).normalize();
+function fitCamera(keepAngles){
+  const box=modelBox();
+  if(!box||!(box.maxY>box.minY)) return;
+  const inset=bottomInset();
+  const cy=(box.minY+box.maxY)/2-(box.maxY-box.minY)*inset*0.5;
+  const dist=Math.min(Math.max(fitDistance(box),controls.minDistance*1.05),controls.maxDistance*0.95);
+  const dir=new THREE.Vector3();
+  if(keepAngles){
+    dir.subVectors(camera.position,controls.target);
+    if(dir.lengthSq()<1e-6) dir.copy(DEFAULT_DIR); else dir.normalize();
+  }else dir.copy(DEFAULT_DIR);
+  controls.target.set(0,cy,0);
+  camera.position.copy(controls.target).addScaledVector(dir,dist);
+  camera.near=Math.max(1,dist*0.02);
+  camera.far=dist*8+2000;
+  camera.updateProjectionMatrix();
+  controls.update();
+  camDirty=true;
+}
+
+/* Модель не должна ни вылезать за кадр, ни теряться точкой вдали. В остальном
+   камера принадлежит человеку: если всё помещается, её никто не трогает. */
+function keepInView(){
+  const box=modelBox();
+  if(!box||!(box.maxY>box.minY)) return;
+  const need=fitDistance(box);
+  const have=camera.position.distanceTo(controls.target);
+  if(have<need*0.98||have>need*2.4) fitCamera(true);
 }
 
 /* Тело вращения из контура оснастки. Показываем три четверти оборота: снаружи
@@ -96,9 +161,15 @@ export const sceneAPI = {
   init(el){
     container=el;
     renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    // на телефоне буфер вчетверо меньше при том же виде: пиксели там мельче глаза
+    const coarse=matchMedia('(pointer:coarse)').matches;
+    renderer.setPixelRatio(Math.min(devicePixelRatio,coarse?1.5:2));
     renderer.shadowMap.enabled=true;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    // тень пересчитывается не каждый кадр, а когда форма изменилась: вращение круга
+    // тень тела вращения почти не меняет, а карта 2048² стоит дороже самой сцены
+    renderer.shadowMap.autoUpdate=false;
+    renderer.shadowMap.needsUpdate=true;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure=1.05;
     renderer.setClearColor(0x000000,0);
@@ -112,13 +183,14 @@ export const sceneAPI = {
     camera=new THREE.PerspectiveCamera(40,1,1,6000);
     controls=new OrbitControls(camera,renderer.domElement);
     controls.enableDamping=true;controls.dampingFactor=.08;
+    controls.addEventListener('change',()=>{camDirty=true;});
     controls.minDistance=60;controls.maxDistance=2600;
     controls.maxPolarAngle=Math.PI*.58;
 
     const dir=new THREE.DirectionalLight(0xffe4c4,2.6);
     dir.position.set(300,420,240);
     dir.castShadow=true;
-    dir.shadow.mapSize.set(2048,2048);
+    dir.shadow.mapSize.set(coarse?1024:2048,coarse?1024:2048);
     Object.assign(dir.shadow.camera,{left:-600,right:600,top:600,bottom:-600,far:1600});
     dir.shadow.bias=-0.0004;
     scene.add(dir);
@@ -151,15 +223,20 @@ export const sceneAPI = {
   previewActive:()=>!!previewPath,
 
   rebuild(state, str){
-    const built=previewPath?buildFromPath(previewPath,state):buildPot(state);
+    const prev=potMesh.geometry;
+    const built=previewPath?buildFromPath(previewPath,state):buildPot(state,prev);
     lastProfile=built.path.map(p=>({r:p.x,y:p.y}));
     if(state.heatmap && !previewPath) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
-    lastCoat=previewPath?null:applyCoat(built.geometry, built.path, state);
-    potMesh.geometry.dispose();
-    potMesh.geometry=built.geometry;
+    // толщину плёнки считаем только когда её видно: на сырой глине это лишняя работа
+    lastCoat=(!previewPath && state.firing==='glaze' && !state.heatmap)
+      ? applyCoat(built.geometry, built.path, state) : lastCoat;
+    if(built.geometry!==prev){ prev.dispose(); potMesh.geometry=built.geometry; }
     potMesh.scale.setScalar(built.scale);
     potMesh.updateMatrix();
     rebuildPlaten(built.baseR);
+    camDirty=true;
+    renderer.shadowMap.needsUpdate=true;   // тени сами не обновляются, см. init
+    keepInView();
     return {tris: built.geometry.index ? built.geometry.index.count/3 : 0};
   },
 
@@ -168,17 +245,15 @@ export const sceneAPI = {
       clayMat.vertexColors=state.heatmap;
       clayMat.needsUpdate=true;
     }
+    const c=byId(state.mat).colors;
     // политое изделие показываем шейдером глазури, всё остальное — глиной
     const glazed = state.firing==='glaze' && !state.heatmap && !previewPath;
     potMesh.material = glazed ? glazeMat : clayMat;
-    if(glazed){
-      applyGlazeLook(glazeMat, byGlazeId(state.glazeId), byId(state.mat).colors.bisque);
-      return;
-    }
+    if(glazed){ applyGlazeLook(glazeMat, byGlazeId(state.glazeId), c.bisque); return; }
     if(state.heatmap){
       clayMat.color.set(0xffffff);clayMat.roughness=.6;clayMat.metalness=0;return;
     }
-    const c=byId(state.mat).colors, m=state.firing;
+    const m=state.firing;
     clayMat.color.setHex(m==='raw'?c.raw:m==='bisque'?c.bisque:c.glaze);
     clayMat.roughness=m==='raw'?.92:m==='bisque'?.88:.25;
     clayMat.metalness=m==='glaze'?.05:0;
@@ -187,16 +262,11 @@ export const sceneAPI = {
   /* Что вышло с покрытием на этой форме: для замечаний мастера. */
   coatStats:()=>lastCoat,
 
-  frameView(state){
-    const H=state.H, D=Math.max(state.D,60);
-    const a=camera.aspect||1;
-    const k=a<1.1?1.1/Math.max(a,0.4):1;      // узкий экран — отъехать, иначе изделие не влезает
-    const inset=bottomInset();                // на телефоне низ вида закрыт кинотеатром
-    const dist=(Math.max(H,D)*1.5+140)*k*(1+inset*0.9);
-    camera.position.set(dist*.62,H*.62+60,dist*.86);
-    controls.target.set(0,H*(.45-inset*.55),0);
-    controls.update();
-  },
+  /* Кадр строится по настоящим габаритам того, что в сцене: раньше он считался
+     по рецепту (H и D), из-за чего комок на первом этапе, оснастка и любая
+     нестандартная форма вылезали за край. */
+  frameView(){ fitCamera(false); },
+  refit(){ fitCamera(true); },
 
   /* Экранная привязка чертежа к модели: где на экране низ и верх силуэта изделия
      и сколько пикселей приходится на миллиметр рецепта. Считается по видимой стороне
@@ -229,10 +299,26 @@ export const sceneAPI = {
     const h=Math.max(1,Math.min(container.clientHeight,innerHeight));
     renderer.setSize(w,h);
     camera.aspect=w/h;camera.updateProjectionMatrix();
+    camDirty=true;
+    renderer.shadowMap.needsUpdate=true;
+    keepInView();
   },
 
   spinStep(dt,state){ if(state.spin) wheelGroup.rotation.y+=dt*.55; },
-  render(){ controls.update(); renderer.render(scene,camera); },
+  render(){ if(controls.update()) camDirty=true; renderer.render(scene,camera); },
+
+  /* Диагностика кадра: с какого расстояния модель помещается и где камера сейчас.
+     Нужна проверкам — иначе «камера не так показывает» проверяется только глазом. */
+  fitInfo(){
+    const box=modelBox();
+    if(!box) return null;
+    return {need:fitDistance(box), have:camera.position.distanceTo(controls.target),
+            h:box.maxY-box.minY, r:box.radius, aspect:camera.aspect};
+  },
+
+  /* Сдвинулась ли камера с прошлого опроса. Чертёж 1:1 пересчитывается только
+     тогда: раньше проекция всего профиля считалась в каждом кадре впустую. */
+  consumeCamDirty(){ const d=camDirty; camDirty=false; return d; },
 
   pot:()=>potMesh,
   renderer:()=>renderer,
