@@ -8,6 +8,7 @@
 import { ARTICLES, SECTIONS, LEARN_PATH, bySection, articleById, search, CONTEXT_HELP }
   from '../config/kb/index.js';
 import { $, esc } from './dom.js';
+import { icon } from './icons.js';
 
 let current = null, currentSection = SECTIONS[0].id, lastQuery = '';
 
@@ -44,15 +45,15 @@ function articleHTML(a) {
     `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a></li>`).join('');
   const step = LEARN_PATH.findIndex(p => p.id === a.id);
   return `<article class="kb-article">
-    <div class="kb-crumb">${sec.ico} ${esc(sec.name)}${step >= 0 ? ` · шаг ${step + 1} курса` : ''}</div>
+    <div class="kb-crumb">${icon(sec.ico,14)} ${esc(sec.name)}${step >= 0 ? ` · шаг ${step + 1} курса` : ''}</div>
     <h3>${esc(a.title)}</h3>
     <p class="kb-lead">${rich(a.lead)}</p>
     ${(a.body || []).map(blockHTML).join('')}
     ${src ? `<div class="kb-src"><b>Источники</b><ul>${src}</ul></div>` : ''}
     <nav class="kb-steps" aria-label="Соседние статьи раздела">
-      ${prev ? `<button class="kb-step" data-go="${prev.id}"><i>← Раньше</i><b>${esc(prev.title)}</b></button>`
+      ${prev ? `<button class="kb-step" data-go="${prev.id}"><i>${icon('arrow-left',13)} Раньше</i><b>${esc(prev.title)}</b></button>`
              : '<span class="kb-step empty"></span>'}
-      ${next ? `<button class="kb-step next" data-go="${next.id}"><i>Дальше →</i><b>${esc(next.title)}</b></button>`
+      ${next ? `<button class="kb-step next" data-go="${next.id}"><i>Дальше ${icon('chevron-right',13)}</i><b>${esc(next.title)}</b></button>`
              : '<span class="kb-step empty"></span>'}
     </nav>
   </article>`;
@@ -71,7 +72,7 @@ function overviewHTML() {
   const cards = SECTIONS.map(s => {
     const n = bySection(s.id).length;
     return `<button class="sec-card" data-sec="${s.id}">
-      <span class="sec-ico">${s.ico}</span>
+      <span class="sec-ico">${icon(s.ico,22)}</span>
       <b>${esc(s.name)}</b>
       <span class="sec-note">${esc(s.note)}</span>
       <span class="sec-count">${n} ${n === 1 ? 'статья' : n < 5 ? 'статьи' : 'статей'}</span>
@@ -127,7 +128,7 @@ function bindGo(root) {
 function renderNav() {
   $('kbSections').innerHTML = SECTIONS.map(s =>
     `<button class="kb-sec${s.id === currentSection ? ' active' : ''}" data-sec="${s.id}" title="${esc(s.note)}">
-      <span>${s.ico}</span>${esc(s.name)}<i>${bySection(s.id).length}</i>
+      ${icon(s.ico,14)}${esc(s.name)}<i>${bySection(s.id).length}</i>
     </button>`).join('');
   $('kbSections').querySelectorAll('[data-sec]').forEach(b => { b.onclick = () => showSection(b.dataset.sec); });
 }
@@ -157,8 +158,8 @@ function renderCrumbs() {
   const c = $('learnCrumbs');
   if (!current) { c.innerHTML = '<b>Обзор курса</b>'; return; }
   const sec = sectionOf(current.section);
-  c.innerHTML = `<button class="crumb" id="crumbHome">Обучение</button><i>›</i>` +
-    `<button class="crumb" data-sec="${sec.id}">${sec.ico} ${esc(sec.name)}</button><i>›</i>` +
+  c.innerHTML = `<button class="crumb" id="crumbHome">Обучение</button>${icon('chevron-right',13)}` +
+    `<button class="crumb" data-sec="${sec.id}">${icon(sec.ico,14)}${esc(sec.name)}</button>${icon('chevron-right',13)}` +
     `<b>${esc(current.title)}</b>`;
   c.querySelectorAll('[data-sec]').forEach(b => { b.onclick = () => showSection(b.dataset.sec); });
   $('crumbHome').onclick = showOverview;

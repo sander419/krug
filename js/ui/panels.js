@@ -11,6 +11,8 @@ import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
 import { $ } from './dom.js';
+import { icon } from './icons.js';
+import { shapeIcon } from './shapeIcon.js';
 import { clamp } from '../core/util.js';
 
 const S={};
@@ -74,7 +76,7 @@ function buildPresets(){
   PRESETS.forEach((pr,i)=>{
     const b=document.createElement('button');
     b.className='preset'+(i===state.activePreset?' active':'');
-    b.innerHTML=`<span class="ico">${pr.ico}</span>${pr.name}`;
+    b.innerHTML=shapeIcon(pr.pts)+pr.name;
     b.onclick=()=>{
       state.points=pr.pts.map(p=>({...p}));
       state.activePreset=i;
@@ -87,7 +89,7 @@ function buildPresets(){
     el.appendChild(b);
   });
   const rnd=document.createElement('button');
-  rnd.className='preset wide';rnd.innerHTML='🎲 Случайная форма (seed)';
+  rnd.className='preset wide';rnd.innerHTML=icon('shuffle')+'Случайная форма (seed)';
   rnd.onclick=()=>{
     state.seed=10000+Math.floor(Math.random()*89999);
     state.points=seededForm(state.seed);

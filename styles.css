@@ -98,7 +98,7 @@ header{
 .btn.primary:hover{filter:brightness(1.08);}
 .btn.wide{width:100%;justify-content:center;min-height:40px;}
 .btn.small{min-height:30px;padding:5px 10px;font-size:var(--fs-xs);}
-.btn svg{width:15px;height:15px;flex:none;}
+
 .btn-row{display:flex;flex-wrap:wrap;gap:8px;}
 .btn.icon{min-width:36px;padding:6px 8px;justify-content:center;font-size:var(--fs-sm);}
 .btn:disabled{opacity:.45;cursor:default;}
@@ -139,7 +139,7 @@ body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--sp
 }
 .tabs::-webkit-scrollbar{display:none;}
 .tab{
-  flex:1 0 auto;min-height:36px;padding:8px 10px;border:none;background:none;color:var(--muted);
+  flex:1 0 auto;min-height:36px;padding:8px 7px;border:none;background:none;color:var(--muted);
   cursor:pointer;font-size:var(--fs-sm);font-weight:600;border-radius:8px 8px 0 0;
   border-bottom:2px solid transparent;transition:color .15s,background .15s;white-space:nowrap;
 }
@@ -199,10 +199,11 @@ body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--sp
 }
 .block-body{display:flex;flex-direction:column;gap:var(--gap-2);padding-top:var(--gap-2);}
 .help-dot{
-  width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);
-  color:var(--muted);font-size:var(--fs-micro);line-height:1;cursor:pointer;flex:none;margin-left:auto;
+  width:24px;height:24px;border-radius:50%;border:none;background:none;
+  color:var(--muted2);line-height:0;cursor:pointer;flex:none;margin-left:auto;
+  display:grid;place-items:center;
 }
-.help-dot:hover{border-color:var(--accent);color:var(--accent2);}
+.help-dot:hover{color:var(--accent2);}
 
 /* текстовые блоки */
 .hint{font-size:var(--fs-xs);color:var(--muted);line-height:1.55;text-wrap:pretty;}
@@ -222,7 +223,7 @@ body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--sp
 }
 .preset:hover{border-color:var(--accent);}
 .preset.active{border-color:var(--accent);background:color-mix(in oklab, var(--accent) 20%, transparent);}
-.preset .ico{font-size:15px;}
+
 .preset.wide{grid-column:1/-1;justify-content:center;}
 
 /* ползунки */
@@ -397,10 +398,10 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
   background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;
   text-wrap:pretty;
 }
-.warn-item i{width:8px;height:8px;border-radius:50%;flex:none;margin-top:6px;}
-.warn-item.ok i{background:var(--ok);}
-.warn-item.warn i{background:var(--warn);}
-.warn-item.bad i{background:var(--bad);}
+
+
+
+
 .warn-item.ok{color:color-mix(in oklab, var(--ok) 55%, var(--text));}
 .warn-item .why{
   margin-left:auto;flex:none;min-height:26px;border:1px solid var(--line);background:var(--sunken);
@@ -437,7 +438,7 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
   background:var(--chip);backdrop-filter:blur(8px);color:var(--text);cursor:pointer;
   display:flex;align-items:center;justify-content:center;transition:border-color .15s,background .15s;
 }
-.tool svg{width:17px;height:17px;}
+
 .tool:hover{border-color:var(--accent);}
 .tool.active{background:color-mix(in oklab, var(--accent) 28%, transparent);border-color:var(--accent);}
 
@@ -454,7 +455,7 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
   box-shadow:0 4px 12px color-mix(in oklab, var(--accent) 40%, transparent);
 }
 .play-btn:hover{transform:scale(1.06);}
-.play-btn svg{width:16px;height:16px;}
+
 #stageSl{width:min(300px,26vw);}
 .stage-lbl{min-width:168px;font-size:var(--fs-xs);line-height:1.4;}
 .stage-lbl b{display:block;color:var(--accent2);font-size:var(--fs-sm);}
@@ -487,10 +488,10 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 }
 #verdictBadge.on{display:flex;}
 #verdictBadge:hover{border-color:var(--accent);}
-#verdictBadge i{width:8px;height:8px;border-radius:50%;flex:none;}
-#verdictBadge.ok i{background:var(--ok);} #verdictBadge.ok{color:color-mix(in oklab, var(--ok) 55%, var(--text));}
-#verdictBadge.warn i{background:var(--warn);} #verdictBadge.warn{color:color-mix(in oklab, var(--warn) 55%, var(--text));}
-#verdictBadge.bad i{background:var(--bad);} #verdictBadge.bad{color:color-mix(in oklab, var(--bad) 55%, var(--text));border-color:color-mix(in oklab, var(--bad) 50%, transparent);}
+
+#verdictBadge.ok{color:color-mix(in oklab, var(--ok) 55%, var(--text));}
+#verdictBadge.warn{color:color-mix(in oklab, var(--warn) 55%, var(--text));}
+#verdictBadge.bad{color:color-mix(in oklab, var(--bad) 55%, var(--text));border-color:color-mix(in oklab, var(--bad) 50%, transparent);}
 
 #toast{
   position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
@@ -633,7 +634,7 @@ body.learning main,body.learning #metrics{display:none;}
   border-radius:var(--radius);padding:13px 14px;transition:border-color .15s,transform .15s;
 }
 .sec-card:hover{border-color:var(--accent);transform:translateY(-2px);}
-.sec-ico{font-size:20px;line-height:1;}
+.sec-ico{line-height:0;}
 .sec-card b{font-size:var(--fs-md);}
 .sec-note{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 .sec-count{font-size:var(--fs-micro);color:var(--muted2);margin-top:2px;}
@@ -709,6 +710,89 @@ body.learning main,body.learning #metrics{display:none;}
   .warn-item .why{min-height:32px;padding:4px 12px;}
 }
 
+/* ===================== иконки и навигация ===================== */
+/* Один набор на весь интерфейс (Lucide, ISC, лежит в vendor/lucide).
+   Размер задаётся здесь, а не в каждой кнопке: раньше половина значков была
+   нарисована руками с разной толщиной линии, половина — эмодзи. */
+.ico{flex:none;display:inline-block;vertical-align:-.18em;}
+.btn .ico{width:16px;height:16px;}
+.btn.icon .ico{width:17px;height:17px;}
+.tool .ico{width:18px;height:18px;}
+.preset .ico{width:18px;height:18px;color:var(--accent2);}
+.preset.active .ico{color:var(--accent);}
+.export-label .ico{width:14px;height:14px;margin-right:4px;}
+.warn-item .ico{margin-top:1px;}
+.warn-item.ok .ico{color:var(--ok);}
+.warn-item.warn .ico{color:var(--warn);}
+.warn-item.bad .ico{color:var(--bad);}
+#verdictBadge .ico{flex:none;}
+#verdictBadge.ok .ico{color:var(--ok);}
+#verdictBadge.warn .ico{color:var(--warn);}
+#verdictBadge.bad .ico{color:var(--bad);}
+.kb-sec .ico{width:14px;height:14px;color:var(--accent);}
+.sec-ico .ico{color:var(--accent);}
+.learn-crumbs .ico{color:var(--muted2);width:13px;height:13px;}
+.crumb .ico{color:var(--accent2);margin-right:5px;}
+.kb-crumb .ico{vertical-align:-.2em;margin-right:3px;}
+.kb-step i .ico{color:var(--accent);}
+.block-move .ico{width:13px;height:13px;}
+.play-btn #playIco{display:flex;}
+
+/* Номер на вкладке: сразу видно, что вкладки — это порядок работы,
+   а не пять равноправных ящиков. */
+.tab i{
+  font-style:normal;font-size:var(--fs-micro);font-weight:700;
+  display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;
+  margin-right:5px;background:color-mix(in oklab, var(--sect) 26%, transparent);
+  color:var(--sect);vertical-align:.05em;
+}
+.tab.active i{background:var(--sect);color:var(--onAccent);}
+
+/* Что делают на этой вкладке — одной строкой, всегда на виду. */
+.pane-intro{
+  font-size:var(--fs-xs);line-height:1.55;color:var(--muted);text-wrap:pretty;
+  border-left:2px solid var(--sect);padding-left:10px;margin-bottom:2px;
+  break-inside:avoid;
+}
+
+/* ---------- подсказка «как здесь работать» ---------- */
+#guide{
+  position:fixed;inset:0;z-index:70;display:none;padding:24px;
+  background:color-mix(in oklab, var(--bg) 76%, transparent);backdrop-filter:blur(4px);
+}
+#guide.open{display:grid;place-items:center;}
+.guide-card{
+  width:min(720px,100%);max-height:90vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 24px 20px;box-shadow:0 26px 70px var(--shade);
+}
+.guide-head{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.guide-head h2{font-family:'Unbounded',sans-serif;font-size:calc(21px * var(--ui));font-weight:700;}
+.guide-head .btn{margin-left:auto;}
+.guide-lead{font-size:var(--fs-sm);line-height:1.6;color:var(--muted);margin-bottom:18px;text-wrap:pretty;}
+.guide-steps{display:flex;flex-direction:column;gap:8px;}
+.guide-step{
+  display:flex;gap:13px;align-items:flex-start;text-align:left;cursor:pointer;color:var(--text);
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:11px 14px;
+  transition:border-color .15s,transform .15s;
+}
+.guide-step:hover{border-color:var(--accent);transform:translateX(2px);}
+.guide-num{
+  flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in oklab, var(--accent) 25%, transparent);border:1px solid var(--accent);
+  color:var(--accent2);font-size:var(--fs-sm);font-weight:700;
+}
+.guide-main{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.guide-main b{font-size:var(--fs-md);display:flex;align-items:center;gap:7px;}
+.guide-main b .ico{color:var(--accent);}
+.guide-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.55;text-wrap:pretty;}
+.guide-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:18px;}
+.guide-hint{font-size:var(--fs-micro);color:var(--muted2);}
+@media (max-width:640px){
+  #guide{padding:0;}
+  .guide-card{max-height:100vh;height:100%;border-radius:0;border:none;}
+}
+
 /* ===================== раскладка под себя ===================== */
 /* Разделители между колонками: ширину панели и чертежа человек ставит сам,
    двойной клик возвращает к умолчанию, стрелки двигают с клавиатуры. */
@@ -754,6 +838,11 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
 /* ===================== широкая панель ===================== */
 /* Колонки зависят от ширины самой панели, а не окна: человек тянет разделитель
    и получает вторую колонку тогда, когда для неё есть место. */
+/* узкая панель: вкладки поджимаются, чтобы все пять были видны без прокрутки */
+@container panel (max-width:470px){
+  .tab{font-size:var(--fs-xs);padding:8px 5px;}
+  .tab i{width:14px;height:14px;margin-right:4px;}
+}
 @container panel (min-width:620px){
   .mat-list{max-height:none;}
   .tabpane.active{display:block;columns:2;column-gap:var(--gap-3);}
@@ -833,7 +922,9 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
   /* инструменты вида — строкой сверху справа, чтобы не съедать высоту сцены */
   .view-tools{top:10px;right:10px;flex-direction:row;gap:6px;flex-wrap:nowrap;}
   .tool{width:40px;height:40px;}
-  #wsBtn{display:none;}                     /* лист сворачивается ручкой, кнопка не нужна */
+  /* на телефоне в строку помещается четыре кнопки: масштаб делается щипком,
+     каркас и режим мастерской — вещи для большого экрана */
+  #wsBtn,#zoomInBtn,#zoomOutBtn,#wireBtn{display:none;}
 
   /* кинотеатр: подпись строкой над ползунком, иначе не влезает */
   .cinema{
@@ -872,8 +963,9 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
   }
   .sheet-grip i{display:block;width:46px;height:4px;border-radius:3px;background:var(--line2);}
   .sheet-grip:active i{background:var(--accent);}
-  .tabs{padding:2px 6px 0;}
-  .tab{min-height:44px;padding:8px 7px;font-size:var(--fs-xs);}
+  .tabs{padding:2px 4px 0;}
+  .tab{min-height:44px;padding:8px 4px;font-size:var(--fs-xs);}
+  .tab i{margin-right:3px;}
   /* прокручивается всё вместе: настройки и контроль мастера */
   .panel-scroll{
     display:flex;flex-direction:column;flex:1;min-height:0;

@@ -21,25 +21,23 @@
     <div class="brand-name">КРУГ</div>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
-  <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" aria-label="Ещё действия">⋯</button>
+  <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
     <div class="view-group" role="group" aria-label="Вид">
-      <button class="btn icon" id="themeBtn" title="Тема">◐</button>
+      <button class="btn icon" id="themeBtn" title="Тема"></button>
       <button class="btn icon" id="uiDownBtn" title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
-      <button class="btn icon" id="resetLayoutBtn" title="Сбросить раскладку: ширины колонок и порядок блоков" aria-label="Сбросить раскладку">⟲</button>
+      <button class="btn icon" id="guideBtn" data-icon="circle-help" title="Как здесь работать" aria-label="Как здесь работать"></button>
+      <button class="btn icon" id="resetLayoutBtn" data-icon="rotate-ccw" title="Сбросить раскладку: ширины колонок и порядок блоков" aria-label="Сбросить раскладку"></button>
       <button class="btn icon" id="uiUpBtn" title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
     </div>
     <span class="menu-cap">Название изделия</span>
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
-    <button class="btn" id="kbBtn" title="Обучение: энциклопедия гончарного дела">📖 Обучение</button>
-    <button class="btn" id="snapBtn" title="Снимок вида в PNG">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      <span class="btn-label">Снимок</span>
-    </button>
-    <button class="btn" id="dnaBtn" title="ДНК формы — рецепт передаётся ссылкой">🧬 <span class="btn-label">ДНК</span></button>
-    <button class="btn" id="embedBtn" title="Код встраивания 3D-витрины (iframe)">&lt;/&gt; <span class="btn-label">Встроить</span></button>
+    <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>
+    <button data-icon="camera" class="btn" id="snapBtn" title="Снимок вида в PNG"><span class="btn-label">Снимок</span></button>
+    <button class="btn" id="dnaBtn" data-icon="dna" title="ДНК формы — рецепт передаётся ссылкой"><span class="btn-label">ДНК</span></button>
+    <button class="btn" id="embedBtn" data-icon="code" title="Код встраивания 3D-витрины (iframe)"><span class="btn-label">Встроить</span></button>
     <div class="export-group" role="group" aria-label="Экспорт модели">
-      <span class="export-label">Экспорт</span>
+      <span class="export-label" data-icon="download" data-icon-size="15">Экспорт</span>
       <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
       <button class="btn" id="objBtn" title="OBJ — для 3D-редакторов">OBJ</button>
       <button class="btn" id="glbBtn" title="GLB — универсальный формат">GLB</button>
@@ -52,17 +50,18 @@
   <aside id="panel">
     <button class="sheet-grip" id="sheetGrip" aria-label="Развернуть или свернуть панель настроек"><i></i></button>
     <nav class="tabs" aria-label="Разделы настроек">
-      <button class="tab active" data-tab="form">Форма</button>
-      <button class="tab" data-tab="mat">Масса</button>
-      <button class="tab" data-tab="print">Печать</button>
-      <button class="tab" data-tab="glaze">Глазурь</button>
-      <button class="tab" data-tab="tool">Оснастка</button>
+      <button class="tab active" data-tab="form"><i>1</i>Форма</button>
+      <button class="tab" data-tab="mat"><i>2</i>Масса</button>
+      <button class="tab" data-tab="print"><i>3</i>Печать</button>
+      <button class="tab" data-tab="glaze"><i>4</i>Глазурь</button>
+      <button class="tab" data-tab="tool"><i>5</i>Оснастка</button>
     </nav>
 
     <div class="panel-scroll">
     <div class="panes">
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
+        <p class="pane-intro">Силуэт и размеры. Тяните точки на чертеже или возьмите пресет — всё остальное считается от этой формы.</p>
         <details class="block" data-block="presets" open>
           <summary class="block-title">Пресеты</summary>
           <div class="block-body">
@@ -95,7 +94,7 @@
 
         <details class="block" data-block="walls" open>
           <summary class="block-title">Стенки и ножка
-            <button class="help-dot" data-kb="wall-thickness" title="Про толщину стенки" aria-label="Справка о толщине стенки">?</button>
+            <button class="help-dot" data-kb="wall-thickness" data-icon="circle-help" data-icon-size="15" title="Про толщину стенки" aria-label="Справка о толщине стенки"></button>
           </summary>
           <div class="block-body">
             <label class="check-row">
@@ -124,9 +123,10 @@
 
       <!-- ---------- Материал ---------- -->
       <section class="tabpane" data-pane="mat">
+        <p class="pane-intro">Из чего лепим. Масса задаёт усадку, цвет черепка и температуру обжига.</p>
         <details class="block" data-block="matlib" open>
           <summary class="block-title">Библиотека масс <span class="count" id="matCount"></span>
-            <button class="help-dot" data-kb="choose-mass" title="Как выбрать массу" aria-label="Справка о выборе массы">?</button>
+            <button class="help-dot" data-kb="choose-mass" data-icon="circle-help" data-icon-size="15" title="Как выбрать массу" aria-label="Справка о выборе массы"></button>
           </summary>
           <div class="block-body">
             <div class="chip-row" id="matFilters"></div>
@@ -153,9 +153,10 @@
 
       <!-- ---------- Печать ---------- -->
       <section class="tabpane" data-pane="print">
+        <p class="pane-intro">Выдержит ли форма печать глиной: сопло, высота слоя, скорость и запас прочности стенки.</p>
         <details class="block" data-block="printer" open>
           <summary class="block-title">Принтер
-            <button class="help-dot" data-kb="ldm-basics" title="Как устроена печать глиной" aria-label="Справка о печати глиной">?</button>
+            <button class="help-dot" data-kb="ldm-basics" data-icon="circle-help" data-icon-size="15" title="Как устроена печать глиной" aria-label="Справка о печати глиной"></button>
           </summary>
           <div class="block-body">
             <select id="printerSel" aria-label="Модель принтера"></select>
@@ -188,7 +189,7 @@
             </div>
             <div class="slider-row">
               <div class="slider-head"><span>Предел текучести τᵧ
-                <button class="help-dot" data-kb="slump" title="Почему стенка садится" aria-label="Справка об осадке">?</button></span><output id="tauOut"></output></div>
+                <button class="help-dot" data-kb="slump" data-icon="circle-help" data-icon-size="15" title="Почему стенка садится" aria-label="Справка об осадке"></button></span><output id="tauOut"></output></div>
               <input type="range" id="tauSl" min="1" max="10" step="0.5" value="8" aria-label="Предел текучести пасты">
             </div>
           </div>
@@ -206,9 +207,10 @@
 
       <!-- ---------- Глазурь ---------- -->
       <section class="tabpane" data-pane="glaze">
+        <p class="pane-intro">Как изделие будет выглядеть: семейство глазури, совпадение обжига с массой и вид на модели.</p>
         <details class="block" data-block="glzlist" open>
           <summary class="block-title">Ассортимент <span class="count" id="glzCount"></span>
-            <button class="help-dot" data-kb="glaze-families" title="Чем семейства отличаются" aria-label="Справка о семействах глазурей">?</button>
+            <button class="help-dot" data-kb="glaze-families" data-icon="circle-help" data-icon-size="15" title="Чем семейства отличаются" aria-label="Справка о семействах глазурей"></button>
           </summary>
           <div class="block-body">
             <div class="chip-row" id="glzFilters"></div>
@@ -223,7 +225,7 @@
 
         <details class="block" data-block="seger">
           <summary class="block-title">Формула Зегера
-            <button class="help-dot" data-kb="umf" title="Как читать UMF" aria-label="Справка о формуле Зегера">?</button>
+            <button class="help-dot" data-kb="umf" data-icon="circle-help" data-icon-size="15" title="Как читать UMF" aria-label="Справка о формуле Зегера"></button>
           </summary>
           <div class="block-body">
             <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
@@ -257,9 +259,10 @@
 
       <!-- ---------- Оснастка ---------- -->
       <section class="tabpane" data-pane="tool">
+        <p class="pane-intro">Тираж: годится ли форма под штамповку или литьё, какая нужна оснастка и что это стоит.</p>
         <details class="block" data-block="process" open>
           <summary class="block-title">Способ производства
-            <button class="help-dot" data-kb="tooling-basics" title="Что мешает вынуть изделие из формы" aria-label="Справка об оснастке">?</button>
+            <button class="help-dot" data-kb="tooling-basics" data-icon="circle-help" data-icon-size="15" title="Что мешает вынуть изделие из формы" aria-label="Справка об оснастке"></button>
           </summary>
           <div class="block-body">
             <div class="chip-row" id="toolProcs"></div>
@@ -283,7 +286,7 @@
 
         <details class="block" data-block="shrinkfit">
           <summary class="block-title">Размер под усадку
-            <button class="help-dot" data-kb="plaster-tooling" title="Как считается размер оснастки" aria-label="Справка о размере оснастки">?</button>
+            <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15" title="Как считается размер оснастки" aria-label="Справка о размере оснастки"></button>
           </summary>
           <div class="block-body">
             <label class="field-row"><span>Нужный ⌀ после обжига</span>
@@ -295,7 +298,7 @@
 
         <details class="block" data-block="mouldgeo">
           <summary class="block-title">Геометрия оснастки
-            <button class="help-dot" data-kb="ram-press" title="Как устроены полуформы" aria-label="Справка о полуформах">?</button>
+            <button class="help-dot" data-kb="ram-press" data-icon="circle-help" data-icon-size="15" title="Как устроены полуформы" aria-label="Справка о полуформах"></button>
           </summary>
           <div class="block-body">
             <div class="seg" id="toolPartSeg" role="group" aria-label="Что показывать в трёхмерном виде">
@@ -393,34 +396,18 @@
   <section id="viewport" aria-label="Трёхмерный вид">
     <div class="vignette"></div>
     <div class="overlay view-tools" role="group" aria-label="Инструменты вида">
-      <button class="tool active" id="spinBtn" title="Вращение круга" aria-label="Вращение круга">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
-      </button>
-      <button class="tool" id="wireBtn" title="Каркас" aria-label="Каркас">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><path d="M12 2v18M4 6.5l16 9M20 6.5l-16 9"/></svg>
-      </button>
-      <button class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l4-6 4 3 5-8 5 6"/><path d="M3 21h18"/></svg>
-      </button>
-      <button class="tool" id="zoomInBtn" title="Приблизить (+)" aria-label="Приблизить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M11 8v6M20 20l-4.3-4.3"/></svg>
-      </button>
-      <button class="tool" id="zoomOutBtn" title="Отдалить (−)" aria-label="Отдалить">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-4.3-4.3"/></svg>
-      </button>
-      <button class="tool" id="fitBtn" title="Вписать в кадр (0)" aria-label="Вписать в кадр">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
-      </button>
-      <button class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
-      </button>
-      <button class="tool" id="wsBtn" title="Режим мастерской — скрыть панель" aria-label="Режим мастерской">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      </button>
+      <button data-icon="rotate-cw" class="tool active" id="spinBtn" title="Вращение круга" aria-label="Вращение круга"></button>
+      <button data-icon="box" class="tool" id="wireBtn" title="Каркас" aria-label="Каркас"></button>
+      <button data-icon="activity" class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности"></button>
+      <button data-icon="zoom-in" class="tool" id="zoomInBtn" title="Приблизить (+)" aria-label="Приблизить"></button>
+      <button data-icon="zoom-out" class="tool" id="zoomOutBtn" title="Отдалить (−)" aria-label="Отдалить"></button>
+      <button data-icon="maximize" class="tool" id="fitBtn" title="Вписать в кадр (0)" aria-label="Вписать в кадр"></button>
+      <button data-icon="crosshair" class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру"></button>
+      <button data-icon="panel-left-close" class="tool" id="wsBtn" title="Режим мастерской — скрыть панель" aria-label="Режим мастерской"></button>
     </div>
     <div class="overlay cinema">
       <button class="play-btn" id="playBtn" title="Проиграть процесс: комок → центровка → вскрытие → вытяжка → формовка → подрезка → обжиг" aria-label="Проиграть процесс">
-        <svg id="playIco" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3l16 9-16 9V3z"/></svg>
+        <span id="playIco"></span>
       </button>
       <input type="range" id="stageSl" min="0" max="6" step="0.01" value="6" title="Этап производственного процесса" aria-label="Этап процесса">
       <div class="stage-lbl"><b id="stageName">Готовое изделие</b><span id="stageNum">этап 6 / 6</span></div>
@@ -436,10 +423,13 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<!-- ================= подсказка новичку ================= -->
+<div id="guide" aria-hidden="true"></div>
+
 <!-- ================= обучение ================= -->
 <section id="learn" aria-hidden="true" aria-label="Обучение">
   <div class="learn-head">
-    <button class="btn" id="learnBack" title="Вернуться к работе (Esc)">← В мастерскую</button>
+    <button class="btn" id="learnBack" data-icon="arrow-left" title="Вернуться к работе (Esc)">В мастерскую</button>
     <div class="learn-crumbs" id="learnCrumbs"></div>
     <div class="learn-search">
       <input id="kbSearch" placeholder="Поиск: цек, усадка, шамот, конус…" spellcheck="false" aria-label="Поиск по обучению">

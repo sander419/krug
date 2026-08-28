@@ -9,6 +9,7 @@
 // Всё, что человек настроил, лежит в localStorage одним объектом и снимается
 // кнопкой «сбросить раскладку»: настройка, из которой нет выхода, хуже её отсутствия.
 import { $ } from './dom.js';
+import { icon } from './icons.js';
 
 const KEY = 'krug.layout';
 const PHONE = '(max-width:940px)';
@@ -130,8 +131,8 @@ function addHandles() {
     const box = document.createElement('span');
     box.className = 'block-move';
     box.innerHTML =
-      '<button type="button" data-move="-1" title="Выше" aria-label="Переместить блок выше">▲</button>' +
-      '<button type="button" data-move="1" title="Ниже" aria-label="Переместить блок ниже">▼</button>';
+      `<button type="button" data-move="-1" title="Выше" aria-label="Переместить блок выше">${icon('chevron-up', 13)}</button>` +
+      `<button type="button" data-move="1" title="Ниже" aria-label="Переместить блок ниже">${icon('chevron-down', 13)}</button>`;
     box.querySelectorAll('button').forEach(b => {
       b.onclick = e => { e.preventDefault(); e.stopPropagation(); move(block, +b.dataset.move); };
     });

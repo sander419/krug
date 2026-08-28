@@ -4,11 +4,12 @@
 // суток, не может закрепить нужную. Масштаб — отдельная ручка: на большом
 // мониторе шрифт увеличивают, не трогая зум браузера, чтобы 3D-вид не мельчал.
 import { $ } from './dom.js';
+import { icon } from './icons.js';
 
 const KEY_THEME = 'krug.theme', KEY_UI = 'krug.ui';
 const MODES = ['system', 'light', 'dark'];
 const LABEL = {system: 'как в системе', light: 'светлая', dark: 'тёмная'};
-const ICON = {system: '◐', light: '☀', dark: '☾'};
+const ICON = {system: 'monitor', light: 'sun', dark: 'moon'};
 const STEPS = [0.9, 1, 1.12, 1.26, 1.42];
 
 const listeners = new Set();
@@ -30,7 +31,7 @@ function apply() {
 
   const b = $('themeBtn');
   if (b) {
-    b.textContent = ICON[mode];
+    b.innerHTML = icon(ICON[mode]);
     b.title = `Тема: ${LABEL[mode]} — нажмите, чтобы сменить`;
     b.setAttribute('aria-label', `Тема: ${LABEL[mode]}`);
   }

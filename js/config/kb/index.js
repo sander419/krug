@@ -30,14 +30,14 @@ import { ARTICLES as print } from './print.js';
 import { ARTICLES as production } from './production.js';
 
 export const SECTIONS = [
-  {id: 'material', name: 'Материал',       ico: '🪵', note: 'Из чего масса и как её выбрать'},
-  {id: 'forming',  name: 'Формовка',        ico: '🫙', note: 'Круг: от центровки до ножки'},
-  {id: 'drying',   name: 'Сушка и брак',    ico: '💨', note: 'Где рождаются трещины'},
-  {id: 'firing',   name: 'Обжиг',           ico: '🔥', note: 'Утиль, политой, конусы, усадка'},
-  {id: 'glaze',    name: 'Глазурь',         ico: '🫗', note: 'UMF, цек и отскок, посуда'},
-  {id: 'print',    name: 'Печать глиной',   ico: '🖨', note: 'LDM: осадка, слайсинг'},
-  {id: 'production', name: 'Производство',  ico: '🏭', note: 'Оснастка, штамповка, ролик, литьё'},
-  {id: 'safety',   name: 'Безопасность',    ico: '🛡', note: 'Пыль и печь'},
+  {id: 'material', name: 'Материал',       ico: 'layers', note: 'Из чего масса и как её выбрать'},
+  {id: 'forming',  name: 'Формовка',        ico: 'disc', note: 'Круг: от центровки до ножки'},
+  {id: 'drying',   name: 'Сушка и брак',    ico: 'wind', note: 'Где рождаются трещины'},
+  {id: 'firing',   name: 'Обжиг',           ico: 'flame', note: 'Утиль, политой, конусы, усадка'},
+  {id: 'glaze',    name: 'Глазурь',         ico: 'droplet', note: 'UMF, цек и отскок, посуда'},
+  {id: 'print',    name: 'Печать глиной',   ico: 'printer', note: 'LDM: осадка, слайсинг'},
+  {id: 'production', name: 'Производство',  ico: 'factory', note: 'Оснастка, штамповка, ролик, литьё'},
+  {id: 'safety',   name: 'Безопасность',    ico: 'shield-alert', note: 'Пыль и печь'},
 ];
 
 export const ARTICLES = [...material, ...forming, ...firing, ...glaze, ...print, ...production];

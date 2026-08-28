@@ -10,6 +10,8 @@ import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js'
 import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
+import { initGuide } from './ui/guide.js';
+import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { resetPalette } from './ui/palette.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
@@ -85,9 +87,11 @@ onTheme(t=>{                       // цвета canvas и сцены живут
   drawEditor();
   syncGlaze();
 });
+paintIcons();
 initLayout();
 initMobile();
 initCinema(refreshNow);
+initGuide();
 initTools(refreshNow);
 
 $('nameInput').addEventListener('input',e=>{state.name=e.target.value;scheduleHash();});

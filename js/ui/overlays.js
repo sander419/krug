@@ -6,6 +6,7 @@ import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
 import { $ } from './dom.js';
+import { icon, paintIcons } from './icons.js';
 import { openSheet } from './mobile.js';
 
 let worstHelp=null;   // статья, которую открывает бейдж вердикта
@@ -35,7 +36,7 @@ export function updateStats(prod,str,tris){
 }
 export function updateWarnings(list){
   $('warnList').innerHTML=list.map(w=>
-    `<div class="warn-item ${w.lvl}"><i></i><span>${w.txt}</span>`+
+    `<div class="warn-item ${w.lvl}">${icon(w.lvl==='ok'?'circle-check':'circle-alert',16)}<span>${w.txt}</span>`+
     (w.help?`<button class="why" data-help="${w.help}" title="Открыть статью">почему</button>`:'')+
     `</div>`).join('');
   $('warnList').querySelectorAll('[data-help]').forEach(b=>{
@@ -47,7 +48,7 @@ export function updateWarnings(list){
   const b=$('verdictBadge');
   if(!worst){b.className='';return;}
   const more=list.length>1?` <span style="opacity:.6">ещё ${list.length-1}</span>`:'';
-  b.innerHTML=`<i></i><span>${worst.txt}${more}</span>`;
+  b.innerHTML=icon(worst.lvl==='ok'?'circle-check':'circle-alert',15)+`<span>${worst.txt}${more}</span>`;
   b.className='on '+worst.lvl;
 }
 
@@ -62,9 +63,7 @@ export function setCinemaSlider(v){
   sl.style.setProperty('--fill',(v/6*100)+'%');
 }
 export function syncPlayIcon(){
-  $('playIco').innerHTML=state.playing
-    ?'<rect x="5" y="3" width="5" height="18"/><rect x="14" y="3" width="5" height="18"/>'
-    :'<path d="M6 3l16 9-16 9V3z"/>';
+  $('playIco').innerHTML=icon(state.playing?'pause':'play',20);
 }
 export function initCinema(refreshNow){
   $('stageSl').addEventListener('input',()=>{
@@ -82,6 +81,7 @@ export function initCinema(refreshNow){
   });
   $('stageSl').value=state.stage;
   setStageUI();
+  syncPlayIcon();      // значок рисуется набором, а не лежит в разметке
 }
 
 export function initTools(refreshNow){
