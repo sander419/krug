@@ -9,6 +9,7 @@ import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
 import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
+import { initLayout } from './ui/layout.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { resetPalette } from './ui/palette.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
@@ -84,6 +85,7 @@ onTheme(t=>{                       // цвета canvas и сцены живут
   drawEditor();
   syncGlaze();
 });
+initLayout();
 initMobile();
 initCinema(refreshNow);
 initTools(refreshNow);

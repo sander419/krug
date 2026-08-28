@@ -26,6 +26,7 @@
     <div class="view-group" role="group" aria-label="Вид">
       <button class="btn icon" id="themeBtn" title="Тема">◐</button>
       <button class="btn icon" id="uiDownBtn" title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
+      <button class="btn icon" id="resetLayoutBtn" title="Сбросить раскладку: ширины колонок и порядок блоков" aria-label="Сбросить раскладку">⟲</button>
       <button class="btn icon" id="uiUpBtn" title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
     </div>
     <span class="menu-cap">Название изделия</span>
@@ -62,7 +63,7 @@
     <div class="panes">
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
-        <details class="block" open>
+        <details class="block" data-block="presets" open>
           <summary class="block-title">Пресеты</summary>
           <div class="block-body">
             <div class="presets" id="presets"></div>
@@ -70,7 +71,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="size" open>
           <summary class="block-title">Размеры на круге</summary>
           <div class="block-body">
             <div class="slider-row">
@@ -92,7 +93,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="walls" open>
           <summary class="block-title">Стенки и ножка
             <button class="help-dot" data-kb="wall-thickness" title="Про толщину стенки" aria-label="Справка о толщине стенки">?</button>
           </summary>
@@ -123,7 +124,7 @@
 
       <!-- ---------- Материал ---------- -->
       <section class="tabpane" data-pane="mat">
-        <details class="block" open>
+        <details class="block" data-block="matlib" open>
           <summary class="block-title">Библиотека масс <span class="count" id="matCount"></span>
             <button class="help-dot" data-kb="choose-mass" title="Как выбрать массу" aria-label="Справка о выборе массы">?</button>
           </summary>
@@ -133,7 +134,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="firing" open>
           <summary class="block-title">Состояние изделия</summary>
           <div class="block-body">
             <div class="seg" id="firingSeg" role="group" aria-label="Состояние изделия">
@@ -144,7 +145,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="matcard" open>
           <summary class="block-title">Паспорт массы</summary>
           <div class="block-body" id="matDetail"></div>
         </details>
@@ -152,7 +153,7 @@
 
       <!-- ---------- Печать ---------- -->
       <section class="tabpane" data-pane="print">
-        <details class="block" open>
+        <details class="block" data-block="printer" open>
           <summary class="block-title">Принтер
             <button class="help-dot" data-kb="ldm-basics" title="Как устроена печать глиной" aria-label="Справка о печати глиной">?</button>
           </summary>
@@ -162,7 +163,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="printmode" open>
           <summary class="block-title">Режим печати</summary>
           <div class="block-body">
             <div class="slider-row">
@@ -193,7 +194,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="gcode" open>
           <summary class="block-title">G-code</summary>
           <div class="block-body">
             <button class="btn primary wide" id="sliceBtn">Слайсить в G-code</button>
@@ -205,7 +206,7 @@
 
       <!-- ---------- Глазурь ---------- -->
       <section class="tabpane" data-pane="glaze">
-        <details class="block" open>
+        <details class="block" data-block="glzlist" open>
           <summary class="block-title">Ассортимент <span class="count" id="glzCount"></span>
             <button class="help-dot" data-kb="glaze-families" title="Чем семейства отличаются" aria-label="Справка о семействах глазурей">?</button>
           </summary>
@@ -215,12 +216,12 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="glzcoat" open>
           <summary class="block-title">Как ляжет на форму</summary>
           <div class="block-body" id="glzCoat"></div>
         </details>
 
-        <details class="block">
+        <details class="block" data-block="seger">
           <summary class="block-title">Формула Зегера
             <button class="help-dot" data-kb="umf" title="Как читать UMF" aria-label="Справка о формуле Зегера">?</button>
           </summary>
@@ -241,7 +242,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="verdict" open>
           <summary class="block-title">Вердикт</summary>
           <div class="block-body">
             <div id="glazeVerdict"></div>
@@ -256,7 +257,7 @@
 
       <!-- ---------- Оснастка ---------- -->
       <section class="tabpane" data-pane="tool">
-        <details class="block" open>
+        <details class="block" data-block="process" open>
           <summary class="block-title">Способ производства
             <button class="help-dot" data-kb="tooling-basics" title="Что мешает вынуть изделие из формы" aria-label="Справка об оснастке">?</button>
           </summary>
@@ -268,19 +269,19 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="manufact" open>
           <summary class="block-title">Технологичность</summary>
           <div class="block-body">
             <div class="warn-list" id="toolChecks"></div>
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="numbers" open>
           <summary class="block-title">Числа для технолога</summary>
           <div class="block-body" id="toolNumbers"></div>
         </details>
 
-        <details class="block">
+        <details class="block" data-block="shrinkfit">
           <summary class="block-title">Размер под усадку
             <button class="help-dot" data-kb="plaster-tooling" title="Как считается размер оснастки" aria-label="Справка о размере оснастки">?</button>
           </summary>
@@ -292,7 +293,7 @@
           </div>
         </details>
 
-        <details class="block">
+        <details class="block" data-block="mouldgeo">
           <summary class="block-title">Геометрия оснастки
             <button class="help-dot" data-kb="ram-press" title="Как устроены полуформы" aria-label="Справка о полуформах">?</button>
           </summary>
@@ -326,7 +327,7 @@
           </div>
         </details>
 
-        <details class="block">
+        <details class="block" data-block="economy">
           <summary class="block-title">Тираж и экономика</summary>
           <div class="block-body">
             <label class="field-row"><span>Партия</span>
@@ -346,7 +347,7 @@
           </div>
         </details>
 
-        <details class="block" open>
+        <details class="block" data-block="export" open>
           <summary class="block-title">Выгрузка</summary>
           <div class="block-body">
             <button class="btn primary wide" id="toolCard">Техкарта оснастки</button>
@@ -369,6 +370,9 @@
     <button data-view="draft">Профиль</button>
   </div>
 
+  <div class="splitter" id="splitPanel" role="separator" aria-orientation="vertical" tabindex="0"
+       aria-label="Ширина панели настроек" title="Тяните — ширина панели · двойной клик — по умолчанию"></div>
+
   <!-- ================= чертёж профиля ================= -->
   <section id="draft" aria-label="Чертёж профиля">
     <div class="draft-head">
@@ -381,6 +385,9 @@
       <span class="on-touch"><b>Тяните</b> точки · <b>двойное касание</b> — новая · <b>долгое</b> — удалить</span>
     </p>
   </section>
+
+  <div class="splitter" id="splitDraft" role="separator" aria-orientation="vertical" tabindex="0"
+       aria-label="Ширина чертежа" title="Тяните — ширина чертежа · до конца влево — скрыть · двойной клик — по умолчанию"></div>
 
   <!-- ================= 3D-модель ================= -->
   <section id="viewport" aria-label="Трёхмерный вид">

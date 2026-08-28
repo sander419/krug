@@ -33,8 +33,9 @@ export function initTabs(){
 export function initBlocks(){
   document.querySelectorAll('.tabpane').forEach(pane=>{
     const tab=pane.dataset.pane;
-    [...pane.querySelectorAll('details.block')].forEach((d,i)=>{
-      const key=`krug.block.${tab}.${i}`;
+    [...pane.querySelectorAll('details.block')].forEach(d=>{
+      // ключ по data-block, а не по номеру: блоки переставляются человеком
+      const key=`krug.block.${tab}.${d.dataset.block||'x'}`;
       let saved=null;
       try{saved=localStorage.getItem(key);}catch(_){}
       if(saved==='0') d.open=false;

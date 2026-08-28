@@ -35,7 +35,7 @@
   /* шаг сетки: внутри группы 10, между группами 22 */
   --gap-1:6px; --gap-2:10px; --gap-3:16px; --gap-4:22px;
   --panelW:clamp(340px, 25vw, 560px); --draftW:clamp(210px, 22vw, 360px);
-  --radius:10px;
+  --radius:10px; --splitW:6px;
 }
 :root[data-theme="light"]{
   color-scheme:light;
@@ -118,17 +118,19 @@ header{
 /* ===================== каркас ===================== */
 main{
   flex:1;display:grid;min-height:0;
-  grid-template-columns:var(--panelW) var(--draftW) 1fr;
+  grid-template-columns:var(--panelW) var(--splitW) var(--draftW) var(--splitW) 1fr;
 }
 /* без этого канвы (3D и чертёж) раздувают свою ячейку грида и растут без предела */
 main > *{min-height:0;min-width:0;}
-body.ws main{grid-template-columns:0 var(--draftW) 1fr;}
-body.ws #panel{display:none;}
+body.ws main{grid-template-columns:0 0 var(--draftW) var(--splitW) 1fr;}
+body.ws #panel,body.ws #splitPanel{display:none;}
+body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--splitW) 1fr;}
 
 /* ===================== панель ===================== */
 #panel{
   background:var(--panel);border-right:1px solid var(--line);
   display:flex;flex-direction:column;min-height:0;min-width:0;
+  container-type:inline-size;container-name:panel;
 }
 /* вкладки одной строкой; если не влезают — прокручиваются, край подсказывает это */
 .tabs{
@@ -707,19 +709,63 @@ body.learning main,body.learning #metrics{display:none;}
   .warn-item .why{min-height:32px;padding:4px 12px;}
 }
 
-/* ===================== широкий экран ===================== */
-/* На мониторе от 1500 px панель раскладывается в две колонки: иначе настройки
-   уходят одной лентой вниз, а справа и слева остаётся пустое место. */
-@media (min-width:1500px){
-  .path{display:grid;grid-template-columns:1fr 1fr;}
+/* ===================== раскладка под себя ===================== */
+/* Разделители между колонками: ширину панели и чертежа человек ставит сам,
+   двойной клик возвращает к умолчанию, стрелки двигают с клавиатуры. */
+.splitter{
+  position:relative;cursor:col-resize;background:var(--line);
+  border:none;padding:0;touch-action:none;
+}
+.splitter::before{
+  content:"";position:absolute;top:0;bottom:0;left:-4px;right:-4px;   /* цель шире полоски */
+}
+.splitter::after{
+  content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:2px;height:34px;border-radius:2px;background:var(--line2);transition:background .15s;
+}
+.splitter:hover,.splitter:focus-visible{background:var(--accent);}
+.splitter:hover::after,.splitter:focus-visible::after{background:var(--onAccent);}
+body.resizing{cursor:col-resize;user-select:none;}
+body.resizing #viewport canvas,body.resizing #profileCanvas{pointer-events:none;}
+body.draft-off #draft{display:none;}
+body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var(--line));}
+
+/* Порядок блоков: тянуть за заголовок или двигать стрелками. Стрелки нужны
+   не только пальцу — перетаскивание не работает с клавиатуры. */
+.block-move{
+  display:flex;gap:2px;margin-left:6px;opacity:0;transition:opacity .15s;
+}
+.block:hover .block-move,.block:focus-within .block-move{opacity:1;}
+.block-move button{
+  width:20px;height:20px;line-height:1;padding:0;border-radius:5px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  font-size:8px;display:grid;place-items:center;
+}
+.block-move button:hover{border-color:var(--sect);color:var(--sect);}
+.block-title{cursor:grab;min-width:0;}
+.block.dragging{opacity:.45;}
+.block.drop-before{box-shadow:0 -3px 0 -1px var(--sect);}
+.block.drop-after{box-shadow:0 3px 0 -1px var(--sect);}
+@media (pointer:coarse){
+  .block-move{opacity:1;}
+  .block-move button{width:30px;height:30px;font-size:10px;}
+}
+
+/* ===================== широкая панель ===================== */
+/* Колонки зависят от ширины самой панели, а не окна: человек тянет разделитель
+   и получает вторую колонку тогда, когда для неё есть место. */
+@container panel (min-width:620px){
+  .mat-list{max-height:none;}
   .tabpane.active{display:block;columns:2;column-gap:var(--gap-3);}
   .block{break-inside:avoid;margin:0 0 var(--gap-3);}
-  .panel-foot{max-height:26vh;}
-  .mat-list{max-height:none;}
+  .path{display:grid;grid-template-columns:1fr 1fr;}
 }
-@media (min-width:2000px){
-  :root{--panelW:clamp(420px, 27vw, 720px);}
+@container panel (min-width:1000px){
   .tabpane.active{columns:3;}
+}
+.panel-foot{max-height:30vh;}
+@media (min-width:2000px){
+  :root{--panelW:clamp(420px, 26vw, 760px);}
 }
 
 /* ===================== адаптив ===================== */
@@ -769,6 +815,7 @@ body.learning main,body.learning #metrics{display:none;}
   #draft{border-right:none;}
   body:not(.view-draft) #draft{display:none;}
   body.view-draft #viewport{display:none;}
+  .splitter{display:none;}
   .stage-switch{
     display:flex;position:absolute;top:10px;left:10px;z-index:4;gap:2px;
     background:var(--chip);backdrop-filter:blur(8px);
