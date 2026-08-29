@@ -8,7 +8,7 @@ import { stageProfile } from '../core/geometry.js';
 import { byId } from '../config/materials.js';
 import { sceneAPI } from '../three/scene.js';
 import { emit } from '../core/bus.js';
-import { clamp } from '../core/util.js';
+import { clamp, round } from '../core/util.js';
 import { traceToRecipe } from '../core/trace.js';
 import { $ } from './dom.js';
 import { pal } from './palette.js';
@@ -16,7 +16,7 @@ import { partCurve, partSection, pathFromParams, pathFromStroke, pathPoints,
          syncFieldsFromPath } from '../core/parts.js';
 import { selectedPart, syncParts } from './parts.js';
 import { strainerHoles } from '../core/strainer.js';
-import { kindOf } from '../config/parts.js';
+import { kindOf, limitOf } from '../config/parts.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let draftMode='points';         // 'points' — тянуть точки, 'draw' — вести линию
@@ -90,7 +90,8 @@ function ptToPx(p){
 function pxToPt(x,y){
   const rmm=(x-view.axisX)/view.pxPerMM;
   const ymm=(view.baseY-y)/view.pxPerMM;
-  return {r:clamp(rmm/mmPerNorm(),0,1), t:clamp(ymm/state.H,0,1)};
+  // округляем здесь же: рецепт уезжает в ссылку, а лишние знаки её только удлиняют
+  return {r:round(clamp(rmm/mmPerNorm(),0,1)), t:round(clamp(ymm/state.H,0,1))};
 }
 const mmToPx=(r,y)=>({x:view.axisX+r*view.pxPerMM, y:view.baseY-y*view.pxPerMM});
 
@@ -348,8 +349,15 @@ function applyStroke(px){
    кривая появилась, и дальше ползунки формы её только пересказывают. */
 function partHandles(){
   const p=selectedPart();
-  if(!p||kindOf(p).deform) return null;
+  if(!p) return null;
   const prof=userProfileMM(state);
+  /* Слив кривой не имеет — он отгиб кромки. Но и его настраивают на чертеже:
+     одна точка на конце отгиба задаёт сразу вылет и понижение кромки. */
+  if(kindOf(p).deform){
+    const H=prof[prof.length-1].y, rTop=prof[prof.length-1].r;
+    return {p, prof, lip:true, ghost:false,
+            pts:[{x:rTop+(p.out||0), y:H-(p.drop||0)}]};
+  }
   const pts = p.path ? pathPoints(prof,p)
     : pathFromParams(prof,p).map(q=>({x:Math.max(0,radiusAt(prof,q.t*prof[prof.length-1].y)+q.d),
                                       y:q.t*prof[prof.length-1].y}));
@@ -421,9 +429,19 @@ function dragPartPoint(i,px,py){
   const h=partHandles();
   if(!h||i<0) return;
   const p=h.p;
+  if(h.lip){
+    const rmm=(px-view.axisX)/view.pxPerMM, ymm=(view.baseY-py)/view.pxPerMM;
+    const H=h.prof[h.prof.length-1].y, rTop=h.prof[h.prof.length-1].r;
+    const Lo=limitOf('lip','out'), Ld=limitOf('lip','drop');
+    p.out=Math.round(clamp(rmm-rTop,Lo.min,Lo.max));
+    p.drop=Math.round(clamp(H-ymm,Ld.min,Ld.max));
+    state.activePreset=-1;
+    emit(); syncParts();
+    return;
+  }
   if(!p.path) p.path=pathFromParams(h.prof,p);        // призрак стал кривой
   const q=pxToPart(h.prof,px,py);
-  p.path[i]={t:clamp(q.t,-0.5,2), d:clamp(q.d,-40,300)};
+  p.path[i]={t:round(clamp(q.t,-0.5,2)), d:round(clamp(q.d,-40,300),2)};
   syncFieldsFromPath(h.prof,p);
   state.activePreset=-1;
   emit(); syncParts();

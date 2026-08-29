@@ -10,7 +10,7 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { userProfileMM, computeProduction } from '../core/math.js';
 import { makePart, sanitizePart, partMetrics, partsHandMinutes } from '../core/parts.js';
-import { PART_KINDS, PART_LIMITS, PART_PRESETS, kindOf } from '../config/parts.js';
+import { PART_KINDS, PART_LIMITS, PART_PRESETS, kindOf, limitOf } from '../config/parts.js';
 import { strainerHoles } from '../core/strainer.js';
 import { $, esc } from './dom.js';
 import { icon } from './icons.js';
@@ -55,7 +55,7 @@ function editorHTML(p) {
   const k = kindOf(p);
   const hide = p.path ? (SHAPE_FIELDS[p.kind] || []) : [];
   const fields = k.fields.filter(f => !hide.includes(f)).map(f => {
-    const L = PART_LIMITS[f];
+    const L = limitOf(p.kind, f);
     const step = FRACTION.has(f) ? L.step : L.step;
     return `<div class="slider-row">
       <div class="slider-head"><span>${L.name}</span><output>${withUnit(val(p, f), L.unit)}</output></div>
@@ -121,7 +121,10 @@ export function syncParts() {
     };
   });
   box.querySelectorAll('[data-pick]').forEach(b => {
-    b.onclick = () => { sel = b.dataset.pick; syncParts(); };
+    // не только панель: на чертеже висят точки выбранной детали и подпись
+    // «рисую: …», и до перерисовки они показывают прошлую деталь.
+    // Рецепт при этом не меняется, поэтому в историю ничего не ложится.
+    b.onclick = () => { sel = b.dataset.pick; syncParts(); emit(); };
   });
   box.querySelectorAll('[data-copy]').forEach(b => {
     b.onclick = () => {
@@ -148,7 +151,9 @@ export function syncParts() {
   };
   box.querySelectorAll('input[data-f]').forEach(inp => {
     const out = inp.parentElement.querySelector('output');
-    const f = inp.dataset.f, L = PART_LIMITS[f];
+    const f = inp.dataset.f;
+    const p0 = state.parts.find(x => x.id === sel);
+    const L = limitOf(p0 ? p0.kind : 'handle', f);
     inp.addEventListener('input', () => {
       const v = +inp.value;
       const p = state.parts.find(x => x.id === sel);

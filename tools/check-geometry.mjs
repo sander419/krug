@@ -17,7 +17,7 @@ import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap, p
          partsHandMinutes, fillLevelY, fillLimitedBy,
          partsVolumeMl } from '../js/core/parts.js';
 import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../js/three/partMould.js';
-import { kindOf } from '../js/config/parts.js';
+import { kindOf, limitOf, PART_KINDS } from '../js/config/parts.js';
 import { strainerHoles, strainerSpec, strainerWarnings, rimIndex } from '../js/core/strainer.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
@@ -324,6 +324,18 @@ state.wall = 6;
     if (m.keys !== m2.keys) P(`у половин ${p.kind} разное число замков`);
     if (!(m.keys >= 2)) P(`форма ${p.kind}: замков ${m.keys} — половины не сцентрировать`);
     m2.geometry.dispose();
+  }
+
+  /* Умолчание вида обязано пережить sanitizePart. «Вылет» у ручки и у слива —
+     разные вещи, и общий предел 15…90 молча превращал отгиб кромки 9 мм в 15:
+     умолчание, которого нельзя добиться руками, — это не умолчание. */
+  for (const [kind, k] of Object.entries(PART_KINDS)) {
+    const made = sanitizePart({kind, az: 0});
+    for (const [f, v] of Object.entries(k.defaults))
+      if (made[f] !== v) {
+        const L = limitOf(kind, f);
+        P(`${kind}: умолчание ${f}=${v} обрезано до ${made[f]} пределом ${L.min}…${L.max}`);
+      }
   }
 
   /* Нарисованная кривая прилепа. Ручку правят на чертеже так же, как профиль,

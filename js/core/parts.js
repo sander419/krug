@@ -8,9 +8,9 @@
 // и в текстах это сказано.
 import * as THREE from 'three';
 import { radiusAt } from './math.js';
-import { PART_KINDS, PART_LIMITS, kindOf } from '../config/parts.js';
+import { PART_KINDS, PART_LIMITS, kindOf, limitOf } from '../config/parts.js';
 import { strainerWarnings } from './strainer.js';
-import { clamp } from './util.js';
+import { clamp, round } from './util.js';
 
 const GRIP_MIN = 25;        // мм: меньше — рука не проходит
 const JOIN_SPAN_MIN = 40;   // мм: ближе прилепы — держаться не за что
@@ -50,7 +50,7 @@ export function sanitizePath(raw) {
   for (const q of raw) {
     const t = +(q && q.t), d = +(q && q.d);
     if (!Number.isFinite(t) || !Number.isFinite(d)) return null;
-    out.push({t: clamp(t, T_LIM[0], T_LIM[1]), d: clamp(d, D_LIM[0], D_LIM[1])});
+    out.push({t: round(clamp(t, T_LIM[0], T_LIM[1])), d: round(clamp(d, D_LIM[0], D_LIM[1]), 2)});
     if (out.length === PATH_MAX) break;
   }
   return out.length >= 3 ? out : null;
@@ -71,8 +71,8 @@ export function pathFromParams(prof, p, n) {
   for (let i = 0; i < k; i++) {
     const v = curve.getPointAt(i / (k - 1));
     const t = H > 0 ? v.y / H : 0;
-    out.push({t: clamp(t, T_LIM[0], T_LIM[1]),
-              d: clamp(v.x - radiusAt(prof, v.y), D_LIM[0], D_LIM[1])});
+    out.push({t: round(clamp(t, T_LIM[0], T_LIM[1])),
+              d: round(clamp(v.x - radiusAt(prof, v.y), D_LIM[0], D_LIM[1]), 2)});
   }
   return out;
 }
@@ -148,7 +148,7 @@ export function sanitizePart(raw) {
   const def = PART_KINDS[kind].defaults;
   const out = {id: String(raw.id || 'p' + Math.random().toString(36).slice(2, 8)), kind, az: 0};
   for (const f of ['az', ...PART_KINDS[kind].fields.filter(x => x !== 'az')]) {
-    const L = PART_LIMITS[f];
+    const L = limitOf(kind, f);
     const src = raw[f] !== undefined ? +raw[f] : (f === 'az' ? 0 : def[f]);
     const val = Number.isFinite(src) ? src : (f === 'az' ? 0 : def[f]);
     out[f] = f === 'top' || f === 'bot' || f === 'at'

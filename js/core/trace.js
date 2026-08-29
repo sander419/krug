@@ -9,7 +9,7 @@
 //
 // Здесь чистая математика в миллиметрах: ни канвы, ни событий. Поэтому её
 // можно проверить из командной строки — tools/check-trace.mjs.
-import { clamp } from './util.js';
+import { clamp, round } from './util.js';
 
 export const MIN_MM = 50, MAX_MM = 400;   // пределы высоты и диаметра, как у ползунков
 const MIN_H = 20;                          // короче 2 см — это промах, а не профиль
@@ -75,9 +75,9 @@ export function traceToRecipe(mm) {
 
   const points = [];
   for (const p of keep) {
-    const t = clamp(p.y / H0, 0, 1);
+    const t = round(clamp(p.y / H0, 0, 1));
     if (points.length && t - points[points.length - 1].t < MIN_GAP) continue;
-    points.push({t, r: clamp(p.r / rMax, 0, 1)});
+    points.push({t: round(t), r: round(clamp(p.r / rMax, 0, 1))});
   }
   if (points.length < 3) return null;
   points[0].t = 0;
