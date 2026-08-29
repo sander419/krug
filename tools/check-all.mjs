@@ -17,6 +17,7 @@ const CHECKS = [
   ['Геометрия',    'check-geometry.mjs'],
   ['Слайсер',      'check-gcode.mjs'],
   ['Задачи',       'check-routes.mjs'],
+  ['Линия',        'check-trace.mjs'],
 ];
 
 let failed = 0;

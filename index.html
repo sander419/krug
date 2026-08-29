@@ -405,12 +405,20 @@
   <section id="draft" aria-label="Чертёж профиля">
     <div class="draft-head">
       <span>Профиль · сечение</span>
+      <div class="seg draft-mode" id="draftMode" role="group" aria-label="Чем править профиль">
+        <button data-dmode="points" class="active" title="Тянуть точки по одной">Точки</button>
+        <button data-dmode="draw" title="Провести линию профиля одним движением">Линия</button>
+      </div>
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
     </div>
     <canvas id="profileCanvas"></canvas>
-    <p class="draft-hint">
+    <p class="draft-hint" id="draftHintPts">
       <span class="on-mouse"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</span>
       <span class="on-touch"><b>Тяните</b> точки · <b>двойное касание</b> — новая · <b>долгое</b> — удалить</span>
+    </p>
+    <p class="draft-hint" id="draftHintDraw" hidden>
+      <b>Проведите линию</b> профиля от дна к кромке — точки расставятся сами.
+      Высота и диаметр возьмутся с рисунка; отмена — Ctrl+Z.
     </p>
   </section>
 

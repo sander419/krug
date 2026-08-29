@@ -9,6 +9,7 @@ import { byId } from '../config/materials.js';
 import { sceneAPI } from '../three/scene.js';
 import { emit } from '../core/bus.js';
 import { clamp } from '../core/util.js';
+import { traceToRecipe } from '../core/trace.js';
 import { $ } from './dom.js';
 import { pal } from './palette.js';
 import { partCurve, partSection } from '../core/parts.js';
@@ -16,6 +17,9 @@ import { strainerHoles } from '../core/strainer.js';
 import { kindOf } from '../config/parts.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
+let draftMode='points';         // 'points' — тянуть точки, 'draw' — вести линию
+let stroke=null;                // экранная ломаная, пока её ведут
+let onReshape=null;             // панель обязана перечитать высоту и диаметр
 let pressTimer=null, lastTap=0, lastTapPt=null;
 let mode='1:1';                 // '1:1' | 'fit'
 let modeChosen=false;
@@ -226,6 +230,14 @@ export function drawEditor(){
   ectx.fillText((state.H/10).toFixed(1)+' см', view.axisX+4, Math.max(topY+11, view.baseY-state.H*px-6));
   ectx.fillText('⌀ '+(state.D/10).toFixed(1)+' см', view.axisX+4, view.baseY+14);
 
+  /* ведомый штрих поверх всего: видно, что рука рисует, до пересборки */
+  if(stroke&&stroke.length>1){
+    ectx.beginPath();
+    stroke.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
+    ectx.strokeStyle=P.text(.9);ectx.lineWidth=2;ectx.setLineDash([5,4]);
+    ectx.lineCap='round';ectx.lineJoin='round';ectx.stroke();ectx.setLineDash([]);
+  }
+
   /* точки рецепта */
   state.points.forEach((p,i)=>{
     const q=ptToPx(p), end=(i===0||i===state.points.length-1);
@@ -290,6 +302,20 @@ function hitPoint(px,py){
   return best;
 }
 
+/* ---------- линия профиля одним движением ---------- */
+/* Вся математика перевода штриха в рецепт — в js/core/trace.js: она чистая
+   и проверяется из командной строки. Здесь остаётся только то, чего в ядре
+   быть не должно, — экранные координаты. */
+function applyStroke(px){
+  const mm=px.map(p=>({r:(p.x-view.axisX)/view.pxPerMM, y:(view.baseY-p.y)/view.pxPerMM}));
+  const got=traceToRecipe(mm);
+  if(!got) return false;
+  state.points=got.points; state.H=got.H; state.D=got.D; state.activePreset=-1;
+  emit();
+  if(onReshape) onReshape({H:got.H, D:got.D, points:got.points.length, squeezed:got.squeezed});
+  return true;
+}
+
 function addPointAt(px,py){
   const c=pxToPt(px,py);
   if(c.t<=.02||c.t>=.98)return;
@@ -304,17 +330,41 @@ function removePoint(i){
   }
 }
 
-export function initEditor(canvas){
+/** Чем правят профиль: 'points' — тянуть точки, 'draw' — вести линию. */
+export function setDraftMode(m){
+  if(m!=='points'&&m!=='draw')return;
+  draftMode=m; stroke=null;
+  document.querySelectorAll('#draftMode [data-dmode]')
+    .forEach(b=>b.classList.toggle('active',b.dataset.dmode===m));
+  const hp=$('draftHintPts'), hd=$('draftHintDraw');
+  if(hp) hp.hidden = m==='draw';
+  if(hd) hd.hidden = m!=='draw';
+  if(ec) ec.style.cursor='crosshair';
+  hoverIdx=-1;
+  if(eW) drawEditor();
+}
+
+export function initEditor(canvas, reshaped){
   ec=canvas;ectx=ec.getContext('2d');
+  onReshape=reshaped||null;
   new ResizeObserver(resizeEditor).observe(ec);
 
   const toggle=$('draftScale');
   if(toggle) toggle.onclick=()=>{mode=mode==='1:1'?'fit':'1:1';modeChosen=true;lastKey='';drawEditor();};
+  document.querySelectorAll('#draftMode [data-dmode]')
+    .forEach(b=>b.onclick=()=>setDraftMode(b.dataset.dmode));
 
   ec.addEventListener('contextmenu',e=>e.preventDefault());
   ec.addEventListener('pointerdown',e=>{
     const rect=ec.getBoundingClientRect();
     const px=e.clientX-rect.left,py=e.clientY-rect.top;
+    if(draftMode==='draw'){
+      if(e.button===2)return;
+      stroke=[{x:px,y:py}];
+      try{ec.setPointerCapture(e.pointerId);}catch(_){}
+      drawEditor();
+      return;
+    }
     const idx=hitPoint(px,py);
     if(e.button===2){
       if(idx>0&&idx<state.points.length-1){
@@ -338,6 +388,11 @@ export function initEditor(canvas){
   ec.addEventListener('pointermove',e=>{
     const rect=ec.getBoundingClientRect();
     const px=e.clientX-rect.left,py=e.clientY-rect.top;
+    if(stroke){
+      const last=stroke[stroke.length-1];
+      if(Math.hypot(px-last.x,py-last.y)>=2){stroke.push({x:px,y:py});drawEditor();}
+      return;
+    }
     if(dragIdx>=0){
       clearTimeout(pressTimer);
       const p=state.points[dragIdx],c=pxToPt(px,py);
@@ -352,9 +407,16 @@ export function initEditor(canvas){
       ec.style.cursor=h>=0?'grab':'crosshair';
     }
   });
-  ec.addEventListener('pointerup',()=>{clearTimeout(pressTimer);dragIdx=-1;});
-  ec.addEventListener('pointercancel',()=>{clearTimeout(pressTimer);dragIdx=-1;});
+  const endStroke=ok=>{
+    if(!stroke)return;
+    const s=stroke; stroke=null;
+    if(ok && !applyStroke(s) && onReshape) onReshape(null);   // штрих не сложился
+    drawEditor();
+  };
+  ec.addEventListener('pointerup',()=>{clearTimeout(pressTimer);dragIdx=-1;endStroke(true);});
+  ec.addEventListener('pointercancel',()=>{clearTimeout(pressTimer);dragIdx=-1;endStroke(false);});
   ec.addEventListener('dblclick',e=>{
+    if(draftMode==='draw')return;
     const rect=ec.getBoundingClientRect();
     addPointAt(e.clientX-rect.left,e.clientY-rect.top);
   });

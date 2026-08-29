@@ -116,7 +116,13 @@ step('сцена',()=>sceneAPI.init($('viewport')));
 let restoredFrom='умолчание';
 step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;});
 
-step('чертёж',()=>initEditor($('profileCanvas')));
+step('чертёж',()=>initEditor($('profileCanvas'),info=>{
+  // линия переопределяет высоту и диаметр: ползунки обязаны это показать
+  if(!info){ toast('Линия не сложилась в профиль — проведите её от дна к кромке'); return; }
+  panelsAPI.sync();
+  toast(`Профиль нарисован: ${(info.H/10).toFixed(1)}×${(info.D/10).toFixed(1)} см, точек ${info.points}`
+    + (info.squeezed?' · рисунок ужат под пределы 5…40 см':''));
+}));
 step('панель',()=>{initTabs();initBlocks();initPanels();initParts();panelsAPI.sync();});
 step('задача',()=>initRoute());   // после вкладок: задача их и прячет
 step('обучение',()=>initKB());

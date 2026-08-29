@@ -58,7 +58,7 @@ export function applyRoute(id, opts = {}) {
 function cardsHTML(first) {
   const cards = ROUTES.map(r => {
     const steps = routeTabs(r).map(t => TABS[t].name).join(' → ');
-    return `<button class="route-card${r.id === current.id && !first ? ' current' : ''}" data-route="${r.id}">
+    return `<button class="route-card${r.id === current.id && !first ? ' current' : ''}" data-route-pick="${r.id}">
       <span class="route-ico">${icon(r.ico, 20)}</span>
       <span class="route-main">
         <b>${r.name}</b>
@@ -88,10 +88,10 @@ export function openRouteScreen(first = false) {
   box.dataset.first = first ? '1' : '0';   // первый выбор закрыть некому: панель пуста
   box.classList.add('open');
   box.setAttribute('aria-hidden', 'false');
-  box.querySelectorAll('[data-route]').forEach(b => {
+  box.querySelectorAll('[data-route-pick]').forEach(b => {
     b.onclick = () => {
       box.dataset.first = '0';
-      applyRoute(b.dataset.route);
+      applyRoute(b.dataset.routePick);
       closeRouteScreen();
       toast(`Задача: ${activeRoute().name}. Сменить — кнопкой в шапке`);
     };
