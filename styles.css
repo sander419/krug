@@ -473,6 +473,12 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
   display:flex;align-items:center;gap:10px;min-height:54px;
   border-top:1px solid var(--line);background:var(--strip);padding:8px 14px;
 }
+/* --fadeL/--fadeR ставит hintScroll: край растворяется, когда за ним есть ещё */
+.stats,.tabs{
+  --fadeL:0px;--fadeR:0px;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeL),#000 calc(100% - var(--fadeR)),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeL),#000 calc(100% - var(--fadeR)),transparent 100%);
+}
 .stats{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;}
 .stats::-webkit-scrollbar{display:none;}
 .chip{
@@ -501,7 +507,9 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 #verdictBadge.bad{color:color-mix(in oklab, var(--bad) 55%, var(--text));border-color:color-mix(in oklab, var(--bad) 50%, transparent);}
 
 #toast{
-  position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+  /* 146px = строка метрик (54) + кинотеатр у нижнего края сцены (16 + ~62) плюс
+     зазор: на 96px всплывающая строка ложилась ровно на кнопку воспроизведения */
+  position:fixed;left:50%;bottom:146px;transform:translateX(-50%) translateY(20px);
   background:var(--toastBg);border:1px solid var(--accent);color:var(--text);
   padding:11px 18px;border-radius:var(--radius);font-size:var(--fs-sm);font-weight:600;
   opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:50;
@@ -904,6 +912,12 @@ kbd{
   font:inherit;font-size:var(--fs-micro);padding:1px 6px;border-radius:5px;
   background:var(--sunken);border:1px solid var(--line);color:var(--muted);
 }
+/* чертёж не помещается в 1:1 — чип перестаёт жаловаться и становится кнопкой */
+#draftScale.fix{
+  border-color:var(--warn);color:var(--warn);
+  background:color-mix(in oklab, var(--warn) 14%, transparent);
+}
+
 /* блок, к которому привёл поиск: подсветка гаснет сама */
 details.block.found{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);}
 @media (max-width:640px){
@@ -1025,6 +1039,12 @@ details.block.found{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in
 .guide-main b{font-size:var(--fs-md);display:flex;align-items:center;gap:7px;}
 .guide-main b .ico{color:var(--accent);}
 .guide-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.55;text-wrap:pretty;}
+.guide-keys{
+  display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:16px;
+  font-size:var(--fs-micro);color:var(--muted2);
+}
+/* каждая пара «клавиша — что делает» переносится целиком, а не по кускам */
+.guide-keys span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
 .guide-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:18px;}
 .guide-hint{font-size:var(--fs-micro);color:var(--muted2);}
 @media (max-width:640px){
@@ -1081,6 +1101,14 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
 @container panel (max-width:470px){
   .tab{font-size:var(--fs-xs);padding:8px 5px;}
   .tab i{width:14px;height:14px;margin-right:4px;}
+}
+/* совсем узкая: номера уходят, полоса переносится. Обрезанная «Осн…» хуже
+   двух рядов: порядок виден и по расположению, а недоступной вкладки быть
+   не должно — до неё ещё надо догадаться доскроллить. */
+@container panel (max-width:400px){
+  .tabs{flex-wrap:wrap;}
+  .tab{flex:1 1 auto;padding:7px 6px;}
+  .tab i{display:none;}
 }
 @container panel (min-width:620px){
   .mat-list{max-height:none;}

@@ -16,7 +16,7 @@ import { initPhoto } from './ui/photo.js';
 import { initTips } from './ui/tips.js';
 import { initFinder } from './ui/finder.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
-import { initWorks } from './ui/works.js';
+import { initWorks, saveCurrent } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
@@ -191,13 +191,24 @@ onChange(record);
 initHistory(syncHistoryButtons);
 $('undoBtn').onclick=()=>{ if(undo()){ syncAll(); syncHistoryButtons(); toast('Отменено'); } };
 $('redoBtn').onclick=()=>{ if(redo()){ syncAll(); syncHistoryButtons(); toast('Возвращено'); } };
+/* Горячие клавиши. В поле ввода не работают: там цифра — это цифра,
+   а Ctrl+S привычнее отдать браузеру, чем перехватить посреди набора. */
+const inField=e=>e.target instanceof Element && e.target.matches('input,textarea,select,[contenteditable]');
 addEventListener('keydown',e=>{
-  // e.target может быть не элементом (document, window) — matches там нет
-  if(!(e.ctrlKey||e.metaKey))return;
-  if(e.target instanceof Element && e.target.matches('input,textarea,select'))return;
-  const k=e.key.toLowerCase();
-  if(k==='z'&&!e.shiftKey){ e.preventDefault(); $('undoBtn').click(); }
-  else if((k==='z'&&e.shiftKey)||k==='y'){ e.preventDefault(); $('redoBtn').click(); }
+  if(inField(e))return;
+  if(e.ctrlKey||e.metaKey){
+    const k=e.key.toLowerCase();
+    if(k==='z'&&!e.shiftKey){ e.preventDefault(); $('undoBtn').click(); }
+    else if((k==='z'&&e.shiftKey)||k==='y'){ e.preventDefault(); $('redoBtn').click(); }
+    else if(k==='s'){ e.preventDefault(); toast('Работа сохранена: «'+saveCurrent()+'»'); }
+    return;
+  }
+  // цифра открывает вкладку по её номеру — тому самому, что нарисован на ней
+  if(/^[1-9]$/.test(e.key)){
+    const tabs=[...document.querySelectorAll('.tab')].filter(t=>!t.hidden);
+    const t=tabs[+e.key-1];
+    if(t){ e.preventDefault(); t.click(); }
+  }
 });
 refreshNow();
 sceneAPI.frameView();

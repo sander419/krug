@@ -27,6 +27,17 @@ const when = ts => {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+/** Сохранить текущую работу под её именем. Возвращает имя — для сообщения. */
+export function saveCurrent() {
+  const list = load();
+  const name = (state.name || 'Без названия').trim();
+  const same = list.findIndex(w => w.name === name);
+  if (same >= 0) list.splice(same, 1);        // одно имя — одна запись, а не десять «Ваза»
+  list.unshift({id: String(Date.now()), name, dna: encodeDNA(), ts: Date.now()});
+  save(list);
+  return name;
+}
+
 function render() {
   const list = load();
   const rows = list.length ? list.map(w => `
@@ -43,16 +54,7 @@ function render() {
     <p class="note">Список живёт в этом браузере: у КРУГа нет сервера. Чтобы работа
       пережила смену устройства, скопируйте ДНК — она лежит в ссылке.</p>`;
 
-  $('workSave').onclick = () => {
-    const list = load();
-    const name = (state.name || 'Без названия').trim();
-    const item = {id: String(Date.now()), name, dna: encodeDNA(), ts: Date.now()};
-    const same = list.findIndex(w => w.name === name);
-    if (same >= 0) list.splice(same, 1);      // одно имя — одна запись, а не десять «Ваза»
-    list.unshift(item);
-    save(list);
-    render();
-  };
+  $('workSave').onclick = () => { saveCurrent(); render(); };
   $('worksPop').querySelectorAll('[data-open]').forEach(b => {
     b.onclick = () => {
       const w = load().find(x => x.id === b.dataset.open);

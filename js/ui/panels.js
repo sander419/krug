@@ -10,7 +10,7 @@ import { sceneAPI } from '../three/scene.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
-import { $ } from './dom.js';
+import { $, hintScroll } from './dom.js';
 import { icon } from './icons.js';
 import { shapeIcon } from './shapeIcon.js';
 import { syncParts } from './parts.js';
@@ -28,14 +28,50 @@ export const currentTab=()=>{
   return a?a.dataset.tab:null;
 };
 export function initTabs(){
+  const nav=document.querySelector('.tabs');
   const tabs=[...document.querySelectorAll('.tab')];
+  /* Настоящая полоса вкладок, а не пять кнопок подряд: читалка экрана должна
+     называть их вкладками, а клавиатура — ходить по ним стрелками. Tab заходит
+     в полосу один раз и попадает на текущую (roving tabindex), иначе до панели
+     пришлось бы прожимать пять кнопок. */
+  if(nav) nav.setAttribute('role','tablist');
+  tabs.forEach(t=>{
+    const id=t.dataset.tab;
+    t.setAttribute('role','tab');
+    t.id='tab-'+id;
+    t.setAttribute('aria-controls','pane-'+id);
+    const pane=document.querySelector(`.tabpane[data-pane="${id}"]`);
+    if(pane){
+      pane.id='pane-'+id;
+      pane.setAttribute('role','tabpanel');
+      pane.setAttribute('aria-labelledby','tab-'+id);
+    }
+  });
   const show=id=>{
-    tabs.forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+    tabs.forEach(t=>{
+      const on=t.dataset.tab===id;
+      t.classList.toggle('active',on);
+      t.setAttribute('aria-selected',on?'true':'false');
+      t.tabIndex=on?0:-1;
+    });
     document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===id));
     try{localStorage.setItem('krug.tab',id);}catch(_){}
   };
   showFn=show;
   tabs.forEach(t=>t.onclick=()=>show(t.dataset.tab));
+  if(nav) nav.addEventListener('keydown',e=>{
+    const keys=['ArrowLeft','ArrowRight','Home','End'];
+    if(!keys.includes(e.key))return;
+    const vis=tabs.filter(t=>!t.hidden);          // спрятанные задачей не участвуют
+    const i=vis.indexOf(document.activeElement);
+    if(i<0)return;
+    e.preventDefault();
+    const j=e.key==='Home'?0:e.key==='End'?vis.length-1
+      :(i+(e.key==='ArrowRight'?1:-1)+vis.length)%vis.length;
+    vis[j].focus();
+    show(vis[j].dataset.tab);
+  });
+  hintScroll(nav);
   let saved=null;
   try{saved=localStorage.getItem('krug.tab');}catch(_){}
   show(tabs.some(t=>t.dataset.tab===saved)?saved:'form');

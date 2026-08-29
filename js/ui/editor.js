@@ -280,9 +280,16 @@ export function drawEditor(){
   });
 
   syncTargetChip();
+  /* «Не помещается» — это жалоба, а не помощь: чип в этом случае превращается
+     в кнопку, которая чинит ровно то, о чём сообщает. */
   const badge=$('draftScale');
-  if(badge) badge.textContent = mode==='fit' ? 'по размеру' :
-    (view.fits ? '1:1 с моделью' : '1:1 · не помещается');
+  if(badge){
+    const bad = mode!=='fit' && !view.fits;
+    badge.textContent = mode==='fit' ? 'по размеру' : (bad ? 'вписать' : '1:1 с моделью');
+    badge.classList.toggle('fix', bad);
+    badge.title = bad ? 'Изделие не влезает в чертёж в масштабе 1:1 — нажмите, чтобы вписать'
+                      : 'Переключить масштаб: 1:1 с 3D-видом или вписать в панель';
+  }
 }
 
 /** Масштаб чертежа снаружи: '1:1' — как в 3D-виде, 'fit' — вписать в канву. */

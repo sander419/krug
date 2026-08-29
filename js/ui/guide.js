@@ -42,6 +42,13 @@ function html() {
     <p class="guide-lead">Задача — <b>${route.name}</b>. ${route.lead}
       Шаги ниже это вкладки панели, идти по ним подряд не обязательно.</p>
     <div class="guide-steps">${steps_}</div>
+    <p class="guide-keys">
+      <span><kbd>1</kbd>…<kbd>5</kbd> вкладки</span>
+      <span><kbd>Ctrl</kbd>+<kbd>K</kbd> поиск</span>
+      <span><kbd>Ctrl</kbd>+<kbd>S</kbd> сохранить</span>
+      <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> отменить</span>
+      <span><kbd>←</kbd><kbd>→</kbd> по вкладкам</span>
+    </p>
     <div class="guide-foot">
       <button class="btn primary" id="guideStart">Начать с шага «${list[0].name}»</button>
       <button class="btn" id="guideRoute">${icon(route.ico)}Сменить задачу</button>

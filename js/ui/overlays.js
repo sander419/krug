@@ -5,7 +5,7 @@ import { STAGES } from '../config/data.js';
 import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
-import { $ } from './dom.js';
+import { $, hintScroll } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { openSheet } from './mobile.js';
 
@@ -17,6 +17,7 @@ export function toast(msg){
 }
 
 export function updateStats(prod,str,tris){
+  hintScroll($('stats'));           // первый вызов вешает слежение, дальше молчит
   const sh=byId(state.mat).shrinkPct;
   const Hs=(state.H/10).toFixed(1),Ds=(state.D/10).toFixed(1);
   const Hf=(state.H*(1-sh/100)/10).toFixed(1),Df=(state.D*(1-sh/100)/10).toFixed(1);
