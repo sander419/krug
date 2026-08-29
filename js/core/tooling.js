@@ -3,6 +3,9 @@
 // пересчёт размеров через усадку, усилие пресса, масса заготовки.
 // Чистая логика, без DOM. Единицы — мм, граммы, если не сказано иначе.
 import { userProfileMM, floorY } from './math.js';
+import { partMetrics, partsHandMinutes, partMouldEstimate } from './parts.js';
+import { strainerHoles } from './strainer.js';
+import { kindOf as partKind } from '../config/parts.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById, LIMITS } from '../config/processes.js';
 import { economics } from './economics.js';
@@ -295,6 +298,35 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
   L.push('## Технологичность');
   for (const c of ch) L.push(`- [${c.lvl === 'ok' ? 'ок' : c.lvl === 'warn' ? 'внимание' : 'стоп'}] ${c.txt}`);
   L.push('');
+  /* Прилепы формуются отдельно: без этого раздела техкарта описывает не то
+     изделие, которое видно на экране. */
+  const parts = (state.parts || []);
+  if (parts.length) {
+    const prof = userProfileMM(state);
+    L.push('## Прилепы');
+    L.push(`- Деталей: ${parts.length} · ручной сборки ${partsHandMinutes(parts)} мин на изделие`);
+    parts.forEach((p, i) => {
+      const kind = partKind(p);
+      const m = partMetrics(prof, p);
+      if (p.kind === 'lip') {
+        L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ширина ${p.width}°, отгиб ${fmt(p.out)} мм, кромка ниже на ${fmt(p.drop)} мм (отгибается, не приставляется)`);
+        return;
+      }
+      const est = partMouldEstimate(prof, p);
+      const pm = est ? plasterMix(est.netL, wr) : null;
+      const geom = p.kind === 'spout'
+        ? `корень на высоте ${fmt(p.at * 100)} % (${fmt(p.at * state.H)} мм), длина ${fmt(p.len)} мм, подъём ${p.rise}°, ⌀ ${fmt(p.bore)}→${fmt(p.tip)} мм`
+        : `прилепы ${fmt(p.top * 100)} %–${fmt(p.bot * 100)} % высоты, вылет ${fmt(p.out)} мм, лента ${fmt(p.thick)}×${fmt(p.wide)} мм`;
+      L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ${geom}; глины ${Math.round(m.volMl * 1.92)} г` +
+        (pm ? `; форма из двух половин, блок ${est.boxMM.map(v => Math.round(v)).join('×')} мм, гипса ${fmt(pm.plasterKg)} кг` : ''));
+      if (p.kind === 'spout') {
+        const h = strainerHoles(p);
+        L.push(`  - Ситечко: ${h.count} отв. ⌀${fmt(h.holeD)} мм, живое сечение ${Math.round(h.ratio * 100)} % от носика; режется по кожетвёрдому до прилепки носика`);
+      }
+    });
+    L.push('');
+  }
+
   L.push('## Тираж');
   L.push(`- Партия: ${pieces} шт`);
   if (bp.known) L.push(`- Ресурс формы ${bp.lo}–${bp.hi} циклов → комплектов оснастки: ${bp.setsLo}–${bp.setsHi}`);

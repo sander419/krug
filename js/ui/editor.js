@@ -3,7 +3,7 @@
 // приходится на миллиметр в 3D-виде, столько же и здесь. Правая половина сечения:
 // ось вращения слева, изделие растёт вправо — к модели.
 import { state } from '../core/state.js';
-import { sampleProfile, userProfileMM, floorY } from '../core/math.js';
+import { sampleProfile, userProfileMM, floorY, radiusAt } from '../core/math.js';
 import { stageProfile } from '../core/geometry.js';
 import { byId } from '../config/materials.js';
 import { sceneAPI } from '../three/scene.js';
@@ -11,6 +11,9 @@ import { emit } from '../core/bus.js';
 import { clamp } from '../core/util.js';
 import { $ } from './dom.js';
 import { pal } from './palette.js';
+import { partCurve, partSection } from '../core/parts.js';
+import { strainerHoles } from '../core/strainer.js';
+import { kindOf } from '../config/parts.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let pressTimer=null, lastTap=0, lastTapPt=null;
@@ -29,10 +32,26 @@ function vOffset(){
 }
 
 /* ---------- масштаб и система координат ---------- */
+/* Самая дальняя от оси точка: прилепы вылезают за габарит корпуса, и в режиме
+   «по размеру» чертёж обязан вместить их тоже. */
+function drawnRadiusMM(){
+  let r=state.D/2;
+  const parts=state.parts||[];
+  if(parts.length){
+    const out=userProfileMM(state);
+    for(const p of parts){
+      if(p.kind==='lip'){ r=Math.max(r, out[out.length-1].r+(p.out||0)); continue; }
+      const sec=partSection(p);
+      partCurve(out,p).getPoints(16).forEach((v,i)=>{ r=Math.max(r, v.x+sec.rAt(i/16)); });
+    }
+  }
+  return r;
+}
+
 function computeView(){
   const fitScale=()=>{
     const usableH=eH-PAD.t-PAD.b, usableW=eW-PAD.l-PAD.r;
-    return Math.max(0.05, Math.min(usableH/Math.max(state.H,1), usableW/Math.max(state.D/2,1)));
+    return Math.max(0.05, Math.min(usableH/Math.max(state.H,1), usableW/Math.max(drawnRadiusMM(),1)));
   };
   if(mode==='fit'){
     const s=fitScale();
@@ -44,7 +63,7 @@ function computeView(){
     return {pxPerMM:s, baseY:eH-PAD.b, axisX:PAD.l, fits:true};
   }
   const baseY=sc.baseY-vOffset();     // 3D-вид и канва начинаются на разной высоте
-  const fits = state.H*sc.pxPerMM <= (baseY-PAD.t) && state.D/2*sc.pxPerMM <= (eW-PAD.l-PAD.r);
+  const fits = state.H*sc.pxPerMM <= (baseY-PAD.t) && drawnRadiusMM()*sc.pxPerMM <= (eW-PAD.l-PAD.r);
   return {pxPerMM:sc.pxPerMM, baseY, axisX:PAD.l, fits};
 }
 
@@ -69,6 +88,65 @@ function gridStep(){
   const cand=[1,2,5,10,20,50,100];
   for(const c of cand) if(c*view.pxPerMM>=14) return c;
   return 100;
+}
+
+/* Ручки, носики и слив на чертеже. Стоят они по разным азимутам, поэтому все
+   разворачиваются в плоскость сечения — так же, как это делают на рабочем
+   чертеже: иначе деталь просто не попадает в разрез. */
+function drawParts(P, out, px){
+  const parts=state.parts||[];
+  if(!parts.length)return;
+  const H=out[out.length-1].y;
+  const rTop=out[out.length-1].r;
+
+  parts.forEach((p,i)=>{
+    ectx.save();
+    if(p.kind==='lip'){
+      const a=mmToPx(rTop,H), b=mmToPx(rTop+p.out,H-p.drop);
+      ectx.strokeStyle=P.accent2(.75);ectx.lineWidth=2.2;ectx.lineCap='round';
+      ectx.beginPath();ectx.moveTo(a.x,a.y);ectx.lineTo(b.x,b.y);ectx.stroke();
+      ectx.fillStyle=P.text(.6);ectx.font='9px Manrope, system-ui, sans-serif';
+      ectx.fillText(`слив ${i+1}`, b.x+4, b.y-3);
+      ectx.restore();
+      return;
+    }
+    const pts=partCurve(out,p).getPoints(28).map(v=>mmToPx(v.x,v.y));
+    const sec=partSection(p);
+    // сечение ленты в разрезе — её толщина по радиусу, у носика — диаметр
+    const w=Math.max(2, (p.kind==='spout' ? (p.bore+p.tip)/2 : p.thick) * px);
+    ectx.strokeStyle=P.accent(.34);ectx.lineWidth=w;ectx.lineCap='round';ectx.lineJoin='round';
+    ectx.beginPath();pts.forEach((q,k)=>k?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));ectx.stroke();
+    ectx.strokeStyle=P.accent2(.85);ectx.lineWidth=1.3;
+    ectx.beginPath();pts.forEach((q,k)=>k?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));ectx.stroke();
+    const tip=pts[pts.length-1];
+    ectx.fillStyle=P.text(.6);ectx.font='9px Manrope, system-ui, sans-serif';
+    // подпись у самого края уезжает за канву — тогда ставим её слева от кончика
+    const right=tip.x>eW-70;
+    ectx.textAlign=right?'right':'left';
+    ectx.fillText(`${kindOf(p).name.toLowerCase()} ${i+1}`, tip.x+(right?-5:5), tip.y-4);
+    ectx.textAlign='left';
+
+    /* ситечко: поле дырочек на стенке под корнем носика */
+    if(p.kind==='spout' && state.hollow){
+      const h=strainerHoles(p);
+      const y0=p.at*H;
+      for(const hole of h.holes){
+        const c=mmToPx(radiusAt(out,y0+hole.y)-state.wall/2, y0+hole.y);
+        ectx.beginPath();ectx.arc(c.x,c.y,Math.max(1.2,hole.r*px),0,Math.PI*2);
+        ectx.fillStyle=P.sunken();ectx.fill();
+        ectx.strokeStyle=P.text(.5);ectx.lineWidth=1;ectx.stroke();
+      }
+      const lbl=mmToPx(radiusAt(out,y0)-state.wall/2, y0-h.field-2);
+      ectx.fillStyle=P.text(.55);ectx.font='9px Manrope, system-ui, sans-serif';
+      ectx.textAlign='right';
+      ectx.fillText(`ситечко ${h.count}×⌀${h.holeD.toFixed(1)}`, lbl.x-3, lbl.y+3);
+      ectx.textAlign='left';
+    }
+    ectx.restore();
+  });
+
+  ectx.fillStyle=P.text(.4);ectx.font='9px Manrope, system-ui, sans-serif';
+  ectx.fillText('прилепы развёрнуты в плоскость чертежа', view.axisX+4, view.baseY+26);
 }
 
 export function drawEditor(){
@@ -138,6 +216,9 @@ export function drawEditor(){
   outer.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
   ectx.strokeStyle=P.accent2();ectx.lineWidth=2.4;
   ectx.shadowColor=P.accent2(.5);ectx.shadowBlur=7;ectx.stroke();ectx.shadowBlur=0;
+
+  /* прилепы: развёрнуты в плоскость чертежа, иначе в сечении их не видно вовсе */
+  drawParts(P, out, px);
 
   /* размерные подписи */
   ectx.fillStyle=P.text(.65);ectx.font='10px Manrope, system-ui, sans-serif';

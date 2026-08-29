@@ -106,7 +106,7 @@ export const CONTEXT_HELP = {
   glazeFit: 'crazing-shivering',
   umf: 'umf',
   handle: 'handles-joins',
-  spout: 'handles-joins',
+  spout: 'spout-strainer',
   'glaze-run': 'glaze-thickness',
   'glaze-relief': 'glaze-thickness',
   'glaze-food': 'food-safe',
