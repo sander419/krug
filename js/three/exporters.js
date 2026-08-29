@@ -5,6 +5,7 @@ import { sceneAPI } from './scene.js';
 import { buildPot } from '../core/geometry.js';
 import { partCurve, partSection } from '../core/parts.js';
 import { sweepGeometry } from './sweep.js';
+import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
 import { download, fileName } from '../core/files.js';
 
@@ -51,6 +52,10 @@ function fabricationGeo(state){
   const built=buildPot(state);
   state.stage=saved;
   const pg=partsGeo(state);
+  // стенка с ситечком: тело отдало этот кусок, и без него в файле осталась бы дыра
+  const sg=(built.strainers&&built.strainers.length)
+    ? strainerGeometry(built.path, state.segments, built.strainers) : null;
+  if(sg) pg.push(sg);
   if(!pg.length) return built.geometry.clone();
   const merged=mergeGeo([built.geometry, ...pg]);
   for(const g of pg) g.dispose();
@@ -61,6 +66,11 @@ function exportGeo(){
   const m=sceneAPI.pot();
   m.updateMatrix();
   const parts=[m.geometry.clone().applyMatrix4(m.matrix)];   // усадка обжига запечена
+  const st=sceneAPI.strainer();
+  if(st && st.visible){
+    st.updateMatrix();
+    parts.push(st.geometry.clone().applyMatrix4(st.matrix));
+  }
   const grp=sceneAPI.parts();
   if(grp){
     grp.updateMatrixWorld(true);

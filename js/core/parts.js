@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { radiusAt } from './math.js';
 import { PART_KINDS, PART_LIMITS, kindOf } from '../config/parts.js';
+import { strainerWarnings } from './strainer.js';
 import { clamp } from './util.js';
 
 const GRIP_MIN = 25;        // мм: меньше — рука не проходит
@@ -71,7 +72,9 @@ function spoutCurve(prof, p) {
   const a = p.rise * Math.PI / 180;
   const dx = Math.cos(a), dy = Math.sin(a);
   return new THREE.CatmullRomCurve3([
-    new THREE.Vector3(r0 - p.bore * 0.35, y0, 0),
+    // носик садится на стенку снаружи, а не проваливается внутрь: внутри
+    // остаётся стенка с ситечком, иначе труба торчала бы в чайник
+    new THREE.Vector3(r0 - 1.5, y0, 0),
     new THREE.Vector3(r0 + p.len * 0.35 * dx, y0 + p.len * 0.30 * dy, 0),
     new THREE.Vector3(r0 + p.len * 0.72 * dx, y0 + p.len * 0.68 * dy, 0),
     new THREE.Vector3(r0 + p.len * dx, y0 + p.len * dy, 0),
@@ -208,6 +211,8 @@ export function partsWarnings(state, prof) {
           `${label}: срез выше кромки на ${(m.tipY - rim).toFixed(0)} мм — при наклоне польётся через край раньше, чем из носика.`});
     }
   });
+
+  for (const sw of strainerWarnings(state)) w.push(sw);
 
   // прилепы не должны налезать друг на друга
   for (let i = 0; i < parts.length; i++)

@@ -11,6 +11,7 @@ import { emit } from '../core/bus.js';
 import { userProfileMM, computeProduction } from '../core/math.js';
 import { makePart, sanitizePart, partMetrics, partsHandMinutes } from '../core/parts.js';
 import { PART_KINDS, PART_LIMITS, PART_PRESETS, kindOf } from '../config/parts.js';
+import { strainerHoles } from '../core/strainer.js';
 import { $, esc } from './dom.js';
 import { icon } from './icons.js';
 
@@ -141,6 +142,12 @@ export function updateMechanics() {
   const prod = computeProduction(state);
   const share = prod.massF > 0 ? (prod.partsMl * 1.92 / prod.massF * 100) : 0;
   const kinds = [...new Set(parts.map(p => p.kind))];
+  const spouts = parts.filter(p => p.kind === 'spout').map((p, i) => {
+    const h = strainerHoles(p);
+    return `<dt>Ситечко ${i + 1}</dt><dd>${h.count} ${h.count === 1 ? 'отверстие' : 'отверстий'}
+      ⌀<b>${h.holeD.toFixed(1)} мм</b> · живое сечение <b>${(h.ratio * 100).toFixed(0)} %</b> от носика
+      <span class="dim">(меньше 100 % — чайник льёт тонко)</span></dd>`;
+  }).join('');
   const fill = prod.cutBySpout
     ? `<dt>Наливается</dt><dd><b>${Math.round(prod.fillMl)} мл</b> до ${prod.fillBy === 'lip' ? 'слива' : 'носика'} вместо ${Math.round(prod.capMl)} мл до кромки</dd>`
     : '';
@@ -149,6 +156,7 @@ export function updateMechanics() {
       <dt>Деталей</dt><dd>${parts.length} · глины на них <b>${Math.round(prod.partsMl * 1.92)} г</b> (${share.toFixed(0)} % массы)</dd>
       <dt>Ручной работы</dt><dd><b>${partsHandMinutes(parts)} мин</b> на изделие сверх формовки корпуса <span class="dim">(умолчание инструмента)</span></dd>
       ${fill}
+      ${spouts}
     </dl>
     <p class="mat-note">Порядок: корпус на круге → подвялить до кожетвёрдости → прилепы →
       медленная сушка под плёнкой → утиль → глазурь. Прилеп делают из той же массы
@@ -158,8 +166,8 @@ export function updateMechanics() {
         <div class="make-title">${icon(PART_KINDS[k].ico, 14)}${PART_KINDS[k].name}</div>
         <ol class="make-steps">${PART_KINDS[k].make.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
       </div>`).join('')}
-    <p class="note">Отверстие под носик и ситечко в модели не строятся — их прорезают
-      по месту. Оснастка и G-code считаются по корпусу: прилепы делают отдельно.</p>`;
+    <p class="note">Ситечко режут по кожетвёрдому — тогда глина режется, а не крошится.
+      Оснастка и G-code считаются по корпусу: прилепы делают отдельно.</p>`;
 }
 
 export function initParts() {

@@ -15,6 +15,7 @@ import { buildPot } from '../js/core/geometry.js';
 import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap,
          partsHandMinutes, fillLevelY, fillLimitedBy, partMouldEstimate,
          partsVolumeMl } from '../js/core/parts.js';
+import { strainerHoles, strainerSpec, strainerWarnings, rimIndex } from '../js/core/strainer.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
 import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';
@@ -264,6 +265,49 @@ state.wall = 6;
   const boxL = est.boxMM[0] * est.boxMM[1] * est.boxMM[2] / 1e6;
   if (!(est.netL > 0 && est.netL < boxL)) P('гипса в форме должно быть меньше объёма блока');
   if (!(est.boxMM.every(v => v > 20))) P('габарит формы под прилеп подозрительно мал');
+}
+state.parts = [];
+setShape(PRESETS[1].pts, 220, 160);
+
+/* ---------- отверстие с ситечком ---------- */
+{
+  setShape(PRESETS[1].pts, 220, 160);
+  state.wall = 5; state.hollow = true; state.stage = 6;
+  const sp = sanitizePart({kind: 'spout', az: 0, at: 0.62, len: 60, rise: 22, bore: 16, tip: 8, mesh: 7});
+  state.parts = [sp];
+
+  const h = strainerHoles(sp);
+  if (h.count !== 7) P(`ситечко на 7 отверстий дало ${h.count}`);
+  if (!(h.ratio > 0 && h.ratio < 3)) P(`живое сечение ${h.ratio.toFixed(2)} вне разумного`);
+  const wide = strainerHoles({...sp, mesh: 13});
+  if (!(wide.ratio > h.ratio)) P('больше отверстий — больше живого сечения');
+  const one = strainerHoles({...sp, mesh: 1});
+  if (one.count !== 1) P('одно отверстие должно оставаться одним');
+  if (!(one.holes[0].r * 2 > h.holes[0].r * 2)) P('единственное отверстие должно быть шире дырочки решета');
+
+  const built = buildPot(state);
+  if (!(built.strainers && built.strainers.length === 1)) P('разметка ситечка не построилась');
+  const spec = built.strainers[0];
+  const jRim = rimIndex(built.path);
+  if (!(spec.box.jOut1 <= jRim && spec.box.jIn0 >= jRim))
+    P('вырез должен лежать по одну сторону кромки на каждой стенке');
+  if (!(spec.box.i1 > spec.box.i0)) P('вырез по кругу пустой');
+  if (!(spec.holes.every(x => Math.hypot(x.x, x.y) + x.r < spec.holes[0].r + spec.field * 1.2)))
+    P('дырочки вылезают за поле ситечка');
+
+  // тело вращения обязано отдать клетки под вырез
+  const noHole = buildPot({...state, parts: []});
+  const withHole = buildPot(state);
+  if (!(withHole.geometry.index.count < noHole.geometry.index.count))
+    P('вырез не убрал ни одного треугольника из тела');
+
+  // предупреждения: узкое решето душит носик
+  state.parts = [{...sp, mesh: 3}];
+  if (!strainerWarnings(state).some(x => /живое сечение/.test(x.txt))) P('узкое ситечко — нет замечания о сечении');
+  state.parts = [{...sp, mesh: 13, bore: 8}];
+  if (!strainerWarnings(state).some(x => /забьются/.test(x.txt))) P('мелкие дырочки — нет замечания о засоре');
+  state.parts = [sp];
+  if (strainerWarnings(state).some(x => x.lvl === 'bad')) P('нормальное ситечко ругаться не должно');
 }
 state.parts = [];
 setShape(PRESETS[1].pts, 220, 160);

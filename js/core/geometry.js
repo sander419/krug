@@ -4,6 +4,7 @@ import { userProfileMM, radiusAt, N_SAMP } from './math.js';
 import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
 import { buildLathe, applyLips } from './lathe.js';
+import { strainerSpec } from './strainer.js';
 
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
@@ -94,7 +95,18 @@ export function buildPot(state, reuse){
   const t=state.wall*(1+1.4*clamp((4-u)/2,0,1));
 
   const path=buildPath(state,prof,{t,open,deep,cut});
-  const geometry=buildLathe(path,state.segments,reuse);
+
+  /* Отверстия под носики режут по кожетвёрдому — то есть тогда же, когда
+     прилепляют сам носик. Раньше этапа подрезки стенка ещё сырая и глухая. */
+  const specs=(state.stage>=5 && state.hollow && t>0)
+    ? (state.parts||[]).filter(p=>p.kind==='spout')
+        .map(p=>strainerSpec(prof,path,state.segments,p,state.wall)).filter(Boolean)
+    : [];
+  const skip=specs.flatMap(sp=>[
+    {i0:sp.box.i0, i1:sp.box.i1, j0:sp.box.jOut0, j1:sp.box.jOut1},
+    {i0:sp.box.i0, i1:sp.box.i1, j0:sp.box.jIn0,  j1:sp.box.jIn1},
+  ]);
+  const geometry=buildLathe(path,state.segments,reuse,skip);
   // слив оттягивают на круге, пока изделие сырое — раньше, чем прилепляют ручки
   const lips=(state.parts||[]).filter(p=>p.kind==='lip');
   if(lips.length){
@@ -103,5 +115,5 @@ export function buildPot(state, reuse){
   }
   const shrink=byId(state.mat).shrinkPct;
   const scale=1-(u>5?smooth(u-5)*shrink/100:0);
-  return {path, geometry, scale, baseR};
+  return {path, geometry, scale, baseR, strainers:specs};
 }

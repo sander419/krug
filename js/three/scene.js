@@ -9,6 +9,7 @@ import { byGlazeId } from '../config/glazes.js';
 import { coatProfile } from '../core/glazeCoat.js';
 import { partCurve, partSection } from '../core/parts.js';
 import { sweepGeometry } from './sweep.js';
+import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
@@ -16,7 +17,7 @@ import { byEnvId } from '../config/environments.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
 let groundMat, baseMat, shaftMat, hemi, keyLight, dome, grid;
-let groundMesh, baseMesh, shaftMesh, partsGroup;
+let groundMesh, baseMesh, shaftMesh, partsGroup, strainMesh;
 let envId='workshop', themeNow='dark';   // окружение и тема меняют сцену вместе
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
@@ -326,6 +327,11 @@ export const sceneAPI = {
 
     partsGroup=new THREE.Group();
     wheelGroup.add(partsGroup);
+
+    strainMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
+    strainMesh.castShadow=strainMesh.receiveShadow=true;
+    strainMesh.visible=false;
+    wheelGroup.add(strainMesh);
   },
 
   /* Сцена живёт по ту же сторону переключателя тем, что и вёрстка: на светлой
@@ -367,6 +373,18 @@ export const sceneAPI = {
     potMesh.scale.setScalar(built.scale);
     potMesh.updateMatrix();
     lastBaseR=built.baseR;
+    // стенка с отверстиями кладётся на место вырезанного куска тела
+    const sg=(!previewPath && built.strainers && built.strainers.length)
+      ? strainerGeometry(built.path, state.segments, built.strainers) : null;
+    strainMesh.geometry.dispose();
+    strainMesh.geometry=sg||new THREE.BufferGeometry();
+    strainMesh.visible=!!sg;
+    strainMesh.material=potMesh.material;
+    strainMesh.scale.copy(potMesh.scale);
+    if(sg){
+      const n=sg.attributes.position.count;
+      sg.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
+    }
     rebuildParts(state);
     rebuildPlaten(built.baseR);
     camDirty=true;
@@ -385,6 +403,7 @@ export const sceneAPI = {
     const glazed = state.firing==='glaze' && !state.heatmap && !previewPath;
     potMesh.material = glazed ? glazeMat : clayMat;
     if(partsGroup) for(const m of partsGroup.children) m.material=potMesh.material;
+    if(strainMesh) strainMesh.material=potMesh.material;
     if(glazed){ applyGlazeLook(glazeMat, byGlazeId(state.glazeId), c.bisque); return; }
     if(state.heatmap){
       clayMat.color.set(0xffffff);clayMat.roughness=.6;clayMat.metalness=0;return;
@@ -458,6 +477,7 @@ export const sceneAPI = {
 
   pot:()=>potMesh,
   parts:()=>partsGroup,
+  strainer:()=>strainMesh,
   renderer:()=>renderer,
   scene:()=>scene,
   camera:()=>camera,

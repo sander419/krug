@@ -19,9 +19,27 @@
 // нормали фасетов, а слайсеры на вывернутых нормалях спотыкаются.
 import * as THREE from 'three';
 
-export function buildLathe(points, segments, reuse) {
+/** Попадает ли клетка (i, j) в один из вырезов. i считается по кругу. */
+function isSkipped(skip, segments, i, j) {
+  if (!skip || !skip.length) return false;
+  for (const b of skip) {
+    const w = ((i - b.i0) % segments + segments) % segments;
+    if (w < ((b.i1 - b.i0) % segments + segments) % segments && j >= b.j0 && j < b.j1) return true;
+  }
+  return false;
+}
+
+/**
+ * @param skip прямоугольники параметров, которые не заполняются треугольниками:
+ *             на их место кладётся отдельный кусок поверхности с отверстиями.
+ */
+export function buildLathe(points, segments, reuse, skip) {
   const n = points.length, rows = segments + 1;
-  const vertCount = rows * n, triCount = segments * (n - 1) * 2;
+  const vertCount = rows * n;
+  let triCount = 0;
+  for (let i = 0; i < segments; i++)
+    for (let j = 0; j < n - 1; j++)
+      if (!isSkipped(skip, segments, i, j)) triCount += 2;
 
   let geo = reuse;
   const fits = geo && geo.attributes.position && geo.attributes.position.count === vertCount
@@ -36,6 +54,7 @@ export function buildLathe(points, segments, reuse) {
     let k = 0;
     for (let i = 0; i < segments; i++) {
       for (let j = 0; j < n - 1; j++) {
+        if (isSkipped(skip, segments, i, j)) continue;
         const base = j + i * n;
         const a = base, b = base + n, c = base + n + 1, d = base + 1;
         idx[k++] = a; idx[k++] = b; idx[k++] = d;
