@@ -13,8 +13,10 @@ import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
 import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap,
-         partsHandMinutes, fillLevelY, fillLimitedBy, partMouldEstimate,
+         partsHandMinutes, fillLevelY, fillLimitedBy,
          partsVolumeMl } from '../js/core/parts.js';
+import { partMouldGeometry, partMouldBlock } from '../js/three/partMould.js';
+import { kindOf } from '../js/config/parts.js';
 import { strainerHoles, strainerSpec, strainerWarnings, rimIndex } from '../js/core/strainer.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
@@ -251,20 +253,58 @@ state.wall = 6;
   if (fillLimitedBy(prof, [lip]) !== 'lip') P('налив режет слив, а не что-то другое');
   if (Math.abs(fillLevelY(prof, [lip]) - (prof[prof.length - 1].y - lip.drop)) > 0.01)
     P('уровень налива со сливом не совпадает с опущенной кромкой');
-  if (partMouldEstimate(prof, lip) !== null) P('сливу гипсовая форма не нужна');
+  if (!kindOf(lip).deform) P('слив должен быть деформацией, а не приставной деталью');
   state.wall = 12;
   if (!partsWarnings(state, prof).some(w => /оттянуть/.test(w.txt))) P('толстую кромку оттянуть нельзя — нет замечания');
   state.wall = 6;
   state.parts = [{...lip, drop: 0}];
   if (!partsWarnings(state, prof).some(w => /не опущена/.test(w.txt))) P('слив без понижения кромки — нет замечания');
 
-  /* форма под прилеп: блок больше детали, гипса меньше блока */
+  /* полуформа под прилеп: замкнутое тело, канавка внутри блока */
   state.parts = [h];
-  const est = partMouldEstimate(prof, h);
-  if (!(est && est.halves === 2)) P('форма под ручку должна быть из двух половин');
-  const boxL = est.boxMM[0] * est.boxMM[1] * est.boxMM[2] / 1e6;
-  if (!(est.netL > 0 && est.netL < boxL)) P('гипса в форме должно быть меньше объёма блока');
-  if (!(est.boxMM.every(v => v > 20))) P('габарит формы под прилеп подозрительно мал');
+  for (const p of [h, sanitizePart({kind: 'spout', az: 0})]) {
+    const blk = partMouldBlock(prof, p, 20);
+    if (!(blk.blockMM.every(v => v > 20))) P('габарит полуформы подозрительно мал');
+    const m = partMouldGeometry(prof, p, 20);
+    const pos = m.geometry.attributes.position;
+    let vol = 0;
+    const a1 = new THREE.Vector3(), b1 = new THREE.Vector3(), c1 = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i += 3) {
+      a1.fromBufferAttribute(pos, i); b1.fromBufferAttribute(pos, i + 1); c1.fromBufferAttribute(pos, i + 2);
+      vol += a1.dot(b1.clone().cross(c1)) / 6;
+    }
+    const solidL = vol / 1e6, halfPartL = partMetrics(prof, p).volMl / 2000;
+    if (!(solidL > 0)) P(`полуформа ${p.kind}: нормали смотрят внутрь, STL уйдёт вывернутым`);
+    if (!(solidL < blk.boxL)) P(`полуформа ${p.kind}: канавка не убавила объём блока`);
+    if (Math.abs((blk.boxL - solidL) - halfPartL) > halfPartL * 0.12)
+      P(`полуформа ${p.kind}: канавка не совпадает с половиной детали (${((blk.boxL - solidL) * 1000).toFixed(1)} против ${(halfPartL * 1000).toFixed(1)} см³)`);
+
+    /* Замкнутость и ориентация: гипс льют по этой модели, а печатают по STL.
+       Дырка в сетке или вывернутый треугольник ломают и то и другое, а на глаз
+       не видны — эта проверка их и поймала. */
+    const key = i => [pos.getX(i), pos.getY(i), pos.getZ(i)].map(v => Math.round(v * 100) / 100).join(',');
+    const dirs = new Map();
+    for (let i = 0; i < pos.count; i += 3) {
+      const k = [key(i), key(i + 1), key(i + 2)];
+      for (let e = 0; e < 3; e++) {
+        const id = k[e] + '>' + k[(e + 1) % 3];
+        dirs.set(id, (dirs.get(id) || 0) + 1);
+      }
+    }
+    let open = 0, flipped = 0;
+    for (const [id, n] of dirs) {
+      if (n > 1) flipped++;
+      const [a, b] = id.split('>');
+      if (!dirs.has(b + '>' + a)) open++;
+    }
+    if (open) P(`полуформа ${p.kind}: ${open} рёбер без пары — тело не замкнуто`);
+    if (flipped) P(`полуформа ${p.kind}: ${flipped} рёбер повторяются — треугольники смотрят в разные стороны`);
+    m.geometry.computeBoundingBox();
+    const bb = m.geometry.boundingBox;
+    if (!(bb.min.y > -0.01)) P(`полуформа ${p.kind}: блок должен стоять на нуле`);
+    if (Math.abs((bb.max.y - bb.min.y) - blk.depth) > 0.01) P(`полуформа ${p.kind}: высота блока не сходится`);
+    m.geometry.dispose();
+  }
 }
 state.parts = [];
 setShape(PRESETS[1].pts, 220, 160);

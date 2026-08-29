@@ -4,7 +4,7 @@
 import { state } from '../core/state.js';
 import { onChange, emit as emitRefresh } from '../core/bus.js';
 import { computeProduction } from '../core/math.js';
-import { partsHandMinutes, partMouldEstimate } from '../core/parts.js';
+import { partsHandMinutes, partMetrics } from '../core/parts.js';
 import { userProfileMM } from '../core/math.js';
 import { kindOf } from '../config/parts.js';
 import { analyzeFormability, recommendProcess, checks, toolingNumbers,
@@ -17,7 +17,8 @@ import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js
 import { $, esc, num, dec, rub } from './dom.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
-import { exportPathSTL } from '../three/exporters.js';
+import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
+import { partMouldGeometry, partMouldBlock } from '../three/partMould.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -160,25 +161,70 @@ function renderPlaster(stock) {
     (cost ? `<br>Материал формы ≈ ${rub(cost)} по цене ${Math.round(p.priceRub / p.packKg)} ₽/кг` : '') +
     `<br><span class="dim">Замешать и разлить надо за ${dec(p.setMin[0])}–${dec(p.setMin[1])} минут: после конца схватывания раствор уже не течёт.</span>` +
     partsMouldHTML(waterRatio, p);
+  bindPartMoulds();
 }
 
-/* Прилепы формуются отдельно от корпуса: у каждого своя маленькая форма
-   из двух половин. Числа оценочные — это порядок величины, а не чертёж. */
+const MOULD_WALL = 20;      // мм гипса вокруг детали
+
+const partVolumeL = (prof, p) => partMetrics(prof, p).volMl / 1000;
+let partPreview = null;      // прилеп, чью форму сейчас показываем
+
+/* Прилепы формуются отдельно от корпуса: у каждого своя форма из двух половин.
+   Половину можно посмотреть в 3D и выгрузить в STL — это уже тело с канавкой,
+   а не прикидка габарита. */
 function partsMouldHTML(waterRatio, plaster) {
   const list = (state.parts || []).filter(p => !kindOf(p).deform);
   if (!list.length) return '';
   const prof = userProfileMM(state);
+  let total = 0;
   const rows = list.map((p, i) => {
-    const e = partMouldEstimate(prof, p);
-    const mix = plasterMix(e.netL, waterRatio);
-    return `<li>${kindOf(p).name} ${i + 1}: блок ${e.boxMM.map(v => Math.round(v)).join('×')} мм,
-      две половины, гипса <b>${num(mix.plasterKg, 1)} кг</b></li>`;
+    const m = partMouldBlock(prof, p, MOULD_WALL);
+    const halfL = Math.max(m.boxL - partVolumeL(prof, p) / 2, 0);
+    const mix = plasterMix(halfL, waterRatio);
+    total += mix.plasterKg * 2;
+    return `<li>${kindOf(p).name} ${i + 1}: блок ${m.blockMM.map(v => Math.round(v)).join('×')} мм на половину,
+      гипса <b>${num(mix.plasterKg, 1)} кг</b> на каждую
+      <button class="btn small" data-mould-show="${i}">Показать</button>
+      <button class="btn small" data-mould-stl="${i}">STL</button></li>`;
   }).join('');
-  const total = list.reduce((s2, p) => s2 + plasterMix(partMouldEstimate(prof, p).netL, waterRatio).plasterKg, 0);
-  return `<br><span class="dim">Формы под прилепы (оценка, разъём по плоскости детали):</span>
+  return `<br><span class="dim">Формы под прилепы: две половины, разъём по плоскости детали.</span>
     <ul class="parts-moulds">${rows}</ul>
-    <span class="dim">Итого на комплект прилепов ${num(total, 1)} кг гипса. Ресурс таких форм
+    <span class="dim">Итого на комплект ${num(total, 1)} кг гипса. Замки, штифты, воздушные каналы
+    и облойная канавка не строятся — их закладывает изготовитель оснастки. Ресурс таких форм
     не подтверждён: их меняют по состоянию, а не по числу циклов.</span>`;
+}
+
+/* Кнопки «показать» и «STL» у форм под прилепы. Вешаются после каждой
+   перерисовки: разметка блока пересобирается целиком. */
+function bindPartMoulds() {
+  const list = (state.parts || []).filter(p => !kindOf(p).deform);
+  const prof = userProfileMM(state);
+  $('plasterMix').querySelectorAll('[data-mould-show]').forEach(b => {
+    b.onclick = () => {
+      const p = list[+b.dataset.mouldShow];
+      if (!p) return;
+      partPreview = partPreview === p ? null : p;
+      if (partPreview) {
+        part = 'ware';
+        sceneAPI.setPreviewMesh(partMouldGeometry(prof, p, MOULD_WALL).geometry);
+        toast(`Половина формы под «${kindOf(p).name.toLowerCase()}»: разъём вверх`);
+      } else {
+        sceneAPI.setPreviewMesh(null);
+      }
+      emitRefresh();
+      render();
+    };
+  });
+  $('plasterMix').querySelectorAll('[data-mould-stl]').forEach(b => {
+    b.onclick = () => {
+      const p = list[+b.dataset.mouldStl];
+      if (!p) return;
+      const m = partMouldGeometry(prof, p, MOULD_WALL);
+      exportGeoSTL(state, m.geometry, `форма-${kindOf(p).name.toLowerCase()}`);
+      m.geometry.dispose();
+      toast('STL половины формы сохранён · вторая половина зеркальная');
+    };
+  });
 }
 
 function renderEconomics(prod, procId, mat) {
@@ -241,7 +287,7 @@ export function initTooling() {
     toast(`Диаметр на круге ${num(raw, 1)} мм — после обжига будет ⌀${num(target, 0)} мм`);
   };
   $('toolPartSeg').querySelectorAll('button').forEach(b => {
-    b.onclick = () => { part = b.dataset.part; applyPreview(); render(); };
+    b.onclick = () => { part = b.dataset.part; partPreview = null; sceneAPI.setPreviewMesh(null); applyPreview(); render(); };
   });
   for (const [id, key] of [['mouldWall', 'wallMM'], ['mouldBase', 'baseMM'], ['mouldRim', 'rimMM']]) {
     const el = $(id);

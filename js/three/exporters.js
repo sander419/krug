@@ -111,6 +111,11 @@ export function exportSTL(state){
   geo.dispose();
 }
 
+/* Полуформа прилепа: готовая геометрия -> STL. */
+export function exportGeoSTL(state, geometry, suffix){
+  download(stlBlob(geometry), fileName(state, suffix+'.stl'));
+}
+
 /* Оснастка: контур сечения -> тело вращения -> STL. */
 export function exportPathSTL(state, path, suffix){
   const pts=path.map(p=>new THREE.Vector2(Math.max(p.r,0.01),p.y));

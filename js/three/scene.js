@@ -24,6 +24,7 @@ let camDirty=true;   // камера или модель сдвинулись �
 let platenMat, lastPlatenR=0, lastBaseR=80;
 let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
 let previewPath=null; // контур оснастки: пока задан, в сцене показывается он, а не изделие
+let previewGeo=null;  // готовая геометрия (полуформа прилепа): она не тело вращения
 
 /* Подставка под изделием — часть окружения: гончарный круг, подиум, доска,
    полка печи. Геометрия одна, меняются пропорции и материал. */
@@ -141,7 +142,7 @@ function applyEnv(){
    вместе с корпусом. Каждый повёрнут вокруг оси на свой азимут. */
 function rebuildParts(state){
   // слив живёт в корпусе (см. applyLips), отдельного тела у него нет
-  const parts=(!previewPath && state.stage>=5) ? (state.parts||[]).filter(p=>p.kind!=='lip') : [];
+  const parts=(!previewPath && !previewGeo && state.stage>=5) ? (state.parts||[]).filter(p=>p.kind!=='lip') : [];
   while(partsGroup.children.length>parts.length){
     const m=partsGroup.children.pop();
     m.geometry.dispose();
@@ -358,11 +359,34 @@ export const sceneAPI = {
   },
 
   /* Показать в сцене оснастку (контур сечения) или вернуть изделие (null). */
-  setPreviewPath(path){ previewPath=path&&path.length>2?path:null; },
-  previewActive:()=>!!previewPath,
+  setPreviewPath(path){ previewPath=path&&path.length>2?path:null; if(previewPath) previewGeo=null; },
+  /* Показать в сцене произвольную геометрию (полуформу прилепа) вместо изделия. */
+  setPreviewMesh(geo){
+    if(previewGeo && previewGeo!==geo) previewGeo.dispose();
+    previewGeo=geo||null;
+    if(previewGeo) previewPath=null;
+  },
+  previewActive:()=>!!previewPath||!!previewGeo,
 
   rebuild(state, str){
     const prev=potMesh.geometry;
+    if(previewGeo){
+      // готовую геометрию не пересобираем: показываем как есть
+      if(prev!==previewGeo){ prev.dispose(); potMesh.geometry=previewGeo; }
+      potMesh.material=clayMat;
+      potMesh.scale.setScalar(1);
+      potMesh.updateMatrix();
+      lastProfile=[];
+      strainMesh.visible=false;
+      rebuildParts(state);
+      previewGeo.computeBoundingBox();
+      lastBaseR=Math.max(60, previewGeo.boundingBox.max.x, -previewGeo.boundingBox.min.x);
+      rebuildPlaten(lastBaseR);
+      camDirty=true;
+      renderer.shadowMap.needsUpdate=true;
+      keepInView();
+      return {tris: previewGeo.attributes.position.count/3};
+    }
     const built=previewPath?buildFromPath(previewPath,state):buildPot(state,prev);
     lastProfile=built.path.map(p=>({r:p.x,y:p.y}));
     if(state.heatmap && !previewPath) applyHeatmap(built.geometry, built.path, str||computeStrength(state));
@@ -400,7 +424,7 @@ export const sceneAPI = {
     }
     const c=byId(state.mat).colors;
     // политое изделие показываем шейдером глазури, всё остальное — глиной
-    const glazed = state.firing==='glaze' && !state.heatmap && !previewPath;
+    const glazed = state.firing==='glaze' && !state.heatmap && !previewPath && !previewGeo;
     potMesh.material = glazed ? glazeMat : clayMat;
     if(partsGroup) for(const m of partsGroup.children) m.material=potMesh.material;
     if(strainMesh) strainMesh.material=potMesh.material;

@@ -226,28 +226,6 @@ export function partsWarnings(state, prof) {
   return w;
 }
 
-/** Прикидка гипсовой формы под деталь: блок вокруг габарита плюс стенка,
-    разъём по плоскости детали — две половины. Числа оценочные: настоящую форму
-    считает изготовитель оснастки, здесь только порядок величины. */
-export function partMouldEstimate(prof, p, wallMM = 20) {
-  if (kindOf(p).deform) return null;              // слив формы не требует
-  const pts = partCurve(prof, p).getPoints(24);
-  const sec = partSection(p);
-  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, rMax = 0;
-  pts.forEach((v, i) => {
-    const r = sec.rAt(i / (pts.length - 1));
-    rMax = Math.max(rMax, r);
-    minX = Math.min(minX, v.x - r); maxX = Math.max(maxX, v.x + r);
-    minY = Math.min(minY, v.y - r); maxY = Math.max(maxY, v.y + r);
-  });
-  const w = (maxX - minX) + wallMM * 2;
-  const h = (maxY - minY) + wallMM * 2;
-  const d = rMax * 2 * sec.ratio + wallMM * 2;
-  const boxMl = w * h * d / 1000;
-  const netL = Math.max(boxMl - partMetrics(prof, p).volMl, 0) / 1000;
-  return {halves: 2, boxMM: [w, h, d], netL};
-}
-
 /** Сколько ручной работы добавляют прилепы: минут на изделие. */
 export const HAND_MIN_PER_PART = {handle: 4, spout: 6, lip: 2};
 export function partsHandMinutes(parts) {

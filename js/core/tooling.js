@@ -3,7 +3,8 @@
 // пересчёт размеров через усадку, усилие пресса, масса заготовки.
 // Чистая логика, без DOM. Единицы — мм, граммы, если не сказано иначе.
 import { userProfileMM, floorY } from './math.js';
-import { partMetrics, partsHandMinutes, partMouldEstimate } from './parts.js';
+import { partMetrics, partsHandMinutes } from './parts.js';
+import { partMouldBlock } from '../three/partMould.js';
 import { strainerHoles } from './strainer.js';
 import { kindOf as partKind } from '../config/parts.js';
 import { byId as materialById } from '../config/materials.js';
@@ -312,13 +313,13 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
         L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ширина ${p.width}°, отгиб ${fmt(p.out)} мм, кромка ниже на ${fmt(p.drop)} мм (отгибается, не приставляется)`);
         return;
       }
-      const est = partMouldEstimate(prof, p);
-      const pm = est ? plasterMix(est.netL, wr) : null;
+      const blk = partMouldBlock(prof, p, 20);
+      const pm = plasterMix(Math.max(blk.boxL - m.volMl / 2000, 0), wr);
       const geom = p.kind === 'spout'
         ? `корень на высоте ${fmt(p.at * 100)} % (${fmt(p.at * state.H)} мм), длина ${fmt(p.len)} мм, подъём ${p.rise}°, ⌀ ${fmt(p.bore)}→${fmt(p.tip)} мм`
         : `прилепы ${fmt(p.top * 100)} %–${fmt(p.bot * 100)} % высоты, вылет ${fmt(p.out)} мм, лента ${fmt(p.thick)}×${fmt(p.wide)} мм`;
       L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ${geom}; глины ${Math.round(m.volMl * 1.92)} г` +
-        (pm ? `; форма из двух половин, блок ${est.boxMM.map(v => Math.round(v)).join('×')} мм, гипса ${fmt(pm.plasterKg)} кг` : ''));
+        `; форма из двух половин, блок ${blk.blockMM.map(v => Math.round(v)).join('×')} мм на половину, гипса ${fmt(pm.plasterKg)} кг на каждую`);
       if (p.kind === 'spout') {
         const h = strainerHoles(p);
         L.push(`  - Ситечко: ${h.count} отв. ⌀${fmt(h.holeD)} мм, живое сечение ${Math.round(h.ratio * 100)} % от носика; режется по кожетвёрдому до прилепки носика`);
