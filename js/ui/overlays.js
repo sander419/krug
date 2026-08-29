@@ -58,6 +58,13 @@ export function updateWarnings(list){
      сколько замечаний и сколько из них важных, а сам текст — в подсказке
      и на панели, куда ведёт нажатие. */
   const bad=list.filter(w=>w.lvl==='bad').length;
+  /* Счётчик в заголовке: свёрнутые замечания не должны исчезать бесследно. */
+  const c=$('warnCount');
+  if(c){
+    const k=list.filter(w=>w.lvl!=='ok').length;
+    c.textContent = k ? `${k} ${plural(k,'замечание','замечания','замечаний')}` : 'всё чисто';
+    c.className='foot-count '+(bad?'bad':k?'warn':'ok');
+  }
   const cnt=list.filter(w=>w.lvl!=='ok').length;
   const label = !cnt ? 'Мастер одобряет'
     : `${cnt} ${plural(cnt,'замечание','замечания','замечаний')}` + (bad?` · ${bad} ${plural(bad,'важное','важных','важных')}`:'');

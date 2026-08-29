@@ -25,17 +25,6 @@
   <button class="btn icon head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)" aria-label="Поиск по инструменту"></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
-    <div class="view-group" role="group" aria-label="Вид">
-      <button class="btn icon" id="themeBtn" title="Тема"></button>
-      <button class="btn icon" id="uiDownBtn" title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
-      <div class="env-wrap">
-        <button class="btn icon" id="envBtn" data-icon="image" aria-haspopup="true" aria-expanded="false" aria-label="Окружение"></button>
-        <div class="env-pop" id="envPop" role="menu" aria-label="Окружение вокруг модели"></div>
-      </div>
-      <button class="btn icon" id="guideBtn" data-icon="circle-help" title="Как здесь работать" aria-label="Как здесь работать"></button>
-      <button class="btn icon" id="resetLayoutBtn" data-icon="rotate-ccw" title="Сбросить раскладку: ширины колонок и порядок блоков" aria-label="Сбросить раскладку"></button>
-      <button class="btn icon" id="uiUpBtn" title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
-    </div>
     <div class="undo-group" role="group" aria-label="Отмена">
       <button class="btn icon" id="undoBtn" data-icon="undo-2" title="Отменить (Ctrl+Z)" aria-label="Отменить" disabled></button>
       <button class="btn icon" id="redoBtn" data-icon="redo-2" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить" disabled></button>
@@ -43,18 +32,51 @@
     <span class="menu-cap">Название изделия</span>
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
     <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>
-    <button data-icon="camera" class="btn" id="snapBtn" title="Снимок вида в PNG"><span class="btn-label">Снимок</span></button>
     <div class="works-wrap">
-      <button class="btn" id="worksBtn" data-icon="folder-open" aria-haspopup="true" aria-expanded="false" title="Сохранённые работы">Работы</button>
+      <button class="btn" id="worksBtn" data-icon="folder-open" aria-haspopup="true" aria-expanded="false" title="Сохранённые работы (Ctrl+S — сохранить)">Работы</button>
       <div class="works-pop" id="worksPop" role="menu" aria-label="Сохранённые работы"></div>
     </div>
-    <button class="btn" id="dnaBtn" data-icon="dna" title="ДНК формы — рецепт передаётся ссылкой"><span class="btn-label">ДНК</span></button>
-    <button class="btn" id="embedBtn" data-icon="code" title="Код встраивания 3D-витрины (iframe)"><span class="btn-label">Встроить</span></button>
+    <div class="env-wrap">
+      <button class="btn icon" id="envBtn" data-icon="image" aria-haspopup="true" aria-expanded="false" aria-label="Окружение"></button>
+      <div class="env-pop" id="envPop" role="menu" aria-label="Окружение вокруг модели"></div>
+    </div>
+
+    <!-- вид: тема, масштаб, раскладка, подсказка — всё, что настраивают раз и забывают -->
+    <div class="pop-wrap">
+      <button class="btn icon" id="viewBtn" data-icon="sliders-horizontal" aria-haspopup="true"
+              aria-expanded="false" title="Вид: тема, масштаб, раскладка" aria-label="Вид"></button>
+      <div class="head-pop" id="viewPop" role="menu" aria-label="Вид">
+        <div class="pop-row">
+          <span>Тема</span>
+          <button class="btn icon" id="themeBtn" data-keep-open title="Тема"></button>
+        </div>
+        <div class="pop-row">
+          <span>Масштаб интерфейса</span>
+          <span class="seg">
+            <button id="uiDownBtn" data-keep-open title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
+            <button id="uiUpBtn" data-keep-open title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
+          </span>
+        </div>
+        <button class="pop-item" id="resetLayoutBtn" data-icon="rotate-ccw"
+                title="Ширины колонок и порядок блоков — как было">Сбросить раскладку</button>
+        <button class="pop-item" id="guideBtn" data-icon="circle-help">Как здесь работать</button>
+      </div>
+    </div>
+
     <div class="export-group" role="group" aria-label="Экспорт модели">
       <span class="export-label" data-icon="download" data-icon-size="15">Экспорт</span>
       <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
-      <button class="btn" id="objBtn" title="OBJ — для 3D-редакторов">OBJ</button>
-      <button class="btn" id="glbBtn" title="GLB — универсальный формат">GLB</button>
+      <div class="pop-wrap">
+        <button class="btn icon" id="exportMoreBtn" data-icon="ellipsis" aria-haspopup="true"
+                aria-expanded="false" title="Другие выгрузки и ссылки" aria-label="Другие выгрузки"></button>
+        <div class="head-pop" id="exportPop" role="menu" aria-label="Другие выгрузки">
+          <button class="pop-item" id="objBtn" data-icon="box">OBJ — для 3D-редакторов</button>
+          <button class="pop-item" id="glbBtn" data-icon="package">GLB — вид как на экране</button>
+          <button class="pop-item" id="snapBtn" data-icon="camera">Снимок вида в PNG</button>
+          <button class="pop-item" id="dnaBtn" data-icon="dna">ДНК формы — ссылкой</button>
+          <button class="pop-item" id="embedBtn" data-icon="code">Код встраивания витрины</button>
+        </div>
+      </div>
     </div>
   </div>
 </header>
@@ -389,10 +411,10 @@
       </section>
     </div>
 
-    <div class="panel-foot">
-      <h2 class="foot-title">Контроль мастера</h2>
+    <details class="panel-foot" id="panelFoot" open>
+      <summary class="foot-title">Контроль мастера<span class="foot-count" id="warnCount"></span></summary>
       <div class="warn-list" id="warnList"></div>
-    </div>
+    </details>
     </div>
   </aside>
 

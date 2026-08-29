@@ -77,8 +77,19 @@ export function initTabs(){
   show(tabs.some(t=>t.dataset.tab===saved)?saved:'form');
 }
 
-/* Свёрнутые блоки запоминаются: человек настраивает панель под себя один раз. */
+/* Свёрнутые блоки запоминаются: человек настраивает панель под себя один раз.
+   «Контроль мастера» — такой же блок: свёрнутым он отдаёт треть высоты панели,
+   а сколько там замечаний, видно по счётчику в заголовке. */
 export function initBlocks(){
+  const foot=$('panelFoot');
+  if(foot){
+    let saved=null;
+    try{saved=localStorage.getItem('krug.foot');}catch(_){}
+    if(saved==='0') foot.open=false;
+    foot.addEventListener('toggle',()=>{
+      try{localStorage.setItem('krug.foot',foot.open?'1':'0');}catch(_){}
+    });
+  }
   document.querySelectorAll('.tabpane').forEach(pane=>{
     const tab=pane.dataset.pane;
     [...pane.querySelectorAll('details.block')].forEach(d=>{

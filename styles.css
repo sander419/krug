@@ -90,7 +90,9 @@ a{color:var(--accent2);text-decoration-thickness:from-font;text-underline-offset
 header{
   display:flex;align-items:center;gap:var(--gap-3);flex-wrap:wrap;
   padding:10px 18px;border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg,var(--headA),var(--headB));z-index:5;
+  /* z-index выше строки метрик: та идёт следующей в потоке и накрывала собой
+     выпадающее меню шапки на телефоне — нижние пункты становились недоступны */
+  background:linear-gradient(180deg,var(--headA),var(--headB));z-index:30;
 }
 .logo{
   width:36px;height:36px;border-radius:50%;flex:none;position:relative;
@@ -135,6 +137,29 @@ header{
 .view-group .btn{border-color:transparent;background:none;}
 .view-group .btn:hover{border-color:var(--accent);background:var(--panel2);}
 .export-group{display:flex;gap:6px;align-items:center;}
+/* Меню в шапке: восемнадцать кнопок в ряд — это не «всё под рукой», а стена.
+   Часто нужное осталось снаружи, редкое ушло сюда. Позицию ставит Floating UI. */
+.pop-wrap{position:relative;display:flex;}
+.head-pop{
+  display:none;position:fixed;top:0;left:0;z-index:45;min-width:min(280px,86vw);padding:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 18px 40px var(--shade);flex-direction:column;gap:2px;
+}
+.head-pop.open{display:flex;}
+.pop-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:6px 8px;font-size:var(--fs-sm);color:var(--muted);
+}
+.pop-row .seg{padding:3px;}
+.pop-row .seg button{min-width:36px;}
+.pop-item{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;cursor:pointer;
+  background:none;border:1px solid transparent;border-radius:8px;padding:8px 9px;
+  color:var(--text);font-size:var(--fs-sm);
+}
+.pop-item:hover{background:var(--panel2);border-color:var(--line);}
+.pop-item .ico{color:var(--muted2);flex:none;}
+.pop-item:hover .ico{color:var(--accent2);}
 .export-label{font-size:var(--fs-xs);color:var(--muted);}
 /* подпись поля в меню шапки: на широком экране поле и так стоит в ряду действий */
 .menu-cap{display:none;font-size:var(--fs-xs);color:var(--muted);}
@@ -410,14 +435,32 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 
 /* ---------- контроль мастера ---------- */
 .panel-foot{
-  border-top:1px solid var(--line);background:var(--strip);
+  border-top:1px solid var(--line);background:var(--strip);flex:none;
   padding:12px var(--gap-3) 14px;max-height:34vh;overflow-y:auto;scrollbar-width:thin;
 }
+.panel-foot:not([open]){padding-bottom:12px;}
+/* Замечания можно свернуть: на ноутбуке они держали треть высоты панели
+   постоянно, даже когда там «мастер одобряет». Сколько их — видно и свёрнутым. */
 .foot-title{
-  font-family:'Manrope',system-ui,sans-serif;
+  font-family:'Manrope',system-ui,sans-serif;list-style:none;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
   font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--accent);margin-bottom:var(--gap-2);
+  color:var(--accent);
 }
+.foot-title::-webkit-details-marker{display:none;}
+.foot-title::before{
+  content:"";width:7px;height:7px;flex:none;border-right:1.6px solid var(--accent);
+  border-bottom:1.6px solid var(--accent);transform:rotate(45deg);transition:transform .15s;
+}
+.panel-foot[open] .foot-title{margin-bottom:var(--gap-2);}
+.panel-foot[open] .foot-title::before{transform:rotate(-135deg);}
+.foot-count{
+  margin-left:auto;letter-spacing:0;text-transform:none;font-weight:600;
+  font-size:var(--fs-micro);color:var(--muted2);
+}
+.foot-count.bad{color:var(--bad);}
+.foot-count.warn{color:var(--warn);}
+.foot-count.ok{color:var(--ok);}
 .warn-list{display:flex;flex-direction:column;gap:8px;}
 .warn-item{
   display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-sm);line-height:1.5;
@@ -1180,10 +1223,19 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
   .head-right .btn{justify-content:center;min-height:44px;}
   #nameInput{width:100%;}
   .menu-cap{display:block;margin-bottom:-2px;}
-  .export-group{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  /* В меню всё в одну колонку и во всю ширину: половинчатые кнопки вперемешку
+     с иконками читаются как случайная сборка, а не как список действий. */
+  .export-group{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;}
   .export-label{display:block;grid-column:1/-1;margin-bottom:-2px;}
+  .head-right > .btn,.head-right .works-wrap,.head-right .env-wrap,.head-right .pop-wrap{width:100%;}
+  .head-right .works-wrap > .btn,.head-right .env-wrap > .btn{width:100%;}
+  .export-group .pop-wrap{width:auto;}
+  .undo-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   /* в меню у кнопок есть место на подпись — иконка без слова непонятна */
   #snapBtn .btn-label,#embedBtn .btn-label{display:inline;}
+  #envBtn::after{content:"Окружение";font-size:var(--fs-sm);font-weight:600;}
+  #viewBtn::after{content:"Вид: тема и масштаб";font-size:var(--fs-sm);font-weight:600;}
+  #envBtn,#viewBtn{gap:9px;}
 
   /* сцена: модель и чертёж занимают одно место, переключаются */
   main{display:flex;flex-direction:column;position:relative;

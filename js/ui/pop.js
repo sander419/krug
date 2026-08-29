@@ -28,3 +28,34 @@ export function anchorPop(btn, pop, opts = {}) {
   };
   return autoUpdate(btn, pop, place);
 }
+
+/* Кнопка с меню в шапке. Одна функция на все такие пары: открыть, закрыть
+   по клику мимо, по Esc и по выбору внутри, отцепить слежение при закрытии.
+   Каждая всплывашка, написанная заново, — это ещё один способ забыть про Esc. */
+export function popover(btn, pop, opts = {}) {
+  if (!btn || !pop) return;
+  let detach = null;
+  const close = () => {
+    if (!pop.classList.contains('open')) return;
+    pop.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    if (detach) { detach(); detach = null; }
+  };
+  const open = () => {
+    pop.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    detach = anchorPop(btn, pop, opts);
+  };
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    pop.classList.contains('open') ? close() : open();
+  });
+  /* Выбрал пункт — меню закрылось. Кроме тех, что жмут подряд: тему перебирают
+     по кругу, масштаб — по шагу, и закрывать меню на каждом шаге незачем. */
+  pop.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (b && !b.hasAttribute('data-keep-open')) close();
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('#' + pop.id + ',#' + btn.id)) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+}

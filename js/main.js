@@ -14,6 +14,7 @@ import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
 import { initPhoto } from './ui/photo.js';
 import { initTips } from './ui/tips.js';
+import { popover } from './ui/pop.js';
 import { initFinder } from './ui/finder.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent } from './ui/works.js';
@@ -157,6 +158,10 @@ step('тема',()=>initTheme());   // подписка раньше вызов�
 step('иконки',()=>paintIcons());
 step('подсказки',()=>initTips());
 step('поиск',()=>initFinder());
+step('меню шапки',()=>{
+  popover($('viewBtn'),$('viewPop'));
+  popover($('exportMoreBtn'),$('exportPop'));
+});
 step('раскладка',()=>initLayout());
 step('телефон',()=>initMobile());
 step('кинотеатр',()=>initCinema(refreshNow));
