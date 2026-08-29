@@ -19,6 +19,7 @@ const CHECKS = [
   ['Задачи',       'check-routes.mjs'],
   ['Линия',        'check-trace.mjs'],
   ['Картинка',     'check-silhouette.mjs'],
+  ['Автономность', 'check-offline.mjs'],
 ];
 
 let failed = 0;

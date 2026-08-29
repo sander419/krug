@@ -22,6 +22,7 @@
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
   <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
+  <button class="btn icon head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)" aria-label="Поиск по инструменту"></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
     <div class="view-group" role="group" aria-label="Вид">
@@ -462,6 +463,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= подсказка новичку ================= -->
+<div id="finderScreen" aria-hidden="true"></div>
 <div id="photoScreen" aria-hidden="true"></div>
 <div id="routeScreen" aria-hidden="true"></div>
 <div id="guide" aria-hidden="true"></div>
@@ -497,7 +499,9 @@
 {
   "imports": {
     "three": "./vendor/three/three.module.js",
-    "three/addons/": "./vendor/three/addons/"
+    "three/addons/": "./vendor/three/addons/",
+    "@floating-ui/dom": "./vendor/floating-ui/dom.mjs",
+    "@floating-ui/core": "./vendor/floating-ui/core.mjs"
   }
 }
 </script>

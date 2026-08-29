@@ -6,6 +6,7 @@
 // Всё лежит в localStorage этого браузера: сервера у КРУГа нет и не будет,
 // и человеку об этом сказано прямо — иначе «сохранено» читается как «в облаке».
 import { $, esc } from './dom.js';
+import { anchorPop } from './pop.js';
 import { icon } from './icons.js';
 import { state, encodeDNA, applyDNA } from '../core/state.js';
 
@@ -63,9 +64,12 @@ function render() {
   });
 }
 
+let detach = null;
+
 function close() {
   $('worksPop').classList.remove('open');
   $('worksBtn').setAttribute('aria-expanded', 'false');
+  if (detach) { detach(); detach = null; }   // иначе слежение висит после закрытия
 }
 
 export function initWorks(openedFn) {
@@ -78,6 +82,7 @@ export function initWorks(openedFn) {
     render();
     pop.classList.add('open');
     $('worksBtn').setAttribute('aria-expanded', 'true');
+    detach = anchorPop($('worksBtn'), pop);
   };
   document.addEventListener('click', e => { if (!e.target.closest('#worksPop,#worksBtn')) close(); });
   addEventListener('keydown', e => { if (e.key === 'Escape') close(); });

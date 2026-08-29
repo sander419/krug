@@ -46,7 +46,7 @@ function html() {
       <button class="btn primary" id="guideStart">Начать с шага «${list[0].name}»</button>
       <button class="btn" id="guideRoute">${icon(route.ico)}Сменить задачу</button>
       <button class="btn" id="guideLearn">${icon('graduation-cap')}Открыть обучение</button>
-      <span class="guide-hint">Вернуться к этой подсказке — кнопка «?» в шапке</span>
+      <span class="guide-hint">Кнопка «?» в шапке вернёт эту подсказку, <kbd>Ctrl</kbd>+<kbd>K</kbd> — поиск по инструменту</span>
     </div>
   </div>`;
 }

@@ -3,6 +3,7 @@
 // живёт рядом с темой и масштабом в шапке и хранится локально: в ДНК формы
 // ей делать нечего — ссылка передаёт изделие, а не свет в комнате.
 import { $ } from './dom.js';
+import { anchorPop } from './pop.js';
 import { icon } from './icons.js';
 import { ENVIRONMENTS, byEnvId } from '../config/environments.js';
 import { sceneAPI } from '../three/scene.js';
@@ -34,13 +35,17 @@ function select(id) {
   render();
 }
 
+let detach = null;
+
 function open() {
   $('envPop').classList.add('open');
   $('envBtn').setAttribute('aria-expanded', 'true');
+  detach = anchorPop($('envBtn'), $('envPop'), {placement: 'bottom'});
 }
 function close() {
   $('envPop').classList.remove('open');
   $('envBtn').setAttribute('aria-expanded', 'false');
+  if (detach) { detach(); detach = null; }   // иначе слежение висит после закрытия
 }
 
 export function initEnvironment() {

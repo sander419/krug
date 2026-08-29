@@ -13,6 +13,8 @@ import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
 import { initPhoto } from './ui/photo.js';
+import { initTips } from './ui/tips.js';
+import { initFinder } from './ui/finder.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
@@ -153,6 +155,8 @@ onTheme(t=>{                       // цвета canvas и сцены живут
 });
 step('тема',()=>initTheme());   // подписка раньше вызова: иначе сцена не узнает тему при запуске
 step('иконки',()=>paintIcons());
+step('подсказки',()=>initTips());
+step('поиск',()=>initFinder());
 step('раскладка',()=>initLayout());
 step('телефон',()=>initMobile());
 step('кинотеатр',()=>initCinema(refreshNow));

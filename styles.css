@@ -81,6 +81,9 @@ header{
 .brand-name{font-size:var(--fs-lg);font-weight:700;letter-spacing:.14em;}
 .brand-sub{font-size:var(--fs-xs);color:var(--muted);letter-spacing:.02em;}
 .head-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+/* поиск стоит в самой шапке, а не в сворачиваемом меню: на телефоне это
+   единственный способ добраться до вкладки в один тап, Ctrl+K там нет */
+.head-find{flex:none;}
 #nameInput{
   background:var(--field);border:1px solid var(--line);color:var(--text);
   padding:8px 12px;border-radius:var(--radius);font-size:var(--fs-sm);font-weight:600;
@@ -804,8 +807,10 @@ body.learning main,body.learning #metrics{display:none;}
 #viewport[data-env="studio"] .vignette,
 #viewport[data-env="tech"] .vignette{display:none;}
 .works-wrap{position:relative;display:flex;}
+/* координаты ставит js/ui/pop.js (Floating UI): панель сама переворачивается
+   и подвигается, когда упирается в край окна */
 .works-pop{
-  display:none;position:absolute;top:calc(100% + 8px);right:0;z-index:40;
+  display:none;position:fixed;top:0;left:0;z-index:40;
   width:min(320px,88vw);padding:10px;flex-direction:column;gap:10px;
   background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   box-shadow:0 18px 40px var(--shade);
@@ -827,7 +832,7 @@ body.learning main,body.learning #metrics{display:none;}
 .work-del:hover{border-color:var(--bad);color:var(--bad);}
 .env-wrap{position:relative;display:flex;}
 .env-pop{
-  display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  display:none;position:fixed;top:0;left:0;
   z-index:40;width:min(330px,88vw);padding:6px;
   background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
   box-shadow:0 18px 40px var(--shade);
@@ -849,7 +854,7 @@ body.learning main,body.learning #metrics{display:none;}
 .env-main b{font-size:var(--fs-sm);}
 .env-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;text-wrap:pretty;}
 @media (max-width:940px){
-  .env-pop{left:auto;right:0;transform:none;width:min(300px,80vw);}
+  .env-pop{width:min(300px,80vw);}
 }
 
 /* нарисованная кривая прилепа: ползунков формы нет, их место занимает сводка */
@@ -861,6 +866,63 @@ body.learning main,body.learning #metrics{display:none;}
 }
 .part-drawn b{font-size:var(--fs-sm);}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
+
+/* ---------- поиск по инструменту (Ctrl+K) ---------- */
+#finderScreen{
+  position:fixed;inset:0;z-index:100;display:none;padding:12vh 20px 20px;
+  background:color-mix(in oklab, var(--bg) 72%, transparent);backdrop-filter:blur(4px);
+}
+#finderScreen.open{display:block;}
+.finder-card{
+  width:min(620px,100%);margin:0 auto;background:var(--panel);
+  border:1px solid var(--line2);border-radius:16px;overflow:hidden;
+  box-shadow:0 26px 70px var(--shade);
+}
+.finder-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);}
+.finder-head .ico{color:var(--muted2);flex:none;}
+#finderInput{
+  flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);
+  font:inherit;font-size:var(--fs-md);
+}
+#finderInput::-webkit-search-cancel-button{display:none;}
+.finder-list{max-height:min(52vh,420px);overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:2px;}
+.finder-row{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  background:none;border:1px solid transparent;border-radius:9px;padding:9px 11px;color:var(--text);
+}
+.finder-row .ico{color:var(--muted2);flex:none;}
+.finder-row.on{background:color-mix(in oklab, var(--accent) 16%, transparent);border-color:var(--accent);}
+.finder-row.on .ico{color:var(--accent2);}
+.finder-name{flex:1;min-width:0;font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.finder-where{flex:none;font-size:var(--fs-micro);color:var(--muted2);text-transform:lowercase;}
+.finder-empty{padding:14px;}
+.finder-foot{
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  padding:9px 14px;border-top:1px solid var(--line);font-size:var(--fs-micro);color:var(--muted2);
+}
+kbd{
+  font:inherit;font-size:var(--fs-micro);padding:1px 6px;border-radius:5px;
+  background:var(--sunken);border:1px solid var(--line);color:var(--muted);
+}
+/* блок, к которому привёл поиск: подсветка гаснет сама */
+details.block.found{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);}
+@media (max-width:640px){
+  #finderScreen{padding:0;}
+  .finder-card{border-radius:0;border:none;height:100%;display:flex;flex-direction:column;}
+  .finder-list{max-height:none;flex:1;}
+}
+
+/* ---------- подсказки у кнопок ---------- */
+/* Позицию ставит js/ui/tips.js через Floating UI; здесь только вид. */
+.tip{
+  position:absolute;top:0;left:0;z-index:120;max-width:min(280px,70vw);
+  padding:7px 10px;border-radius:10px;pointer-events:none;
+  background:var(--panel);border:1px solid var(--line2);color:var(--text);
+  font-size:var(--fs-xs);line-height:1.45;text-wrap:pretty;
+  box-shadow:0 10px 30px var(--shade);
+  opacity:0;transform:translateY(2px);transition:opacity .12s ease,transform .12s ease;
+}
+.tip.on{opacity:1;transform:none;}
 
 /* ---------- обводка картинки ---------- */
 #photoScreen{
