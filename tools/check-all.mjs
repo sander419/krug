@@ -16,6 +16,7 @@ const CHECKS = [
   ['Энциклопедия', 'check-kb.mjs'],
   ['Геометрия',    'check-geometry.mjs'],
   ['Слайсер',      'check-gcode.mjs'],
+  ['Задачи',       'check-routes.mjs'],
 ];
 
 let failed = 0;

@@ -21,6 +21,7 @@
     <div class="brand-name">КРУГ</div>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
+  <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
     <div class="view-group" role="group" aria-label="Вид">
@@ -169,6 +170,18 @@
           </div>
         </details>
 
+        <details class="block" data-block="shrinkfit">
+          <summary class="block-title">Размер под усадку
+            <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15" title="Как считается размер оснастки" aria-label="Справка о размере оснастки"></button>
+          </summary>
+          <div class="block-body">
+            <label class="field-row"><span>Нужный ⌀ после обжига</span>
+              <input type="number" id="toolTarget" min="10" max="600" step="1" inputmode="numeric"><i class="unit">мм</i></label>
+            <p class="tool-note" id="toolTargetOut"></p>
+            <button class="btn small" id="toolApply">Подставить в форму</button>
+          </div>
+        </details>
+
         <details class="block" data-block="matcard" open>
           <summary class="block-title">Паспорт массы</summary>
           <div class="block-body" id="matDetail"></div>
@@ -308,18 +321,6 @@
           <div class="block-body" id="toolNumbers"></div>
         </details>
 
-        <details class="block" data-block="shrinkfit">
-          <summary class="block-title">Размер под усадку
-            <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15" title="Как считается размер оснастки" aria-label="Справка о размере оснастки"></button>
-          </summary>
-          <div class="block-body">
-            <label class="field-row"><span>Нужный ⌀ после обжига</span>
-              <input type="number" id="toolTarget" min="10" max="600" step="1" inputmode="numeric"><i class="unit">мм</i></label>
-            <p class="tool-note" id="toolTargetOut"></p>
-            <button class="btn small" id="toolApply">Подставить в форму</button>
-          </div>
-        </details>
-
         <details class="block" data-block="mouldgeo">
           <summary class="block-title">Геометрия оснастки
             <button class="help-dot" data-kb="ram-press" data-icon="circle-help" data-icon-size="15" title="Как устроены полуформы" aria-label="Справка о полуформах"></button>
@@ -448,6 +449,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= подсказка новичку ================= -->
+<div id="routeScreen" aria-hidden="true"></div>
 <div id="guide" aria-hidden="true"></div>
 
 <!-- ================= обучение ================= -->

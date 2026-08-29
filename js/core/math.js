@@ -150,6 +150,9 @@ export function computeStrength(state){
 // «где» для критического сечения: у самого дна писать «0 см» бессмысленно
 export const atLevel=y=>y<10?'у основания':(y/10).toFixed(0)+' см';
 
+/* Поле area у замечания — вкладка, без которой оно бессмысленно: интерфейс
+   прячет такие замечания вместе с инструментом. Замечание без area показывают
+   всегда — по умолчанию оно касается всех. */
 export function computeWarnings(state, prod, str){
   const w=[];
   if(state.hollow && state.wall<3) w.push({lvl:'warn',help:'thinWall',txt:'Стенка тоньше 3 мм — порвётся при вытяжке.'});
@@ -161,10 +164,10 @@ export function computeWarnings(state, prod, str){
     const dy=out[i].y-out[i-1].y;
     if(dy>0.1 && (out[i].r-out[i-1].r)/dy < -1.35) over++;
   }
-  if(over/(out.length-1)>.12) w.push({lvl:'warn',help:'overhang',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
-  if(str.minSF<1.5) w.push({lvl:'bad',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
-  else if(str.minSF<2.5) w.push({lvl:'warn',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
+  if(over/(out.length-1)>.12) w.push({lvl:'warn',area:'print',help:'overhang',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
+  if(str.minSF<1.5) w.push({lvl:'bad',area:'print',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
+  else if(str.minSF<2.5) w.push({lvl:'warn',area:'print',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
   for(const pw of partsWarnings(state,out)) w.push(pw);
-  if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична, устойчива и печатаема.'});
+  if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична и устойчива.'});
   return w;
 }

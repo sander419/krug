@@ -1,34 +1,32 @@
 // file: js/ui/guide.js
-// Экран «как здесь работать»: пять шагов и что на каждом делают.
+// Экран «как здесь работать»: шаги выбранной задачи и что на каждом делают.
 //
 // Новичок открывал КРУГ и видел пять вкладок без порядка и без объяснения, зачем
 // они. Панель показывала «что можно покрутить», но не «с чего начать и чем это
 // кончится». Шаги повторяют вкладки один в один, поэтому подсказка не живёт
 // отдельной жизнью: нажал шаг — открылась та самая вкладка.
 //
-// Показывается один раз, дальше — по кнопке в шапке. Согласия ни у кого не
-// спрашиваем и работать не мешаем: это подсказка, а не мастер настройки.
+// Шаги берутся из задачи: тому, кто лепит руками, не показывают слайсер даже
+// в подсказке. Тексты вкладок лежат в js/config/routes.js — там же, где задачи,
+// чтобы подсказка и панель не разъезжались.
+//
+// Показывается по кнопке в шапке; на первом запуске вместо неё спрашивают
+// задачу. Согласия ни у кого не спрашиваем и работать не мешаем.
 import { $ } from './dom.js';
 import { icon } from './icons.js';
 import { showOverview } from './kb.js';
+import { TABS, routeTabs } from '../config/routes.js';
+import { activeRoute, openRouteScreen } from './route.js';
 
 const KEY = 'krug.guided';
 
-export const STEPS = [
-  {tab: 'form',  ico: 'circle-dot', name: 'Форма',
-   txt: 'Возьмите пресет или тяните точки на чертеже. Высота и диаметр — как на круге, до обжига.'},
-  {tab: 'mat',   ico: 'layers', name: 'Масса',
-   txt: 'Выберите керамическую массу: от неё усадка, цвет черепка и температура обжига.'},
-  {tab: 'print', ico: 'printer', name: 'Печать',
-   txt: 'Проверьте, выдержит ли стенка печать глиной, и заберите G-code.'},
-  {tab: 'glaze', ico: 'droplet', name: 'Глазурь',
-   txt: 'Подберите глазурь: КРУГ сверит её обжиг с массой и покажет плёнку на модели.'},
-  {tab: 'tool',  ico: 'factory', name: 'Оснастка',
-   txt: 'Если нужен тираж — посмотрите, годится ли форма под штамповку или литьё и что это стоит.'},
-];
+/** Шаги текущей задачи: вкладка, иконка, имя, строка о деле. */
+export const steps = () => routeTabs(activeRoute()).map(t => ({tab: t, ...TABS[t]}));
 
 function html() {
-  const steps = STEPS.map((s, i) => `
+  const route = activeRoute();
+  const list = steps();
+  const steps_ = list.map((s, i) => `
     <button class="guide-step" data-tab="${s.tab}">
       <span class="guide-num">${i + 1}</span>
       <span class="guide-main">
@@ -41,11 +39,12 @@ function html() {
       <h2>Как здесь работать</h2>
       <button class="btn icon" id="guideClose" title="Закрыть (Esc)" aria-label="Закрыть">${icon('x')}</button>
     </div>
-    <p class="guide-lead">КРУГ считает изделие целиком: от комка глины на круге до цены тиража.
-      Пять шагов — это пять вкладок панели, идти по ним подряд не обязательно.</p>
-    <div class="guide-steps">${steps}</div>
+    <p class="guide-lead">Задача — <b>${route.name}</b>. ${route.lead}
+      Шаги ниже это вкладки панели, идти по ним подряд не обязательно.</p>
+    <div class="guide-steps">${steps_}</div>
     <div class="guide-foot">
-      <button class="btn primary" id="guideStart">Начать с формы</button>
+      <button class="btn primary" id="guideStart">Начать с шага «${list[0].name}»</button>
+      <button class="btn" id="guideRoute">${icon(route.ico)}Сменить задачу</button>
       <button class="btn" id="guideLearn">${icon('graduation-cap')}Открыть обучение</button>
       <span class="guide-hint">Вернуться к этой подсказке — кнопка «?» в шапке</span>
     </div>
@@ -66,7 +65,8 @@ export function openGuide() {
     b.onclick = () => { openTab(b.dataset.tab); closeGuide(); };
   });
   $('guideClose').onclick = closeGuide;
-  $('guideStart').onclick = () => { openTab('form'); closeGuide(); };
+  $('guideStart').onclick = () => { openTab(steps()[0].tab); closeGuide(); };
+  $('guideRoute').onclick = () => { closeGuide(); openRouteScreen(false); };
   $('guideLearn').onclick = () => { closeGuide(); showOverview(); };
 }
 
@@ -84,7 +84,8 @@ export function initGuide() {
   addEventListener('keydown', e => {
     if (e.key === 'Escape' && $('guide').classList.contains('open')) closeGuide();
   });
-  let seen = null;
-  try { seen = localStorage.getItem(KEY); } catch (_) {}
-  if (!seen) openGuide();
+  // На самом первом запуске спрашивают задачу — двух окон подряд не бывает.
+  let seen = null, route = null;
+  try { seen = localStorage.getItem(KEY); route = localStorage.getItem('krug.route'); } catch (_) {}
+  if (!seen && route) openGuide();
 }

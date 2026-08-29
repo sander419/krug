@@ -144,6 +144,7 @@ body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--sp
   cursor:pointer;font-size:var(--fs-sm);font-weight:600;border-radius:8px 8px 0 0;
   border-bottom:2px solid transparent;transition:color .15s,background .15s;white-space:nowrap;
 }
+.tab[hidden]{display:none;}   /* вкладку прячет задача: см. js/ui/route.js */
 .tab:hover{color:var(--text);background:color-mix(in oklab, var(--accent) 8%, transparent);}
 .tab[data-tab="form"]{--sect:var(--sect-form);}
 .tab[data-tab="mat"]{--sect:var(--sect-mat);}
@@ -847,6 +848,51 @@ body.learning main,body.learning #metrics{display:none;}
 .env-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;text-wrap:pretty;}
 @media (max-width:940px){
   .env-pop{left:auto;right:0;transform:none;width:min(300px,80vw);}
+}
+
+/* ---------- задача: «что вы делаете» ---------- */
+/* Кнопка в шапке всегда показывает выбранную задачу: иначе человек не понимает,
+   почему у него три вкладки, а на скриншоте в справке пять. */
+.route-chip{
+  display:inline-flex;align-items:center;gap:7px;font-weight:600;
+  border-color:color-mix(in oklab, var(--accent) 45%, var(--line));
+  background:color-mix(in oklab, var(--accent) 12%, transparent);
+}
+.route-chip .ico{color:var(--accent2);}
+#routeScreen{
+  position:fixed;inset:0;z-index:80;display:none;padding:24px;
+  background:color-mix(in oklab, var(--bg) 84%, transparent);backdrop-filter:blur(5px);
+}
+#routeScreen.open{display:grid;place-items:center;}
+.route-card-box{
+  width:min(760px,100%);max-height:92vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 24px 20px;box-shadow:0 26px 70px var(--shade);
+}
+.route-cards{display:grid;gap:10px;}
+.route-card{
+  display:flex;gap:14px;align-items:flex-start;text-align:left;cursor:pointer;color:var(--text);
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;
+  transition:border-color .15s,transform .15s,background .15s;
+}
+.route-card:hover{border-color:var(--accent);transform:translateX(2px);}
+.route-card.current{border-color:var(--accent);background:color-mix(in oklab, var(--accent) 10%, var(--panel2));}
+.route-ico{
+  flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:color-mix(in oklab, var(--accent) 22%, transparent);border:1px solid var(--accent);
+}
+.route-ico .ico{color:var(--accent2);}
+.route-main{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.route-main b{font-size:var(--fs-md);}
+.route-lead{font-size:var(--fs-xs);color:var(--muted);line-height:1.55;text-wrap:pretty;}
+.route-steps{
+  font-size:var(--fs-micro);color:var(--accent2);letter-spacing:.04em;font-weight:600;
+  text-transform:uppercase;
+}
+.route-hides{font-size:var(--fs-micro);color:var(--muted2);}
+@media (max-width:640px){
+  #routeScreen{padding:0;}
+  .route-card-box{max-height:100vh;height:100%;border-radius:0;border:none;}
 }
 
 /* ---------- подсказка «как здесь работать» ---------- */

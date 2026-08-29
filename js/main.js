@@ -12,6 +12,7 @@ import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
+import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
@@ -42,7 +43,10 @@ function refreshNow(){
     const cw=coatWarnings(byGlazeId(state.glazeId), sceneAPI.coatStats()||{runMax:1,sharpest:0});
     if(cw.length) warn=warn.filter(w=>w.lvl!=='ok').concat(cw);
   }
-  updateWarnings(warn);
+  // замечание по спрятанному инструменту — шум: тому, кто лепит руками,
+  // нечего делать с запасом прочности при печати
+  const tabs=activeRoute().tabs;
+  updateWarnings(warn.filter(w=>!w.area||tabs.includes(w.area)));
   updateCoatPanel();
   updateMechanics();
   drawEditor();
@@ -114,6 +118,7 @@ step('восстановление работы',()=>{restoredFrom=restoreWork()
 
 step('чертёж',()=>initEditor($('profileCanvas')));
 step('панель',()=>{initTabs();initBlocks();initPanels();initParts();panelsAPI.sync();});
+step('задача',()=>initRoute());   // после вкладок: задача их и прячет
 step('обучение',()=>initKB());
 step('библиотека масс',()=>initLibrary());
 step('оснастка',()=>initTooling());
@@ -157,6 +162,7 @@ new ResizeObserver(()=>{
   sceneAPI.resize();
   if(!framed){framed=true;sceneAPI.frameView();}   // аспект известен только после раскладки
 }).observe($('viewport'));
+onRoute(()=>scheduleRefresh());   // сменили задачу — пересобрать список замечаний
 onChange(scheduleRefresh);
 onChange(record);
 initHistory(syncHistoryButtons);

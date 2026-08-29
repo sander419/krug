@@ -19,6 +19,14 @@ import { clamp } from '../core/util.js';
 const S={};
 
 /* ---------- вкладки панели ---------- */
+/* Переключение вынесено наружу: задача (js/ui/route.js) прячет часть вкладок
+   и обязана увести человека с той, которую спрятала, иначе панель пустеет. */
+let showFn=null;
+export const showTab=id=>{ if(showFn) showFn(id); };
+export const currentTab=()=>{
+  const a=document.querySelector('.tab.active');
+  return a?a.dataset.tab:null;
+};
 export function initTabs(){
   const tabs=[...document.querySelectorAll('.tab')];
   const show=id=>{
@@ -26,6 +34,7 @@ export function initTabs(){
     document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===id));
     try{localStorage.setItem('krug.tab',id);}catch(_){}
   };
+  showFn=show;
   tabs.forEach(t=>t.onclick=()=>show(t.dataset.tab));
   let saved=null;
   try{saved=localStorage.getItem('krug.tab');}catch(_){}
