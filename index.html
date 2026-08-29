@@ -42,6 +42,10 @@
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
     <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>
     <button data-icon="camera" class="btn" id="snapBtn" title="Снимок вида в PNG"><span class="btn-label">Снимок</span></button>
+    <div class="works-wrap">
+      <button class="btn" id="worksBtn" data-icon="folder-open" aria-haspopup="true" aria-expanded="false" title="Сохранённые работы">Работы</button>
+      <div class="works-pop" id="worksPop" role="menu" aria-label="Сохранённые работы"></div>
+    </div>
     <button class="btn" id="dnaBtn" data-icon="dna" title="ДНК формы — рецепт передаётся ссылкой"><span class="btn-label">ДНК</span></button>
     <button class="btn" id="embedBtn" data-icon="code" title="Код встраивания 3D-витрины (iframe)"><span class="btn-label">Встроить</span></button>
     <div class="export-group" role="group" aria-label="Экспорт модели">
@@ -125,6 +129,39 @@
               <div class="slider-head"><span>Припуск на подрезку</span><output id="allowOut"></output></div>
               <input type="range" id="allowSl" min="5" max="40" step="1" value="20" aria-label="Припуск глины на подрезку">
             </div>
+          </div>
+        </details>
+
+        <details class="block" data-block="handle">
+          <summary class="block-title">Ручка
+            <button class="help-dot" data-kb="handles-joins" data-icon="circle-help" data-icon-size="15" title="Про ручки и швы" aria-label="Справка о ручках"></button>
+          </summary>
+          <div class="block-body">
+            <label class="check-row">
+              <span>Ручка есть</span>
+              <input type="checkbox" id="handleChk">
+            </label>
+            <div class="slider-row">
+              <div class="slider-head"><span>Верхний прилеп</span><output id="hTopOut"></output></div>
+              <input type="range" id="hTopSl" min="20" max="100" step="1" value="78" aria-label="Высота верхнего прилепа">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Нижний прилеп</span><output id="hBotOut"></output></div>
+              <input type="range" id="hBotSl" min="5" max="90" step="1" value="34" aria-label="Высота нижнего прилепа">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Вылет</span><output id="hOutOut"></output></div>
+              <input type="range" id="hOutSl" min="15" max="90" step="1" value="38" aria-label="Вылет ручки">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Толщина ленты</span><output id="hThickOut"></output></div>
+              <input type="range" id="hThickSl" min="4" max="30" step="0.5" value="11" aria-label="Толщина ленты">
+            </div>
+            <div class="slider-row">
+              <div class="slider-head"><span>Ширина ленты</span><output id="hWideOut"></output></div>
+              <input type="range" id="hWideSl" min="6" max="45" step="1" value="20" aria-label="Ширина ленты">
+            </div>
+            <p class="note" id="handleNote"></p>
           </div>
         </details>
       </section>

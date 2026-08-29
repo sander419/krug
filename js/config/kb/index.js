@@ -105,6 +105,7 @@ export const CONTEXT_HELP = {
   material: 'choose-mass',
   glazeFit: 'crazing-shivering',
   umf: 'umf',
+  handle: 'handles-joins',
   'glaze-run': 'glaze-thickness',
   'glaze-relief': 'glaze-thickness',
   'glaze-food': 'food-safe',

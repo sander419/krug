@@ -187,6 +187,10 @@ export function checks(state, an, procId) {
   const out = [];
   const add = (lvl, txt, help) => out.push({lvl, txt, help});
 
+  // ручка ломает саму посылку тела вращения: её не отформовать вместе с корпусом
+  if (state.handle && state.handle.on)
+    add('warn', `У изделия ручка — тело вращения кончается на корпусе. Ручку формуют отдельно (своя гипсовая форма или ручной жгут) и прилепляют к подвяленному изделию; всё, что ниже, посчитано без неё.`, 'handles-joins');
+
   if (an.undercuts === 0) add('ok', 'Поднутрений нет: профиль снимается с оснастки вдоль оси.', 'tooling-basics');
   else if (rigid) add('bad', `Поднутрение ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм — ${an.deepest.kind} (всего перегибов ${an.undercuts}). Для «${proc.short}» нужна форма из ${an.parts} частей — процесс не подходит. Уберите завал профиля, и форма станет пригодной.`, 'tooling-basics');
   else add('warn', `Перегибов профиля ${an.undercuts}, самый глубокий ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм (${an.deepest.kind}) — форма разъёмная, из ${an.parts} частей. Линия разъёма на высоте ${Math.round(an.partingY)} мм.`, 'casting');

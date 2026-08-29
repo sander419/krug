@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
+import { handleMetrics, handleWarnings } from './handle.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -89,7 +90,8 @@ export function computeProduction(state){
     }
   }
   const vRec = footOn ? Math.PI*Math.pow(baseR*state.footK/100,2)*state.footH*0.65 : 0;
-  const vPiece=Math.max(0,vOut-vCav-vRec)/1000;             // см³
+  const hm=handleMetrics(out, state.handle);
+  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + hm.volMl;  // см³, вместе с ручкой
   const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;
@@ -106,7 +108,7 @@ export function computeProduction(state){
   }
   const yCom=areaSum>0?ySum/areaSum:state.H/2;
   const angle=Math.atan2(baseR,Math.max(yCom,1))*180/Math.PI;
-  return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,angle,baseR};
+  return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,angle,baseR,handleMl:hm.volMl};
 }
 
 /* запас прочности по пределу текучести (упрощённая модель осадки) */
@@ -150,6 +152,7 @@ export function computeWarnings(state, prod, str){
   if(over/(out.length-1)>.12) w.push({lvl:'warn',help:'overhang',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
   if(str.minSF<1.5) w.push({lvl:'bad',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
   else if(str.minSF<2.5) w.push({lvl:'warn',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
+  for(const hw of handleWarnings(state,out)) w.push(hw);
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична, устойчива и печатаема.'});
   return w;
 }

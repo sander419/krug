@@ -130,6 +130,9 @@ export function sliceGCode(state){
     warns.push({cls:layerSec<3?'e':'w', txt:
       `Оборот слоя в самом узком месте — ${layerSec.toFixed(1)} с. Паста не успевает схватиться, стенка поплывёт: снизьте подачу или ставьте на стол сразу два изделия. Порог 6 с — умолчание инструмента, не отраслевой норматив.`});
 
+  if(state.handle && state.handle.on)
+    warns.push({cls:'w',txt:'В G-code только тело: ручку спираль не печатает — её лепят и прилепляют отдельно, к подвяленному изделию.'});
+
   const volMM=pathLen*pr.lh*bead;
   const grams=volMM/1000*density(mat);
   const mins=pathLen/pr.feed;

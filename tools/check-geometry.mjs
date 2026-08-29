@@ -12,6 +12,7 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
+import { handleMetrics, handleWarnings, handleCurve } from '../js/core/handle.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
 import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';

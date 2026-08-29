@@ -3,7 +3,40 @@ import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { sceneAPI } from './scene.js';
 import { buildPot } from '../core/geometry.js';
+import { handleCurve } from '../core/handle.js';
+import { userProfileMM } from '../core/math.js';
 import { download, fileName } from '../core/files.js';
+
+/* Сшивка индексированных геометрий в одну. Своя, потому что вся сборка держится
+   на вшитом three без дополнительных модулей, а выгружать корпус без ручки нельзя:
+   файл должен описывать то же изделие, что и масса на экране. */
+function mergeGeo(list){
+  let vTotal=0, iTotal=0;
+  for(const g of list){ vTotal+=g.attributes.position.count; iTotal+=g.index?g.index.count:0; }
+  const pos=new Float32Array(vTotal*3), nor=new Float32Array(vTotal*3);
+  const idx=vTotal>65535?new Uint32Array(iTotal):new Uint16Array(iTotal);
+  let vo=0, io=0;
+  for(const g of list){
+    const p=g.attributes.position.array, n=g.attributes.normal.array, ix=g.index.array;
+    pos.set(p, vo*3); nor.set(n, vo*3);
+    for(let k=0;k<ix.length;k++) idx[io+k]=ix[k]+vo;
+    vo+=g.attributes.position.count; io+=ix.length;
+  }
+  const out=new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor,3));
+  out.setIndex(new THREE.BufferAttribute(idx,1));
+  return out;
+}
+
+function handleGeo(state){
+  const h=state.handle;
+  if(!h || !h.on) return null;
+  const g=new THREE.TubeGeometry(handleCurve(userProfileMM(state),h), 56, h.thick/2, 14, false);
+  g.scale(1,1,h.wide/h.thick);
+  g.computeVertexNormals();
+  return g;
+}
 
 /* Фабрикационные форматы: готовая форма в сыром размере —
    то, что реально печатается и что совпадает с G-code. Усадка обжига
@@ -13,15 +46,26 @@ function fabricationGeo(state){
   state.stage=6;
   const built=buildPot(state);
   state.stage=saved;
-  return built.geometry;
+  const hg=handleGeo(state);
+  if(!hg) return built.geometry.clone();
+  const merged=mergeGeo([built.geometry, hg]);
+  hg.dispose();
+  return merged;
 }
 
 function exportGeo(){
   const m=sceneAPI.pot();
-  const g=m.geometry.clone();
   m.updateMatrix();
-  g.applyMatrix4(m.matrix); // запекаем усадку обжига, без вращения круга
-  return g;
+  const parts=[m.geometry.clone().applyMatrix4(m.matrix)];   // усадка обжига запечена
+  const h=sceneAPI.handle();
+  if(h && h.visible){
+    h.updateMatrix();
+    parts.push(h.geometry.clone().applyMatrix4(h.matrix));
+  }
+  if(parts.length===1) return parts[0];
+  const merged=mergeGeo(parts);
+  for(const p of parts) p.dispose();
+  return merged;
 }
 
 /* Двоичный STL из любой геометрии — общий для изделия и для оснастки. */

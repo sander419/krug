@@ -126,10 +126,15 @@ export function updateCoatPanel(){
 function updateGlaze(){
   const g=state.glaze, body=byId(state.mat);
   const ev=evaluateGlaze(g, body.cte);
+  // диаграмма Сталла построена для конуса 6: у глазури с другим конусом зоны сместятся
+  const gl=byGlazeId(state.glazeId);
+  const coneNote=gl.cone && !gl.cone.includes('6')
+    ? ` <span class="dim">— у «${esc(gl.name)}» конус ${gl.cone[0]}–${gl.cone[1]}, зоны сместятся</span>`
+    : '';
   updateCoatPanel();
   $('glazeVerdict').innerHTML=
     `<div>UMF: флюсы <b>1.0</b> · Al₂O₃ <b>${g.al.toFixed(2)}</b> · SiO₂ <b>${g.si.toFixed(2)}</b> · Si:Al <b>${ev.ratio.toFixed(1)}</b></div>`+
-    `<div>Поверхность (конус 6): <span class="${ev.surface.c}">${ev.surface.t}</span></div>`+
+    `<div>Поверхность (конус 6): <span class="${ev.surface.c}">${ev.surface.t}</span>${coneNote}</div>`+
     `<div>CTE глазури ≈ <b>${ev.cte.toFixed(1)}</b> vs черепок <b>${body.cte.toFixed(1)}</b> ·10⁻⁶/°C</div>`+
     `<div><span class="${ev.fit.c}">${ev.fit.t}</span></div>`;
   drawStull();

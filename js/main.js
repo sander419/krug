@@ -12,6 +12,7 @@ import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
+import { initWorks } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
@@ -130,6 +131,7 @@ step('раскладка',()=>initLayout());
 step('телефон',()=>initMobile());
 step('кинотеатр',()=>initCinema(refreshNow));
 step('подсказка',()=>initGuide());
+step('работы',()=>initWorks(name=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView(); toast('Открыта работа «'+name+'»'); }));
 step('инструменты вида',()=>initTools(refreshNow));
 
 $('nameInput').addEventListener('input',e=>{state.name=e.target.value;scheduleHash();});
