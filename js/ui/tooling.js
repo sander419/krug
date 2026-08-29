@@ -18,7 +18,7 @@ import { $, esc, num, dec, rub } from './dom.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
-import { partMouldGeometry, partMouldBlock } from '../three/partMould.js';
+import { partMouldGeometry, partMouldBlock, partMouldKeys } from '../three/partMould.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -179,11 +179,12 @@ function partsMouldHTML(waterRatio, plaster) {
   let total = 0;
   const rows = list.map((p, i) => {
     const m = partMouldBlock(prof, p, MOULD_WALL);
+    m.keys = partMouldKeys(prof, p, MOULD_WALL);
     const halfL = Math.max(m.boxL - partVolumeL(prof, p) / 2, 0);
     const mix = plasterMix(halfL, waterRatio);
     total += mix.plasterKg * 2;
     return `<li>${kindOf(p).name} ${i + 1}: блок ${m.blockMM.map(v => Math.round(v)).join('×')} мм на половину,
-      гипса <b>${num(mix.plasterKg, 1)} кг</b> на каждую
+      гипса <b>${num(mix.plasterKg, 1)} кг</b> на каждую, замков ${m.keys}
       <button class="btn small" data-mould-show="${i}">Показать</button>
       <button class="btn small" data-mould-stl="${i}">STL</button></li>`;
   }).join('');
@@ -206,8 +207,8 @@ function bindPartMoulds() {
       partPreview = partPreview === p ? null : p;
       if (partPreview) {
         part = 'ware';
-        sceneAPI.setPreviewMesh(partMouldGeometry(prof, p, MOULD_WALL).geometry);
-        toast(`Половина формы под «${kindOf(p).name.toLowerCase()}»: разъём вверх`);
+        sceneAPI.setPreviewMesh(partMouldGeometry(prof, p, MOULD_WALL, {half: 'bump'}).geometry);
+        toast(`Половина формы под «${kindOf(p).name.toLowerCase()}»: разъём вверх, замки бугорками`);
       } else {
         sceneAPI.setPreviewMesh(null);
       }
@@ -219,10 +220,13 @@ function bindPartMoulds() {
     b.onclick = () => {
       const p = list[+b.dataset.mouldStl];
       if (!p) return;
-      const m = partMouldGeometry(prof, p, MOULD_WALL);
-      exportGeoSTL(state, m.geometry, `форма-${kindOf(p).name.toLowerCase()}`);
-      m.geometry.dispose();
-      toast('STL половины формы сохранён · вторая половина зеркальная');
+      const name = kindOf(p).name.toLowerCase();
+      for (const [half, suffix] of [['bump', '1-бугорки'], ['socket', '2-лунки']]) {
+        const m = partMouldGeometry(prof, p, MOULD_WALL, {half});
+        exportGeoSTL(state, m.geometry, `форма-${name}-${suffix}`);
+        m.geometry.dispose();
+      }
+      toast('Обе половины формы сохранены: замки бугорками и лунками');
     };
   });
 }

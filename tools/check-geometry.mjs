@@ -265,7 +265,7 @@ state.wall = 6;
   for (const p of [h, sanitizePart({kind: 'spout', az: 0})]) {
     const blk = partMouldBlock(prof, p, 20);
     if (!(blk.blockMM.every(v => v > 20))) P('габарит полуформы подозрительно мал');
-    const m = partMouldGeometry(prof, p, 20);
+    const m = partMouldGeometry(prof, p, 20, {half: 'bump'});
     const pos = m.geometry.attributes.position;
     let vol = 0;
     const a1 = new THREE.Vector3(), b1 = new THREE.Vector3(), c1 = new THREE.Vector3();
@@ -276,8 +276,10 @@ state.wall = 6;
     const solidL = vol / 1e6, halfPartL = partMetrics(prof, p).volMl / 2000;
     if (!(solidL > 0)) P(`полуформа ${p.kind}: нормали смотрят внутрь, STL уйдёт вывернутым`);
     if (!(solidL < blk.boxL)) P(`полуформа ${p.kind}: канавка не убавила объём блока`);
-    if (Math.abs((blk.boxL - solidL) - halfPartL) > halfPartL * 0.12)
-      P(`полуформа ${p.kind}: канавка не совпадает с половиной детали (${((blk.boxL - solidL) * 1000).toFixed(1)} против ${(halfPartL * 1000).toFixed(1)} см³)`);
+    // бугорки замков добавляют объём, поэтому вычитаем их из ожидания
+    const expect = halfPartL - m.keysL;
+    if (Math.abs((blk.boxL - solidL) - expect) > Math.abs(expect) * 0.12 + 0.0005)
+      P(`полуформа ${p.kind}: канавка не совпадает с половиной детали (${((blk.boxL - solidL) * 1000).toFixed(1)} против ${(expect * 1000).toFixed(1)} см³)`);
 
     /* Замкнутость и ориентация: гипс льют по этой модели, а печатают по STL.
        Дырка в сетке или вывернутый треугольник ломают и то и другое, а на глаз
@@ -302,8 +304,30 @@ state.wall = 6;
     m.geometry.computeBoundingBox();
     const bb = m.geometry.boundingBox;
     if (!(bb.min.y > -0.01)) P(`полуформа ${p.kind}: блок должен стоять на нуле`);
-    if (Math.abs((bb.max.y - bb.min.y) - blk.depth) > 0.01) P(`полуформа ${p.kind}: высота блока не сходится`);
+    // бугорки замков торчат над разъёмом, поэтому блок выше на их высоту
+    if (Math.abs((bb.max.y - bb.min.y) - (blk.depth + m.keyH)) > 0.01)
+      P(`полуформа ${p.kind}: высота блока не сходится`);
     m.geometry.dispose();
+
+    /* вторая половина: те же требования, но замки лунками */
+    const m2 = partMouldGeometry(prof, p, 20, {half: 'socket'});
+    const p2 = m2.geometry.attributes.position;
+    const key2 = i => [p2.getX(i), p2.getY(i), p2.getZ(i)].map(v => Math.round(v * 100) / 100).join(',');
+    const d2 = new Map();
+    for (let i = 0; i < p2.count; i += 3) {
+      const k = [key2(i), key2(i + 1), key2(i + 2)];
+      for (let e = 0; e < 3; e++) { const id = k[e] + '>' + k[(e + 1) % 3]; d2.set(id, (d2.get(id) || 0) + 1); }
+    }
+    let o2 = 0, f2 = 0;
+    for (const [id, n] of d2) {
+      if (n > 1) f2++;
+      const [a, b] = id.split('>');
+      if (!d2.has(b + '>' + a)) o2++;
+    }
+    if (o2 || f2) P(`вторая половина ${p.kind}: ${o2} открытых, ${f2} вывернутых рёбер`);
+    if (m.keys !== m2.keys) P(`у половин ${p.kind} разное число замков`);
+    if (!(m.keys >= 2)) P(`формa ${p.kind}: замков ${m.keys} — половины не сцентрировать`);
+    m2.geometry.dispose();
   }
 }
 state.parts = [];

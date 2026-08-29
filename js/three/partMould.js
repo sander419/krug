@@ -15,6 +15,32 @@ import { partCurve, partSection } from '../core/parts.js';
 
 const STATIONS = 64;      // шагов вдоль детали
 const ARC = 18;           // шагов по половине сечения
+const KEY_R = 7;          // радиус замка, мм
+const KEY_H = 4;          // высота бугорка (и глубина лунки)
+const KEY_SEG = 20;       // шагов по окружности замка
+const KEY_CLEAR = 3;      // мм от замка до канавки
+
+/* Расстояние от точки до ломаной: замок не должен садиться на канавку. */
+function distToBand(band, x, y) {
+  let best = Infinity;
+  for (let i = 0; i < band.length; i++) {
+    const a = band[i], b = band[(i + 1) % band.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy || 1;
+    let t = ((x - a.x) * dx + (y - a.y) * dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    best = Math.min(best, Math.hypot(x - (a.x + dx * t), y - (a.y + dy * t)));
+  }
+  return best;
+}
+
+/* Замки по углам блока: бугорки на одной половине, лунки на другой. */
+function keyPositions(band, X0, X1, Y0, Y1, wall) {
+  const d = wall / 2 + KEY_R;
+  return [[X0 + d, Y0 + d], [X1 - d, Y0 + d], [X1 - d, Y1 - d], [X0 + d, Y1 - d]]
+    .filter(([x, y]) => distToBand(band, x, y) > KEY_R + KEY_CLEAR)
+    .map(([x, y]) => ({x, y}));
+}
 
 /** Станции вдоль детали: точка, нормаль в плоскости, полуразмеры сечения. */
 function stations(prof, part) {
@@ -53,11 +79,20 @@ export function partMouldBlock(prof, part, wall = 20) {
           boxL: (X1 - X0) * (Y1 - Y0) * depth / 1e6};
 }
 
+/** Сколько замков встанет на эту форму — для чисел в панели. */
+export function partMouldKeys(prof, part, wall = 20) {
+  const {st, X0, X1, Y0, Y1} = partMouldBlock(prof, part, wall);
+  const left = st.map(s => ({x: s.x + s.nx * s.r, y: s.y + s.ny * s.r}));
+  const right = st.map(s => ({x: s.x - s.nx * s.r, y: s.y - s.ny * s.r}));
+  return keyPositions(left.concat(right.slice().reverse()), X0, X1, Y0, Y1, wall).length;
+}
+
 /**
  * Одна половина формы. Возвращает геометрию в своей системе координат:
  * блок лежит разъёмом вверх, нижняя грань на нуле.
  */
-export function partMouldGeometry(prof, part, wall = 20) {
+export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
+  const socket = opts.half === 'socket';        // вторая половина: лунки вместо бугорков
   const {st, X0, X1, Y0, Y1, depth} = partMouldBlock(prof, part, wall);
   const left = st.map(s => ({x: s.x + s.nx * s.r, y: s.y + s.ny * s.r}));
   const right = st.map(s => ({x: s.x - s.nx * s.r, y: s.y - s.ny * s.r}));
@@ -77,7 +112,19 @@ export function partMouldGeometry(prof, part, wall = 20) {
     new THREE.Vector2(X0, Y0), new THREE.Vector2(X1, Y0),
     new THREE.Vector2(X1, Y1), new THREE.Vector2(X0, Y1),
   ]);
-  shape.holes = [new THREE.Path(band.map(p => new THREE.Vector2(p.x, p.y)))];
+  const keys = keyPositions(band, X0, X1, Y0, Y1, wall);
+  const keyRing = (kp, j) => {
+    const a = j / KEY_SEG * Math.PI * 2;
+    return {x: kp.x + Math.cos(a) * KEY_R, y: kp.y + Math.sin(a) * KEY_R};
+  };
+  shape.holes = [
+    new THREE.Path(band.map(p => new THREE.Vector2(p.x, p.y))),
+    ...keys.map(kp => new THREE.Path(
+      Array.from({length: KEY_SEG}, (_, j) => {
+        const q = keyRing(kp, j);
+        return new THREE.Vector2(q.x, q.y);
+      }))),
+  ];
   const face = new THREE.ShapeGeometry(shape, 1);
   const fp = face.attributes.position, fi = face.index.array;
   for (let i = 0; i < fi.length; i += 3) {
@@ -106,6 +153,27 @@ export function partMouldGeometry(prof, part, wall = 20) {
     }
   }
 
+  /* замки: купол вверх на одной половине, лунка вниз на другой */
+  const sign = socket ? -1 : 1;
+  for (const kp of keys) {
+    const dome = (j, ring) => {
+      if (ring === 3) return [kp.x, kp.y, sign * KEY_H];
+      const t = ring / 3;
+      const rr = KEY_R * Math.cos(t * Math.PI / 2);
+      const zz = sign * KEY_H * Math.sin(t * Math.PI / 2);
+      const a = j / KEY_SEG * Math.PI * 2;
+      return [kp.x + Math.cos(a) * rr, kp.y + Math.sin(a) * rr, zz];
+    };
+    for (let ring = 0; ring < 3; ring++)
+      for (let j = 0; j < KEY_SEG; j++) {
+        const j2 = (j + 1) % KEY_SEG;
+        // обход рима — против обхода выреза в грани, как и у канавки
+        // вершина обходится против пояса под ней, пояса — против выреза в грани
+        if (ring === 2) tri(dome(j, 3), dome(j, ring), dome(j2, ring));
+        else quad(dome(j, ring), dome(j2, ring), dome(j2, ring + 1), dome(j, ring + 1));
+      }
+  }
+
   /* дно и стенки блока */
   const B = z => [[X0, Y0, z], [X1, Y0, z], [X1, Y1, z], [X0, Y1, z]];
   const bot = B(-depth);
@@ -126,7 +194,10 @@ export function partMouldGeometry(prof, part, wall = 20) {
   geo.computeBoundingSphere();
 
   const boxL = (X1 - X0) * (Y1 - Y0) * depth / 1e6;
-  return {geometry: geo, blockMM: [X1 - X0, Y1 - Y0, depth], boxL, depth};
+  // бугорки добавляют гипс, лунки убавляют: половина эллипсоида R×R×H
+  const keysL = keys.length * (2 / 3) * Math.PI * KEY_R * KEY_R * KEY_H / 1e6;
+  return {geometry: geo, blockMM: [X1 - X0, Y1 - Y0, depth], boxL, depth,
+          keys: keys.length, keysL, keyH: KEY_H, socket};
 }
 
 
