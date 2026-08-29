@@ -35,8 +35,13 @@ function apply() {
     b.title = `Тема: ${LABEL[mode]} — нажмите, чтобы сменить`;
     b.setAttribute('aria-label', `Тема: ${LABEL[mode]}`);
   }
+  /* Цвет строки браузера берём из самого токена, а не из копии: копия
+     разъезжается с темой в первый же раз, когда меняют палитру. */
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', currentTheme() === 'dark' ? '#171310' : '#ece4d8');
+  if (meta) {
+    const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+    if (bg) meta.setAttribute('content', bg);
+  }
   const down = $('uiDownBtn'), up = $('uiUpBtn');
   if (down) down.disabled = step === 0;
   if (up) up.disabled = step === STEPS.length - 1;

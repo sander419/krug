@@ -10,18 +10,22 @@
 :root{
   color-scheme:dark;
   /* цвет */
-  --bg:#171310; --panel:#221a15; --panel2:#2a211a; --line:#3b2d23; --line2:#5a4132;
-  --text:#f1e7da; --muted:#b3a08d; --muted2:#9a8672;
-  --accent:#d8703f; --accent2:#e8935f; --accentDark:#b45a2d; --onAccent:#221007;
-  --chip:rgba(28,21,16,.78); --ok:#8fb573; --warn:#e0a63f; --bad:#e0705c;
-  --field:#191310; --sunken:#1b1410; --strip:#1e1712; --track:#3a2d24; --knob:#8a7562;
-  --headA:#241b15; --headB:#1c1511; --toastBg:#2e2118;
+  /* Интерфейс — нейтральный графит, сцена и акцент — тёплые. Раньше коричневым
+     было всё подряд, и глина на модели тонула в глине интерфейса; на нейтральном
+     фоне терракота наконец читается как цвет продукта, а не как общий тон. */
+  --bg:#100f0e; --panel:#191817; --panel2:#211f1e; --line:#2c2a28; --line2:#413d3a;
+  --text:#f4f1ee; --muted:#a9a29b; --muted2:#8b847d;
+  --accent:#e0693a; --accent2:#f29a70; --accentDark:#b04f28; --onAccent:#1a0c05;
+  --chip:rgba(20,19,18,.78); --ok:#63c08d; --warn:#e8b23e; --bad:#f0705c;
+  --field:#131211; --sunken:#141312; --strip:#161514; --track:#332f2c; --knob:#8d857d;
+  --headA:#1d1b19; --headB:#151413; --toastBg:#252220;
+  /* сцена остаётся тёплой: это мастерская, а не панель приборов */
   --view1:#2b211a; --view2:#1a1410; --view3:#120e0b; --vignette:rgba(0,0,0,.55);
-  --shade:rgba(0,0,0,.5); --glow:rgba(216,112,63,.35);
+  --shade:rgba(0,0,0,.55); --glow:rgba(224,105,58,.32);
 
   /* цвет раздела: по нему блоки панели видно, не читая заголовков */
-  --sect-form:#d8703f; --sect-mat:#c08a4e; --sect-print:#6f93a8;
-  --sect-glaze:#7ba58e; --sect-tool:#9d8fbe;
+  --sect-form:#e0693a; --sect-mat:#d79a45; --sect-print:#5fa8dc;
+  --sect-glaze:#4dbfa0; --sect-tool:#a48bea;
   --sect:var(--accent);
 
   /* шкала размеров, --ui — масштаб интерфейса (кнопки Аа в шапке) */
@@ -39,16 +43,33 @@
 }
 :root[data-theme="light"]{
   color-scheme:light;
-  --bg:#ece4d8; --panel:#fbf8f3; --panel2:#f4eee4; --line:#d9cbb6; --line2:#bfae95;
-  --text:#2a2019; --muted:#6b5a49; --muted2:#85735f;
-  --accent:#bd551d; --accent2:#94400f; --accentDark:#a3480f; --onAccent:#fff8f2;
-  --chip:rgba(255,253,249,.88); --ok:#4a7730; --warn:#95661a; --bad:#af3a26;
-  --field:#ffffff; --sunken:#f0e9de; --strip:#f6f1e8; --track:#ddd0bc; --knob:#b09b83;
-  --headA:#fbf7f0; --headB:#f1eae0; --toastBg:#fffaf4;
+  --bg:#eeecea; --panel:#ffffff; --panel2:#f7f6f4; --line:#e3e0dc; --line2:#c9c4be;
+  --text:#1c1a18; --muted:#5d5852; --muted2:#7a746d;
+  --accent:#b84e1b; --accent2:#93390d; --accentDark:#9c4013; --onAccent:#fffaf6;
+  --chip:rgba(255,255,255,.9); --ok:#3d7a4e; --warn:#8a6413; --bad:#b0392a;
+  --field:#ffffff; --sunken:#f1efec; --strip:#f6f4f2; --track:#dcd7d1; --knob:#a49c94;
+  --headA:#ffffff; --headB:#f4f2ef; --toastBg:#ffffff;
   --view1:#efe7db; --view2:#e2d8c9; --view3:#d3c7b5; --vignette:rgba(90,64,42,.16);
-  --shade:rgba(90,64,42,.22); --glow:rgba(189,85,29,.25);
-  --sect-form:#bd551d; --sect-mat:#96662c; --sect-print:#3f6d8a;
-  --sect-glaze:#3f7a60; --sect-tool:#6a5b93;
+  --shade:rgba(40,32,26,.16); --glow:rgba(184,78,27,.22);
+  --sect-form:#b84e1b; --sect-mat:#8d5f26; --sect-print:#2f6d95;
+  --sect-glaze:#2b7a63; --sect-tool:#6553a0;
+}
+
+/* Полосы прокрутки в цвет темы: системные светлые полосы на тёмной панели
+   выдают «страницу», а не инструмент. */
+*{scrollbar-color:var(--line2) transparent;scrollbar-width:thin;}
+*::-webkit-scrollbar{width:10px;height:10px;}
+*::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:3px solid transparent;background-clip:padding-box;}
+*::-webkit-scrollbar-thumb:hover{background:var(--muted2);background-clip:padding-box;}
+*::-webkit-scrollbar-track{background:transparent;}
+
+/* Кому анимация мешает — тому её быть не должно: системная настройка, а не
+   наш вкус. Мгновенные переходы ничего не ломают, всё состояние в классах. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important;
+  }
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}

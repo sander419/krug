@@ -5,7 +5,7 @@ import { STAGES } from '../config/data.js';
 import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
-import { $, hintScroll } from './dom.js';
+import { $, hintScroll, plural } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { openSheet } from './mobile.js';
 
@@ -52,9 +52,19 @@ export function updateWarnings(list){
   worstHelp=worst&&worst.help||null;
   const b=$('verdictBadge');
   if(!worst){b.className='';return;}
-  const more=list.length>1?` <span style="opacity:.6">ещё ${list.length-1}</span>`:'';
-  b.innerHTML=icon(worst.lvl==='ok'?'circle-check':'circle-alert',15)+`<span>${worst.txt}${more}</span>`;
+  /* Раньше здесь повторялся текст худшего замечания — слово в слово тот же,
+     что и в «Контроле мастера» на панели. Два одинаковых абзаца на одном экране
+     съедали половину строки метрик и ничего не добавляли. Теперь это счётчик:
+     сколько замечаний и сколько из них важных, а сам текст — в подсказке
+     и на панели, куда ведёт нажатие. */
+  const bad=list.filter(w=>w.lvl==='bad').length;
+  const cnt=list.filter(w=>w.lvl!=='ok').length;
+  const label = !cnt ? 'Мастер одобряет'
+    : `${cnt} ${plural(cnt,'замечание','замечания','замечаний')}` + (bad?` · ${bad} ${plural(bad,'важное','важных','важных')}`:'');
+  b.innerHTML=icon(cnt?'circle-alert':'circle-check',15)+`<span>${label}</span>`;
   b.className='on '+worst.lvl;
+  b.title=cnt?worst.txt:'Форма технологична и устойчива — нажмите, чтобы открыть список';
+  b.setAttribute('aria-label',label+'. '+(cnt?worst.txt:''));
 }
 
 export function setStageUI(){
