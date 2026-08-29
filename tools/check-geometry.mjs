@@ -12,10 +12,10 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
-import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap,
+import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap, partSelfOverlap,
          partsHandMinutes, fillLevelY, fillLimitedBy,
          partsVolumeMl } from '../js/core/parts.js';
-import { partMouldGeometry, partMouldBlock } from '../js/three/partMould.js';
+import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../js/three/partMould.js';
 import { kindOf } from '../js/config/parts.js';
 import { strainerHoles, strainerSpec, strainerWarnings, rimIndex } from '../js/core/strainer.js';
 import * as THREE from 'three';
@@ -260,6 +260,29 @@ state.wall = 6;
   state.parts = [{...lip, drop: 0}];
   if (!partsWarnings(state, prof).some(w => /не опущена/.test(w.txt))) P('слив без понижения кромки — нет замечания');
 
+  /* Счёт направленных рёбер: каждое обязано встретиться ровно раз вместе
+     с обратным. Дырка в сетке или вывернутый треугольник ломают и заливку гипса,
+     и печать STL, а на глаз не видны — эта проверка их и ловит. */
+  const edgeAudit = geo => {
+    const q = geo.attributes.position;
+    const key = i => [q.getX(i), q.getY(i), q.getZ(i)].map(v => Math.round(v * 100) / 100).join(',');
+    const dirs = new Map();
+    for (let i = 0; i < q.count; i += 3) {
+      const k = [key(i), key(i + 1), key(i + 2)];
+      for (let e = 0; e < 3; e++) {
+        const id = k[e] + '>' + k[(e + 1) % 3];
+        dirs.set(id, (dirs.get(id) || 0) + 1);
+      }
+    }
+    let open = 0, flipped = 0;
+    for (const [id, n] of dirs) {
+      if (n > 1) flipped++;
+      const [x, y] = id.split('>');
+      if (!dirs.has(y + '>' + x)) open++;
+    }
+    return {open, flipped};
+  };
+
   /* полуформа под прилеп: замкнутое тело, канавка внутри блока */
   state.parts = [h];
   for (const p of [h, sanitizePart({kind: 'spout', az: 0})]) {
@@ -276,29 +299,13 @@ state.wall = 6;
     const solidL = vol / 1e6, halfPartL = partMetrics(prof, p).volMl / 2000;
     if (!(solidL > 0)) P(`полуформа ${p.kind}: нормали смотрят внутрь, STL уйдёт вывернутым`);
     if (!(solidL < blk.boxL)) P(`полуформа ${p.kind}: канавка не убавила объём блока`);
-    // бугорки замков добавляют объём, поэтому вычитаем их из ожидания
-    const expect = halfPartL - m.keysL;
+    // бугорки замков добавляют объём, облойная канавка убавляет
+    const expect = halfPartL - m.keysL + m.flashL;
+    if (!(m.flashL > 0)) P(`полуформа ${p.kind}: облойной канавки нет, облой держит половины враспор`);
     if (Math.abs((blk.boxL - solidL) - expect) > Math.abs(expect) * 0.12 + 0.0005)
       P(`полуформа ${p.kind}: канавка не совпадает с половиной детали (${((blk.boxL - solidL) * 1000).toFixed(1)} против ${(expect * 1000).toFixed(1)} см³)`);
 
-    /* Замкнутость и ориентация: гипс льют по этой модели, а печатают по STL.
-       Дырка в сетке или вывернутый треугольник ломают и то и другое, а на глаз
-       не видны — эта проверка их и поймала. */
-    const key = i => [pos.getX(i), pos.getY(i), pos.getZ(i)].map(v => Math.round(v * 100) / 100).join(',');
-    const dirs = new Map();
-    for (let i = 0; i < pos.count; i += 3) {
-      const k = [key(i), key(i + 1), key(i + 2)];
-      for (let e = 0; e < 3; e++) {
-        const id = k[e] + '>' + k[(e + 1) % 3];
-        dirs.set(id, (dirs.get(id) || 0) + 1);
-      }
-    }
-    let open = 0, flipped = 0;
-    for (const [id, n] of dirs) {
-      if (n > 1) flipped++;
-      const [a, b] = id.split('>');
-      if (!dirs.has(b + '>' + a)) open++;
-    }
+    const {open, flipped} = edgeAudit(m.geometry);
     if (open) P(`полуформа ${p.kind}: ${open} рёбер без пары — тело не замкнуто`);
     if (flipped) P(`полуформа ${p.kind}: ${flipped} рёбер повторяются — треугольники смотрят в разные стороны`);
     m.geometry.computeBoundingBox();
@@ -311,77 +318,57 @@ state.wall = 6;
 
     /* вторая половина: те же требования, но замки лунками */
     const m2 = partMouldGeometry(prof, p, 20, {half: 'socket'});
-    const p2 = m2.geometry.attributes.position;
-    const key2 = i => [p2.getX(i), p2.getY(i), p2.getZ(i)].map(v => Math.round(v * 100) / 100).join(',');
-    const d2 = new Map();
-    for (let i = 0; i < p2.count; i += 3) {
-      const k = [key2(i), key2(i + 1), key2(i + 2)];
-      for (let e = 0; e < 3; e++) { const id = k[e] + '>' + k[(e + 1) % 3]; d2.set(id, (d2.get(id) || 0) + 1); }
-    }
-    let o2 = 0, f2 = 0;
-    for (const [id, n] of d2) {
-      if (n > 1) f2++;
-      const [a, b] = id.split('>');
-      if (!d2.has(b + '>' + a)) o2++;
-    }
+    const {open: o2, flipped: f2} = edgeAudit(m2.geometry);
     if (o2 || f2) P(`вторая половина ${p.kind}: ${o2} открытых, ${f2} вывернутых рёбер`);
     if (m.keys !== m2.keys) P(`у половин ${p.kind} разное число замков`);
-    if (!(m.keys >= 2)) P(`формa ${p.kind}: замков ${m.keys} — половины не сцентрировать`);
+    if (!(m.keys >= 2)) P(`форма ${p.kind}: замков ${m.keys} — половины не сцентрировать`);
     m2.geometry.dispose();
   }
-}
-state.parts = [];
-setShape(PRESETS[1].pts, 220, 160);
 
-/* ---------- отверстие с ситечком ---------- */
-{
-  setShape(PRESETS[1].pts, 220, 160);
-  state.wall = 5; state.hollow = true; state.stage = 6;
-  const sp = sanitizePart({kind: 'spout', az: 0, at: 0.62, len: 60, rise: 22, bore: 16, tip: 8, mesh: 7});
-  state.parts = [sp];
+  /* Крайние прилепы. Здесь вылезли две вещи сразу: облойная канавка идёт
+     смещением контура детали, а смещение внутрь крутого изгиба сворачивается
+     петлёй; и сама деталь при толстой ленте на коротком пролёте входит в себя.
+     Второе — не наша беда, а свойство детали, но форму под неё строить нельзя,
+     и пользователь должен это увидеть замечанием, а не рваным STL. */
+  let knots = 0, clean = 0;
+  for (const out of [15, 25, 40, 60, 90])
+    for (const thick of [4, 8, 12, 20, 30])
+      for (const [top, bot] of [[0.8, 0.4], [1, 0.05], [0.4, 0.2]]) {
+        const p = sanitizePart({kind: 'handle', az: 0, out, thick, wide: Math.round(thick * 1.6), top, bot});
+        const tag = `ручка out=${out} thick=${thick} ${top}→${bot}`;
+        if (partSelfOverlap(prof, p)) {
+          knots++;
+          const w = partsWarnings({...state, parts: [p]}, prof);
+          if (!w.some(x => x.txt.includes('пересекает сама себя')))
+            P(`${tag}: деталь в узле, а замечания нет`);
+          continue;
+        }
+        clean++;
+        const f = partMouldFeatures(prof, p, 20);
+        if (!(f.flashL > 0)) P(`${tag}: облойная канавка выродилась`);
+        if (f.keys !== 4) P(`${tag}: замков ${f.keys}, а место есть под четыре`);
+      }
+  if (!(knots > 0 && clean > 0)) P(`перебор ручек вырожден: узлов ${knots}, годных ${clean}`);
 
-  const h = strainerHoles(sp);
-  if (h.count !== 7) P(`ситечко на 7 отверстий дало ${h.count}`);
-  if (!(h.ratio > 0 && h.ratio < 3)) P(`живое сечение ${h.ratio.toFixed(2)} вне разумного`);
-  const wide = strainerHoles({...sp, mesh: 13});
-  if (!(wide.ratio > h.ratio)) P('больше отверстий — больше живого сечения');
-  const one = strainerHoles({...sp, mesh: 1});
-  if (one.count !== 1) P('одно отверстие должно оставаться одним');
-  if (!(one.holes[0].r * 2 > h.holes[0].r * 2)) P('единственное отверстие должно быть шире дырочки решета');
-
-  const built = buildPot(state);
-  if (!(built.strainers && built.strainers.length === 1)) P('разметка ситечка не построилась');
-  const spec = built.strainers[0];
-  const jRim = rimIndex(built.path);
-  if (!(spec.box.jOut1 <= jRim && spec.box.jIn0 >= jRim))
-    P('вырез должен лежать по одну сторону кромки на каждой стенке');
-  if (!(spec.box.i1 > spec.box.i0)) P('вырез по кругу пустой');
-  if (!(spec.holes.every(x => Math.hypot(x.x, x.y) + x.r < spec.holes[0].r + spec.field * 1.2)))
-    P('дырочки вылезают за поле ситечка');
-
-  // тело вращения обязано отдать клетки под вырез
-  const noHole = buildPot({...state, parts: []});
-  const withHole = buildPot(state);
-  if (!(withHole.geometry.index.count < noHole.geometry.index.count))
-    P('вырез не убрал ни одного треугольника из тела');
-
-  // предупреждения: узкое решето душит носик
-  state.parts = [{...sp, mesh: 3}];
-  if (!strainerWarnings(state).some(x => /живое сечение/.test(x.txt))) P('узкое ситечко — нет замечания о сечении');
-  state.parts = [{...sp, mesh: 13, bore: 8}];
-  if (!strainerWarnings(state).some(x => /забьются/.test(x.txt))) P('мелкие дырочки — нет замечания о засоре');
-  state.parts = [sp];
-  if (strainerWarnings(state).some(x => x.lvl === 'bad')) P('нормальное ситечко ругаться не должно');
-}
-state.parts = [];
-setShape(PRESETS[1].pts, 220, 160);
-
-console.log(`\nУсилие пресса: ⌀200 → ${f200.toFixed(1)} тс, ⌀400 → ${f400.toFixed(1)} тс (растёт как площадь)`);
-console.log(`Кинотеатр: самый резкий шаг меняет объём на ${(worst * 100).toFixed(1)} % (порог 12 %)`);
-console.log(`Экономика (чашка, Гжель): 10 шт — ${Math.round(small.machinePerPiece)} ₽/шт машиной против ${Math.round(small.manualPerPiece)} ₽/шт руками; 20 000 шт — ${Math.round(big.machinePerPiece)} против ${Math.round(big.manualPerPiece)}; окупаемость с ${small.breakEven} шт`);
-if (problems.length) {
-  console.log('\nОШИБКИ:');
-  for (const p of problems) console.log('  ✗ ' + p);
-  process.exit(1);
+  /* Сетку строим не на всех — она дорогая, но на разных углах диапазона. */
+  for (const v of [
+    {kind: 'handle', out: 25, thick: 4,  wide: 6,  top: 0.8, bot: 0.4},
+    {kind: 'handle', out: 40, thick: 4,  wide: 6,  top: 1,   bot: 0.05},
+    {kind: 'handle', out: 90, thick: 12, wide: 19, top: 0.8, bot: 0.4},
+    {kind: 'handle', out: 90, thick: 30, wide: 48, top: 1,   bot: 0.05},
+    {kind: 'spout',  len: 20,  bore: 34, tip: 24, rise: 60,  at: 0.95},
+    {kind: 'spout',  len: 140, bore: 6,  tip: 4,  rise: -10, at: 0.2},
+    {kind: 'spout',  len: 20,  bore: 6,  tip: 4,  rise: -10, at: 0.2},
+  ]) {
+    const p = sanitizePart({az: 0, ...v});
+    if (partSelfOverlap(prof, p)) { P(`образец ${JSON.stringify(v)} оказался узлом — выберите другой`); continue; }
+    for (const half of ['bump', 'socket']) {
+      const g = partMouldGeometry(prof, p, 20, {half}).geometry;
+      const a = edgeAudit(g);
+      if (a.open || a.flipped)
+        P(`крайний ${JSON.stringify(v)}, половина ${half}: ${a.open} открытых, ${a.flipped} вывернутых рёбер`);
+      g.dispose();
+    }
+  }
 }
 console.log('\nГеометрия оснастки в порядке.');

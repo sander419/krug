@@ -160,6 +160,53 @@ export function fillLimitedBy(prof, parts) {
 
 /* ---------- замечания ---------- */
 
+/** Станции вдоль детали: точка, нормаль в плоскости детали, полуоси сечения. */
+export function partStations(prof, part, n = 64) {
+  const curve = partCurve(prof, part), sec = partSection(part);
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const p = curve.getPointAt(t), d = curve.getTangentAt(t);
+    const len = Math.hypot(d.x, d.y) || 1;
+    out.push({x: p.x, y: p.y, nx: -d.y / len, ny: d.x / len,
+              r: sec.rAt(t), rz: sec.rAt(t) * sec.ratio});
+  }
+  return out;
+}
+
+/** Контур детали на плоскости разъёма: рельсы плюс центры торцов. */
+export function partOutline(st) {
+  const N = st.length - 1;
+  const side = k => st.map(s => ({x: s.x + k * s.nx * s.r, y: s.y + k * s.ny * s.r}));
+  return side(1).concat([{x: st[N].x, y: st[N].y}],
+                        side(-1).reverse(), [{x: st[0].x, y: st[0].y}]);
+}
+
+/** Сколько раз замкнутая ломаная пересекает сама себя. */
+export function pathSelfCross(path) {
+  const side = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  let n = 0;
+  for (let i = 0; i < path.length; i++) {
+    const a = path[i], b = path[(i + 1) % path.length];
+    for (let j = i + 2; j < path.length; j++) {
+      if (i === 0 && j === path.length - 1) continue;
+      const c = path[j], d = path[(j + 1) % path.length];
+      if (((side(a, b, c) > 0) !== (side(a, b, d) > 0)) &&
+          ((side(c, d, a) > 0) !== (side(c, d, b) > 0))) n++;
+    }
+  }
+  return n;
+}
+
+/* Деталь, пересёкшая сама себя: сечение шире, чем позволяет изгиб, и протяжка
+   входит в себя же. Форму под такую деталь не построить — канавка сворачивается
+   в узел, а гипс в узел не заливается. Считаем не приближение, а тот самый
+   контур, по которому потом режется разъём: он и есть предмет спора. */
+export function partSelfOverlap(prof, part) {
+  if (kindOf(part).deform) return false;
+  return pathSelfCross(partOutline(partStations(prof, part))) > 0;
+}
+
 export function partsWarnings(state, prof) {
   const parts = state.parts || [];
   if (!parts.length) return [];
@@ -169,6 +216,10 @@ export function partsWarnings(state, prof) {
   parts.forEach((p, i) => {
     const m = partMetrics(prof, p);
     const label = `${kindOf(p).name} ${i + 1}`;
+    if (partSelfOverlap(prof, p))
+      w.push({lvl: 'bad', help: p.kind === 'spout' ? 'spout' : 'handle', txt:
+        `${label}: пересекает сама себя — сечение шире, чем позволяет изгиб. Форма под неё не строится: ` +
+        `канавка сворачивается в узел. Уменьшите сечение или увеличьте вылет.`});
     if (p.kind === 'handle') {
       const span = Math.abs(p.top - p.bot) * H;
       if (p.thick < state.wall * 0.9)

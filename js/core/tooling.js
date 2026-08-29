@@ -3,8 +3,8 @@
 // пересчёт размеров через усадку, усилие пресса, масса заготовки.
 // Чистая логика, без DOM. Единицы — мм, граммы, если не сказано иначе.
 import { userProfileMM, floorY } from './math.js';
-import { partMetrics, partsHandMinutes } from './parts.js';
-import { partMouldBlock } from '../three/partMould.js';
+import { partMetrics, partsHandMinutes, partSelfOverlap } from './parts.js';
+import { partMouldBlock, partMouldFeatures } from '../three/partMould.js';
 import { strainerHoles } from './strainer.js';
 import { kindOf as partKind } from '../config/parts.js';
 import { byId as materialById } from '../config/materials.js';
@@ -314,12 +314,20 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
         return;
       }
       const blk = partMouldBlock(prof, p, 20);
-      const pm = plasterMix(Math.max(blk.boxL - m.volMl / 2000, 0), wr);
+      const ft = partMouldFeatures(prof, p, 20);
+      const pm = plasterMix(Math.max(blk.boxL - m.volMl / 2000 - ft.flashL, 0), wr);
       const geom = p.kind === 'spout'
         ? `корень на высоте ${fmt(p.at * 100)} % (${fmt(p.at * state.H)} мм), длина ${fmt(p.len)} мм, подъём ${p.rise}°, ⌀ ${fmt(p.bore)}→${fmt(p.tip)} мм`
         : `прилепы ${fmt(p.top * 100)} %–${fmt(p.bot * 100)} % высоты, вылет ${fmt(p.out)} мм, лента ${fmt(p.thick)}×${fmt(p.wide)} мм`;
+      if (partSelfOverlap(prof, p)) {
+        // деталь вошла сама в себя: канавка сворачивается в узел, формы нет
+        L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ${geom}; глины ${Math.round(m.volMl * 1.92)} г` +
+          `; форма не строится — деталь пересекает сама себя`);
+        return;
+      }
       L.push(`- ${kind.name} ${i + 1}: поворот ${p.az}°, ${geom}; глины ${Math.round(m.volMl * 1.92)} г` +
-        `; форма из двух половин, блок ${blk.blockMM.map(v => Math.round(v)).join('×')} мм на половину, гипса ${fmt(pm.plasterKg)} кг на каждую`);
+        `; форма из двух половин, блок ${blk.blockMM.map(v => Math.round(v)).join('×')} мм на половину, гипса ${fmt(pm.plasterKg)} кг на каждую` +
+        `; замков ${ft.keys} (⌀${fmt(2 * 7)} мм, высота ${fmt(ft.keyH)} мм), облойная канавка ${fmt(ft.flashW)}×${fmt(ft.flashD)} мм в ${fmt(2)} мм от детали`);
       if (p.kind === 'spout') {
         const h = strainerHoles(p);
         L.push(`  - Ситечко: ${h.count} отв. ⌀${fmt(h.holeD)} мм, живое сечение ${Math.round(h.ratio * 100)} % от носика; режется по кожетвёрдому до прилепки носика`);

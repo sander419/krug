@@ -8,23 +8,34 @@
 // снова не нужно: канавка это половина той же протяжки, а лицевая грань блока —
 // прямоугольник с вырезом по её границе (THREE.Shape умеет дырки).
 //
-// Чего здесь нет и не будет: замков, штифтов, воздушных каналов и облойной
-// канавки. Их закладывает изготовитель оснастки под свой пресс.
+// На разъёме есть облойная канавка: неглубокий ров вокруг детали, куда уходит
+// выдавленная глина. Без него половины не сходятся — облой держит их враспор,
+// и деталь выходит толще на толщину этой плёнки.
+//
+// Чего здесь нет: воздушных каналов. Их сверлят по месту под конкретный пресс.
 import * as THREE from 'three';
-import { partCurve, partSection } from '../core/parts.js';
+import { partStations, partOutline } from '../core/parts.js';
 
 const STATIONS = 64;      // шагов вдоль детали
 const ARC = 18;           // шагов по половине сечения
 const KEY_R = 7;          // радиус замка, мм
 const KEY_H = 4;          // высота бугорка (и глубина лунки)
 const KEY_SEG = 20;       // шагов по окружности замка
-const KEY_CLEAR = 3;      // мм от замка до канавки
+const KEY_CLEAR = 3;      // мм от замка до облойной канавки
+const KEY_EDGE = 6;       // гипс между замком и краем блока, мм
+const LAND = 2;           // площадка между деталью и облойной канавкой, мм
+const FLASH_W = 4;        // ширина облойной канавки, мм
+const FLASH_D = 1.5;      // её глубина, мм
+/* Стенка блока обязана вместить всё, что живёт на разъёме: площадку, канавку,
+   зазор и сам замок с гипсом до края. Иначе замки некуда ставить — на крайних
+   ручках их выходило ноль, и половины было нечем сцентрировать. */
+const WALL_MIN = LAND + FLASH_W + KEY_CLEAR + 2 * KEY_R + KEY_EDGE;
 
 /* Расстояние от точки до ломаной: замок не должен садиться на канавку. */
-function distToBand(band, x, y) {
+function distToPath(path, x, y) {
   let best = Infinity;
-  for (let i = 0; i < band.length; i++) {
-    const a = band[i], b = band[(i + 1) % band.length];
+  for (let i = 0; i < path.length; i++) {
+    const a = path[i], b = path[(i + 1) % path.length];
     const dx = b.x - a.x, dy = b.y - a.y;
     const l2 = dx * dx + dy * dy || 1;
     let t = ((x - a.x) * dx + (y - a.y) * dy) / l2;
@@ -34,36 +45,94 @@ function distToBand(band, x, y) {
   return best;
 }
 
-/* Замки по углам блока: бугорки на одной половине, лунки на другой. */
-function keyPositions(band, X0, X1, Y0, Y1, wall) {
-  const d = wall / 2 + KEY_R;
+/* Площадь замкнутого контура со знаком: по ней же определяем направление обхода. */
+function signedArea(path) {
+  let a = 0;
+  for (let i = 0; i < path.length; i++) {
+    const b = path[(i + 1) % path.length];
+    a += path[i].x * b.y - b.x * path[i].y;
+  }
+  return a / 2;
+}
+
+/* Замки по углам блока. Место под них гарантировано шириной стенки, но проверку
+   на канавку оставляем: она поймает разъезд, если размеры поменяют. */
+function keyPositions(guard, X0, X1, Y0, Y1) {
+  const d = KEY_EDGE + KEY_R;
   return [[X0 + d, Y0 + d], [X1 - d, Y0 + d], [X1 - d, Y1 - d], [X0 + d, Y1 - d]]
-    .filter(([x, y]) => distToBand(band, x, y) > KEY_R + KEY_CLEAR)
+    .filter(([x, y]) => distToPath(guard, x, y) > KEY_R + KEY_CLEAR)
     .map(([x, y]) => ({x, y}));
 }
 
-/** Станции вдоль детали: точка, нормаль в плоскости, полуразмеры сечения. */
-function stations(prof, part) {
-  const curve = partCurve(prof, part);
-  const sec = partSection(part);
-  const out = [];
-  for (let i = 0; i <= STATIONS; i++) {
-    const t = i / STATIONS;
-    const p = curve.getPointAt(t);
-    const d = curve.getTangentAt(t);
-    const len = Math.hypot(d.x, d.y) || 1;
-    out.push({
-      x: p.x, y: p.y,
-      nx: -d.y / len, ny: d.x / len,        // нормаль в плоскости детали
-      r: sec.rAt(t), rz: sec.rAt(t) * sec.ratio,
-    });
+/* Пересечение отрезков без касаний по концам. */
+function segCross(a, b, c, d) {
+  const rx = b.x - a.x, ry = b.y - a.y, sx = d.x - c.x, sy = d.y - c.y;
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c.x - a.x) * sy - (c.y - a.y) * sx) / den;
+  const u = ((c.x - a.x) * ry - (c.y - a.y) * rx) / den;
+  if (t <= 1e-6 || t >= 1 - 1e-6 || u <= 1e-6 || u >= 1 - 1e-6) return null;
+  return {x: a.x + rx * t, y: a.y + ry * t};
+}
+
+/* Снятие петель: смещённый контур на крутом изгибе перехлёстывается сам с собой,
+   и earcut на таком контуре выдаёт рваную сетку. Найденную петлю выбрасываем,
+   вставляя вместо неё точку пересечения. */
+function deloop(path) {
+  for (let pass = 0; pass < 24; pass++) {
+    let hit = null;
+    for (let i = 0; i < path.length && !hit; i++) {
+      const a = path[i], b = path[(i + 1) % path.length];
+      for (let j = i + 2; j < path.length; j++) {
+        if (i === 0 && j === path.length - 1) continue;
+        const x = segCross(a, b, path[j], path[(j + 1) % path.length]);
+        if (x) { hit = {i, j, x}; break; }
+      }
+    }
+    if (!hit) break;
+    const head = path.slice(0, hit.i + 1), tail = path.slice(hit.j + 1);
+    // петля короче остатка; если нет — выбрасываем её, а не полконтура
+    path = head.length + tail.length >= hit.j - hit.i
+      ? head.concat([hit.x], tail)
+      : path.slice(hit.i + 1, hit.j + 1).concat([hit.x]);
   }
+  return path;
+}
+
+/* Контур вокруг детали на расстоянии d от её края: рельсы разведены на r + d,
+   а на торцах контур уходит вперёд по касательной на те же d. */
+function offsetPath(st, d) {
+  const N = st.length - 1;
+  const side = (s, k) => ({x: s.x + k * s.nx * (s.r + d), y: s.y + k * s.ny * (s.r + d)});
+  const L = st.map(s => side(s, 1)), R = st.map(s => side(s, -1));
+  // касательная = (ny, -nx): нормаль повёрнута на четверть оборота
+  const step = (p, s, k) => ({x: p.x + k * s.ny * d, y: p.y - k * s.nx * d});
+  const out = L.slice();
+  out.push(step(L[N], st[N], 1), step(R[N], st[N], 1));
+  for (let i = N; i >= 0; i--) out.push(R[i]);
+  out.push(step(R[0], st[0], -1), step(L[0], st[0], -1));
   return out;
+}
+
+/* Контуры облойной канавки. Смещение внутрь изгиба сворачивается петлёй там,
+   где радиус кривизны меньше отступа: такие точки оказываются ближе к детали,
+   чем задано, — их выбрасываем. Одинаково из обоих контуров, иначе стенки
+   канавки перестанут сшиваться попарно и тело разъедется. */
+export function flashPaths(st) {
+  const band = partOutline(st);
+  const trim = d => {
+    const p = deloop(offsetPath(st, d).filter(q => distToPath(band, q.x, q.y) > d - 0.25));
+    // обход приводим к часовому: стенки канавки сшиваются с гранью, а earcut
+    // всегда обходит дырку против внешнего контура
+    return signedArea(p) > 0 ? p.reverse() : p;
+  };
+  return {inner: trim(LAND), outer: trim(LAND + FLASH_W), band};
 }
 
 /** Габарит блока без построения меша: для чисел в панели и в техкарте. */
 export function partMouldBlock(prof, part, wall = 20) {
-  const st = stations(prof, part);
+  wall = Math.max(wall, WALL_MIN);
+  const st = partStations(prof, part, STATIONS);
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, rzMax = 0;
   for (const s of st) {
     for (const k of [1, -1]) {
@@ -79,12 +148,17 @@ export function partMouldBlock(prof, part, wall = 20) {
           boxL: (X1 - X0) * (Y1 - Y0) * depth / 1e6};
 }
 
-/** Сколько замков встанет на эту форму — для чисел в панели. */
-export function partMouldKeys(prof, part, wall = 20) {
+/** Числа для панели и техкарты без меша: замки и объём облойной канавки. */
+export function partMouldFeatures(prof, part, wall = 20) {
   const {st, X0, X1, Y0, Y1} = partMouldBlock(prof, part, wall);
-  const left = st.map(s => ({x: s.x + s.nx * s.r, y: s.y + s.ny * s.r}));
-  const right = st.map(s => ({x: s.x - s.nx * s.r, y: s.y - s.ny * s.r}));
-  return keyPositions(left.concat(right.slice().reverse()), X0, X1, Y0, Y1, wall).length;
+  const {inner, outer} = flashPaths(st);
+  const keys = keyPositions(outer, X0, X1, Y0, Y1).length;
+  return {
+    keys,
+    keysL: keys * (2 / 3) * Math.PI * KEY_R * KEY_R * KEY_H / 1e6,
+    flashL: (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D / 1e6,
+    flashW: FLASH_W, flashD: FLASH_D, keyH: KEY_H,
+  };
 }
 
 /**
@@ -94,46 +168,62 @@ export function partMouldKeys(prof, part, wall = 20) {
 export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
   const socket = opts.half === 'socket';        // вторая половина: лунки вместо бугорков
   const {st, X0, X1, Y0, Y1, depth} = partMouldBlock(prof, part, wall);
-  const left = st.map(s => ({x: s.x + s.nx * s.r, y: s.y + s.ny * s.r}));
-  const right = st.map(s => ({x: s.x - s.nx * s.r, y: s.y - s.ny * s.r}));
   /* Торцы канавки закрыты полудисками с вершиной в центре сечения, поэтому
      центр обязан быть и в контуре выреза: иначе одно ребро грани встречает два
      ребра крышки, и в теле остаются щели — STL перестаёт быть замкнутым. */
-  const capA = {x: st[0].x, y: st[0].y};
-  const capB = {x: st[STATIONS].x, y: st[STATIONS].y};
-  const band = left.concat([capB], right.slice().reverse(), [capA]);
+  const {inner, outer, band} = flashPaths(st);
 
   const pos = [];
   const tri = (a, b, c) => pos.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
   const quad = (a, b, c, d) => { tri(a, b, c); tri(a, c, d); };
+  const V2 = p => new THREE.Vector2(p.x, p.y);
+  const faceTris = (shape, z = 0) => {
+    const g = new THREE.ShapeGeometry(shape, 1);
+    const gp = g.attributes.position, gi = g.index.array;
+    for (let i = 0; i < gi.length; i += 3) {
+      const v = [0, 1, 2].map(k => [gp.getX(gi[i + k]), gp.getY(gi[i + k]), z]);
+      tri(v[0], v[1], v[2]);                      // нормаль вверх, наружу гипса
+    }
+    g.dispose();
+  };
 
-  /* лицевая грань: прямоугольник с вырезом по границе канавки */
-  const shape = new THREE.Shape([
+  /* лицевая грань: прямоугольник с вырезом под облойную канавку и замки */
+  const keys = keyPositions(outer, X0, X1, Y0, Y1);
+  const face = new THREE.Shape([
     new THREE.Vector2(X0, Y0), new THREE.Vector2(X1, Y0),
     new THREE.Vector2(X1, Y1), new THREE.Vector2(X0, Y1),
   ]);
-  const keys = keyPositions(band, X0, X1, Y0, Y1, wall);
-  const keyRing = (kp, j) => {
-    const a = j / KEY_SEG * Math.PI * 2;
-    return {x: kp.x + Math.cos(a) * KEY_R, y: kp.y + Math.sin(a) * KEY_R};
-  };
-  shape.holes = [
-    new THREE.Path(band.map(p => new THREE.Vector2(p.x, p.y))),
-    ...keys.map(kp => new THREE.Path(
-      Array.from({length: KEY_SEG}, (_, j) => {
-        const q = keyRing(kp, j);
-        return new THREE.Vector2(q.x, q.y);
-      }))),
+  face.holes = [
+    new THREE.Path(outer.map(V2)),
+    ...keys.map(kp => new THREE.Path(Array.from({length: KEY_SEG}, (_, j) => {
+      const a = j / KEY_SEG * Math.PI * 2;
+      return new THREE.Vector2(kp.x + Math.cos(a) * KEY_R, kp.y + Math.sin(a) * KEY_R);
+    }))),
   ];
-  const face = new THREE.ShapeGeometry(shape, 1);
-  const fp = face.attributes.position, fi = face.index.array;
-  for (let i = 0; i < fi.length; i += 3) {
-    const v = [0, 1, 2].map(k => [fp.getX(fi[i + k]), fp.getY(fi[i + k]), 0]);
-    tri(v[0], v[1], v[2]);                        // нормаль вверх, наружу блока
-  }
-  face.dispose();
+  faceTris(face);
 
-  /* канавка: половина сечения, уходящая вниз от разъёма */
+  /* площадка между деталью и облойной канавкой */
+  const landShape = new THREE.Shape(inner.map(V2));
+  landShape.holes = [new THREE.Path(band.map(V2))];
+  faceTris(landShape);
+
+  /* сама облойная канавка: стенка вниз, дно, стенка вверх.
+     Дно считает earcut по двум контурам, а не сшивкой точка в точку: после
+     снятия петель у контуров разное число точек, и попарно их не сшить. */
+  const at = (p, z) => [p.x, p.y, z];
+  const wallStrip = (path, zA, zB) => {
+    for (let i = 0; i < path.length; i++) {
+      const j = (i + 1) % path.length;
+      quad(at(path[i], zA), at(path[j], zA), at(path[j], zB), at(path[i], zB));
+    }
+  };
+  wallStrip(inner, 0, -FLASH_D);
+  const floor = new THREE.Shape(outer.map(V2));
+  floor.holes = [new THREE.Path(inner.map(V2))];
+  faceTris(floor, -FLASH_D);
+  wallStrip(outer, -FLASH_D, 0);
+
+  /* канавка под деталь: половина сечения, уходящая вниз от разъёма */
   const ring = (s, k) => {
     const a = Math.PI + k / ARC * Math.PI;        // от π до 2π: sin ≤ 0, вниз
     return [s.x + s.nx * s.r * Math.cos(a), s.y + s.ny * s.r * Math.cos(a), s.rz * Math.sin(a)];
@@ -167,7 +257,6 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
     for (let ring = 0; ring < 3; ring++)
       for (let j = 0; j < KEY_SEG; j++) {
         const j2 = (j + 1) % KEY_SEG;
-        // обход рима — против обхода выреза в грани, как и у канавки
         // вершина обходится против пояса под ней, пояса — против выреза в грани
         if (ring === 2) tri(dome(j, 3), dome(j, ring), dome(j2, ring));
         else quad(dome(j, ring), dome(j2, ring), dome(j2, ring + 1), dome(j, ring + 1));
@@ -196,8 +285,7 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
   const boxL = (X1 - X0) * (Y1 - Y0) * depth / 1e6;
   // бугорки добавляют гипс, лунки убавляют: половина эллипсоида R×R×H
   const keysL = keys.length * (2 / 3) * Math.PI * KEY_R * KEY_R * KEY_H / 1e6;
+  const flashL = (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D / 1e6;
   return {geometry: geo, blockMM: [X1 - X0, Y1 - Y0, depth], boxL, depth,
-          keys: keys.length, keysL, keyH: KEY_H, socket};
+          keys: keys.length, keysL, keyH: KEY_H, flashL, flashW: FLASH_W, flashD: FLASH_D, socket};
 }
-
-

@@ -18,7 +18,8 @@ import { $, esc, num, dec, rub } from './dom.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
-import { partMouldGeometry, partMouldBlock, partMouldKeys } from '../three/partMould.js';
+import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../three/partMould.js';
+import { partSelfOverlap } from '../core/parts.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -178,21 +179,28 @@ function partsMouldHTML(waterRatio, plaster) {
   const prof = userProfileMM(state);
   let total = 0;
   const rows = list.map((p, i) => {
+    // деталь, вошедшая сама в себя, канавкой не отпечатывается: форму под неё
+    // не строим и кнопок не даём, чтобы наружу не ушёл рваный STL
+    if (partSelfOverlap(prof, p))
+      return `<li>${kindOf(p).name} ${i + 1}: форма не строится — деталь пересекает сама себя.
+        Уменьшите сечение или разведите прилепы.</li>`;
     const m = partMouldBlock(prof, p, MOULD_WALL);
-    m.keys = partMouldKeys(prof, p, MOULD_WALL);
-    const halfL = Math.max(m.boxL - partVolumeL(prof, p) / 2, 0);
+    const f = partMouldFeatures(prof, p, MOULD_WALL);
+    // бугорки замков на одной половине и лунки на другой взаимно гасятся,
+    // а облойная канавка убавляет гипс на каждой
+    const halfL = Math.max(m.boxL - partVolumeL(prof, p) / 2 - f.flashL, 0);
     const mix = plasterMix(halfL, waterRatio);
     total += mix.plasterKg * 2;
     return `<li>${kindOf(p).name} ${i + 1}: блок ${m.blockMM.map(v => Math.round(v)).join('×')} мм на половину,
-      гипса <b>${num(mix.plasterKg, 1)} кг</b> на каждую, замков ${m.keys}
+      гипса <b>${num(mix.plasterKg, 1)} кг</b> на каждую, замков ${f.keys}
       <button class="btn small" data-mould-show="${i}">Показать</button>
       <button class="btn small" data-mould-stl="${i}">STL</button></li>`;
   }).join('');
   return `<br><span class="dim">Формы под прилепы: две половины, разъём по плоскости детали.</span>
     <ul class="parts-moulds">${rows}</ul>
-    <span class="dim">Итого на комплект ${num(total, 1)} кг гипса. Замки, штифты, воздушные каналы
-    и облойная канавка не строятся — их закладывает изготовитель оснастки. Ресурс таких форм
-    не подтверждён: их меняют по состоянию, а не по числу циклов.</span>`;
+    <span class="dim">Итого на комплект ${num(total, 1)} кг гипса. Замки и облойная канавка
+    построены; штифты и воздушные каналы — нет, их сверлят по месту под конкретный пресс.
+    Ресурс таких форм не подтверждён: их меняют по состоянию, а не по числу циклов.</span>`;
 }
 
 /* Кнопки «показать» и «STL» у форм под прилепы. Вешаются после каждой
@@ -208,7 +216,7 @@ function bindPartMoulds() {
       if (partPreview) {
         part = 'ware';
         sceneAPI.setPreviewMesh(partMouldGeometry(prof, p, MOULD_WALL, {half: 'bump'}).geometry);
-        toast(`Половина формы под «${kindOf(p).name.toLowerCase()}»: разъём вверх, замки бугорками`);
+        toast(`Половина формы под «${kindOf(p).name.toLowerCase()}»: разъём вверх, замки бугорками, вокруг детали облойная канавка`);
       } else {
         sceneAPI.setPreviewMesh(null);
       }
