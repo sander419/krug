@@ -117,6 +117,10 @@ export function initLibrary(){
       state.firing=b.dataset.f;
       document.querySelectorAll('#firingSeg button').forEach(x=>x.classList.toggle('active',x===b));
       sceneAPI.applyMaterial(state);
+      /* Состояние изделия меняет не только цвет: от него зависят замечания
+         по глазурному покрытию и число обжигов в садке. Пересчёта не было —
+         блоки показывали сырое изделие, пока не тронешь что-нибудь ещё. */
+      emit();
     };
   });
   syncLibrary();

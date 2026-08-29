@@ -20,6 +20,7 @@ const CHECKS = [
   ['Линия',        'check-trace.mjs'],
   ['Картинка',     'check-silhouette.mjs'],
   ['Автономность', 'check-offline.mjs'],
+  ['Печи',         'check-kilns.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
 ];
 

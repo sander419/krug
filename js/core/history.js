@@ -10,7 +10,7 @@ import { state } from './state.js';
 
 const KEYS = ['name', 'points', 'activePreset', 'H', 'D', 'segments', 'rings',
               'hollow', 'wall', 'footH', 'footK', 'allow', 'mat', 'firing',
-              'seed', 'pr', 'glaze', 'glazeId', 'parts'];
+              'seed', 'pr', 'glaze', 'glazeId', 'parts', 'kiln'];
 
 const LIMIT = 60;          // шагов назад; больше не нужно, а память не резиновая
 const COALESCE = 350;      // мс: тянущийся ползунок — один шаг, а не сорок

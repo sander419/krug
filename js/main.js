@@ -28,6 +28,7 @@ import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
 import { coatWarnings } from './core/glazeCoat.js';
 import { byGlazeId } from './config/glazes.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
+import { initKiln, syncKiln } from './ui/kiln.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
 import { toast, updateStats, updateWarnings, setStageUI, setCinemaSlider, syncPlayIcon, initCinema, initTools } from './ui/overlays.js';
@@ -52,6 +53,7 @@ function refreshNow(){
   const tabs=activeRoute().tabs;
   updateWarnings(warn.filter(w=>!w.area||tabs.includes(w.area)));
   updateCoatPanel();
+  syncKiln();          // садка зависит от габарита после усадки
   updateMechanics();
   drawEditor();
   scheduleHash();
@@ -143,6 +145,7 @@ step('картинка',()=>initPhoto(info=>{
 }));
 step('обучение',()=>initKB());
 step('библиотека масс',()=>initLibrary());
+step('печь',()=>initKiln());
 step('оснастка',()=>initTooling());
 step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);

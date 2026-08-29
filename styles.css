@@ -939,6 +939,15 @@ body.learning main,body.learning #metrics{display:none;}
 .part-drawn b{font-size:var(--fs-sm);}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 
+/* ---------- печь и садка ---------- */
+.kiln-out{display:flex;gap:var(--gap-3);align-items:flex-start;margin-top:var(--gap-2);flex-wrap:wrap;}
+.kiln-map{width:150px;height:150px;flex:none;}
+.kiln-shelf{fill:var(--sunken);stroke:var(--line2);stroke-width:1.5;}
+.kiln-gap{fill:color-mix(in oklab, var(--accent) 12%, transparent);stroke:none;}
+.kiln-item{fill:color-mix(in oklab, var(--accent) 45%, transparent);stroke:var(--accent);stroke-width:1;}
+.kiln-nums{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;}
+.tool-note.bad{color:var(--bad);}
+
 /* ---------- поиск по инструменту (Ctrl+K) ---------- */
 #finderScreen{
   position:fixed;inset:0;z-index:100;display:none;padding:12vh 20px 20px;
