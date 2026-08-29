@@ -2,6 +2,7 @@
 import { PRESETS } from '../config/data.js';
 import { MATERIALS, LEGACY_CLAY_INDEX } from '../config/materials.js';
 import { GLAZES } from '../config/glazes.js';
+import { sanitizePart } from './parts.js';
 import { clamp } from './util.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
@@ -24,13 +25,13 @@ export const state = {
   pr: {printer:1, nozzle:4.0, lh:2.4, feed:1800, cart:20, flow:100, tau:8},
   glaze: {al:0.35, si:4.2, ca:0.7},
   glazeId: 'clear-gloss',       // id из js/config/glazes.js
-  // ручка: доли высоты для прилепов, вылет и сечение в мм
-  handle: {on:false, top:0.78, bot:0.34, out:38, thick:11, wide:20},
+  // прилепы: ручки и носики, каждый со своим азимутом. Пусто — чистое тело вращения
+  parts: [],
 };
 
 
 export function encodeDNA(){
-  const d = {v:5, name:state.name, gid:state.glazeId, hd:state.handle, mat:state.mat, pts:state.points, H:state.H, D:state.D,
+  const d = {v:6, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze};
@@ -48,7 +49,7 @@ export function applyDNAFromHash(){
 export function applyDNA(code){
   try{
     const d = JSON.parse(decodeURIComponent(escape(atob(String(code).replace(/-/g,'+').replace(/_/g,'/')))));
-    if(d.v > 5 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
+    if(d.v > 6 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));
     // v3 хранит id массы, v2 — индекс из первой версии справочника
@@ -72,14 +73,10 @@ export function applyDNA(code){
       flow: clamp(+d.pr.flow||100,60,160), tau: clamp(+d.pr.tau||8,1,10)});
     // v3 и старше глазури не знали — остаётся прозрачная по умолчанию
     if(d.gid && GLAZES.some(g=>g.id===d.gid)) state.glazeId=d.gid;
-    // до v5 ручек не было — остаётся выключенной
-    if(d.hd) Object.assign(state.handle, {
-      on: !!d.hd.on,
-      top: clamp(+d.hd.top||0.78, 0.15, 1),
-      bot: clamp(+d.hd.bot||0.34, 0.05, 0.95),
-      out: clamp(+d.hd.out||38, 15, 90),
-      thick: clamp(+d.hd.thick||11, 4, 30),
-      wide: clamp(+d.hd.wide||20, 6, 45)});
+    // v6 — список прилепов; в v5 была одна ручка с выключателем
+    if(Array.isArray(d.pt)) state.parts=d.pt.slice(0,8).map(sanitizePart);
+    else if(d.hd) state.parts = d.hd.on ? [sanitizePart({kind:'handle', az:0, ...d.hd})] : [];
+    else state.parts=[];
     if(d.gz) Object.assign(state.glaze, {
       al: clamp(+d.gz.al||.35,.1,.6), si: clamp(+d.gz.si||4.2,1.5,7), ca: clamp(+d.gz.ca||.7,0,1)});
     return true;

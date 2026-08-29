@@ -7,7 +7,8 @@ import { computeStrength } from '../core/math.js';
 import { MATERIALS, byId } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { coatProfile } from '../core/glazeCoat.js';
-import { handleCurve } from '../core/handle.js';
+import { partCurve, partSection } from '../core/parts.js';
+import { sweepGeometry } from './sweep.js';
 import { userProfileMM } from '../core/math.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
@@ -15,7 +16,7 @@ import { byEnvId } from '../config/environments.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
 let groundMat, baseMat, shaftMat, hemi, keyLight, dome, grid;
-let groundMesh, baseMesh, shaftMesh, handleMesh;
+let groundMesh, baseMesh, shaftMesh, partsGroup;
 let envId='workshop', themeNow='dark';   // окружение и тема меняют сцену вместе
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
@@ -134,30 +135,39 @@ function applyEnv(){
   camDirty=true;
 }
 
-/* Ручка — отдельное тело: лента по дуге от верхнего прилепа к нижнему.
-   Появляется с этапа «подрезка»: на круге её прилепляют к подвяленному изделию,
-   а не тянут вместе с корпусом. */
-function rebuildHandle(state){
-  const h=state.handle;
-  const show=h && h.on && !previewPath && state.stage>=5;
-  if(!show){ handleMesh.visible=false; return; }
+/* Прилепы — отдельные тела: ручки и носики. Появляются на подрезке и растут
+   от корня, потому что их и прилепляют к подвяленному изделию, а не тянут
+   вместе с корпусом. Каждый повёрнут вокруг оси на свой азимут. */
+function rebuildParts(state){
+  const parts=(!previewPath && state.stage>=5) ? (state.parts||[]) : [];
+  while(partsGroup.children.length>parts.length){
+    const m=partsGroup.children.pop();
+    m.geometry.dispose();
+    partsGroup.remove(m);
+  }
+  if(!parts.length) return;
   const prof=userProfileMM(state);
-  // на подрезке ручку прилепляют: она растёт от верхнего прилепа вниз, а не
-  // возникает целиком — иначе в «Кинотеатре» она хлопает на месте
   const grow=Math.min(1,Math.max(0.06,(state.stage-5)/0.55));
-  const full=handleCurve(prof,h);
-  const part=grow>=0.999 ? full
-    : new THREE.CatmullRomCurve3(full.getPoints(40).slice(0,Math.max(2,Math.round(40*grow))));
-  const geo=new THREE.TubeGeometry(part, 56, h.thick/2, 14, false);
-  geo.scale(1,1,h.wide/h.thick);       // сечение ленты: поперёк шире, по радиусу тоньше
-  geo.computeVertexNormals();          // после неравномерного масштаба нормали врут
-  const n=geo.attributes.position.count;
-  geo.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
-  handleMesh.geometry.dispose();
-  handleMesh.geometry=geo;
-  handleMesh.visible=true;
-  handleMesh.material=potMesh.material;
-  handleMesh.scale.copy(potMesh.scale);
+  parts.forEach((p,i)=>{
+    let mesh=partsGroup.children[i];
+    if(!mesh){
+      mesh=new THREE.Mesh(new THREE.BufferGeometry(),potMesh.material);
+      mesh.castShadow=mesh.receiveShadow=true;
+      partsGroup.add(mesh);
+    }
+    const full=partCurve(prof,p);
+    const curve=grow>=0.999 ? full
+      : new THREE.CatmullRomCurve3(full.getPoints(40).slice(0,Math.max(2,Math.round(40*grow))));
+    const geo=sweepGeometry(curve, partSection(p), 48, 14);
+    const n=geo.attributes.position.count;
+    geo.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
+    mesh.geometry.dispose();
+    mesh.geometry=geo;
+    mesh.material=potMesh.material;
+    mesh.rotation.y=-(p.az||0)*Math.PI/180;
+    mesh.visible=true;
+  });
+  partsGroup.scale.copy(potMesh.scale);
 }
 
 /* Габариты содержимого сцены с учётом усадки. */
@@ -313,10 +323,8 @@ export const sceneAPI = {
     potMesh.castShadow=potMesh.receiveShadow=true;
     wheelGroup.add(potMesh);
 
-    handleMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
-    handleMesh.castShadow=handleMesh.receiveShadow=true;
-    handleMesh.visible=false;
-    wheelGroup.add(handleMesh);
+    partsGroup=new THREE.Group();
+    wheelGroup.add(partsGroup);
   },
 
   /* Сцена живёт по ту же сторону переключателя тем, что и вёрстка: на светлой
@@ -358,7 +366,7 @@ export const sceneAPI = {
     potMesh.scale.setScalar(built.scale);
     potMesh.updateMatrix();
     lastBaseR=built.baseR;
-    rebuildHandle(state);
+    rebuildParts(state);
     rebuildPlaten(built.baseR);
     camDirty=true;
     renderer.shadowMap.needsUpdate=true;   // тени сами не обновляются, см. init
@@ -375,7 +383,7 @@ export const sceneAPI = {
     // политое изделие показываем шейдером глазури, всё остальное — глиной
     const glazed = state.firing==='glaze' && !state.heatmap && !previewPath;
     potMesh.material = glazed ? glazeMat : clayMat;
-    if(handleMesh) handleMesh.material=potMesh.material;
+    if(partsGroup) for(const m of partsGroup.children) m.material=potMesh.material;
     if(glazed){ applyGlazeLook(glazeMat, byGlazeId(state.glazeId), c.bisque); return; }
     if(state.heatmap){
       clayMat.color.set(0xffffff);clayMat.roughness=.6;clayMat.metalness=0;return;
@@ -448,7 +456,7 @@ export const sceneAPI = {
   consumeCamDirty(){ const d=camDirty; camDirty=false; return d; },
 
   pot:()=>potMesh,
-  handle:()=>handleMesh,
+  parts:()=>partsGroup,
   renderer:()=>renderer,
   scene:()=>scene,
   camera:()=>camera,

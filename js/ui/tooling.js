@@ -4,6 +4,7 @@
 import { state } from '../core/state.js';
 import { onChange, emit as emitRefresh } from '../core/bus.js';
 import { computeProduction } from '../core/math.js';
+import { partsHandMinutes } from '../core/parts.js';
 import { analyzeFormability, recommendProcess, checks, toolingNumbers,
          batchPlan, techCard, rawForTarget, firedFromRaw } from '../core/tooling.js';
 import { PROCESSES, byId as processById } from '../config/processes.js';
@@ -177,6 +178,13 @@ function renderEconomics(prod, procId, mat) {
     verdict = `На этих цифрах оснастка не окупается ни при каком тираже: машинный цикл не даёт выигрыша перед руками.`;
   }
 
+  /* прилепы не формуются вместе с корпусом: это ручная работа поверх любой машины */
+  const nParts = (state.parts || []).length;
+  const handMin = partsHandMinutes(state.parts);
+  const partsRow = nParts ? `<dt>Прилепы</dt><dd>${nParts} шт · <b>${handMin} мин</b> ручной сборки
+      на изделие, ${num(handMin * batch / 60, 0)} ч на партию — сверх любого способа формовки.
+      Потолок ручной сборки ${Math.floor(60 / handMin)} шт/ч.</dd>` : '';
+
   $('econOut').innerHTML = `
     <dl class="spec">
       ${priceRow}
@@ -185,6 +193,7 @@ function renderEconomics(prod, procId, mat) {
       <dt>Руками</dt><dd><b>${rub(ec.manualPerPiece)}</b> за штуку · ${rub(ec.manualTotal)} за партию</dd>
       <dt>Время</dt><dd>${num(ec.machineHours, 1)} ч машиной · ${num(ec.manualHours, 0)} ч руками <span class="dim">(${num(ec.shifts, 1)} смены)</span></dd>
       <dt>Глина</dt><dd>${num(ec.clayKgMachine, 0)} кг на партию</dd>
+      ${partsRow}
     </dl>
     <div class="econ-verdict ${cls}">${verdict}</div>`;
 }

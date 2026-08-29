@@ -73,7 +73,7 @@
     <div class="panes">
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
-        <p class="pane-intro">Силуэт и размеры. Тяните точки на чертеже или возьмите пресет — всё остальное считается от этой формы.</p>
+        <p class="pane-intro">Силуэт, размеры и прилепы. Тяните точки на чертеже или возьмите пресет; ручки и носики добавляются здесь же — всё остальное считается от этой формы.</p>
         <details class="block" data-block="presets" open>
           <summary class="block-title">Пресеты</summary>
           <div class="block-body">
@@ -132,37 +132,16 @@
           </div>
         </details>
 
-        <details class="block" data-block="handle">
-          <summary class="block-title">Ручка
-            <button class="help-dot" data-kb="handles-joins" data-icon="circle-help" data-icon-size="15" title="Про ручки и швы" aria-label="Справка о ручках"></button>
+        <details class="block" data-block="parts">
+          <summary class="block-title">Прилепы
+            <button class="help-dot" data-kb="handles-joins" data-icon="circle-help" data-icon-size="15" title="Про ручки, носики и швы" aria-label="Справка о прилепах"></button>
           </summary>
-          <div class="block-body">
-            <label class="check-row">
-              <span>Ручка есть</span>
-              <input type="checkbox" id="handleChk">
-            </label>
-            <div class="slider-row">
-              <div class="slider-head"><span>Верхний прилеп</span><output id="hTopOut"></output></div>
-              <input type="range" id="hTopSl" min="20" max="100" step="1" value="78" aria-label="Высота верхнего прилепа">
-            </div>
-            <div class="slider-row">
-              <div class="slider-head"><span>Нижний прилеп</span><output id="hBotOut"></output></div>
-              <input type="range" id="hBotSl" min="5" max="90" step="1" value="34" aria-label="Высота нижнего прилепа">
-            </div>
-            <div class="slider-row">
-              <div class="slider-head"><span>Вылет</span><output id="hOutOut"></output></div>
-              <input type="range" id="hOutSl" min="15" max="90" step="1" value="38" aria-label="Вылет ручки">
-            </div>
-            <div class="slider-row">
-              <div class="slider-head"><span>Толщина ленты</span><output id="hThickOut"></output></div>
-              <input type="range" id="hThickSl" min="4" max="30" step="0.5" value="11" aria-label="Толщина ленты">
-            </div>
-            <div class="slider-row">
-              <div class="slider-head"><span>Ширина ленты</span><output id="hWideOut"></output></div>
-              <input type="range" id="hWideSl" min="6" max="45" step="1" value="20" aria-label="Ширина ленты">
-            </div>
-            <p class="note" id="handleNote"></p>
-          </div>
+          <div class="block-body" id="partsBox"></div>
+        </details>
+
+        <details class="block" data-block="make">
+          <summary class="block-title">Как это делают</summary>
+          <div class="block-body" id="partsMake"></div>
         </details>
       </section>
 

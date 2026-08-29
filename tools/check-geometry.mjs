@@ -12,7 +12,8 @@ import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfil
 import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
-import { handleMetrics, handleWarnings, handleCurve } from '../js/core/handle.js';
+import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap,
+         partsHandMinutes, fillLevelY } from '../js/core/parts.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
 import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';
@@ -189,6 +190,58 @@ if (gA !== gB) P('геометрия пересоздаётся там, где �
 state.D = 170;
 if (buildPot(state, gB).geometry !== gB) P('изменение размера не должно менять топологию');
 state.D = 160;
+
+/* ---------- прилепы: ручки и носики ---------- */
+setShape(PRESETS[0].pts, 110, 90);
+state.wall = 6;
+{
+  const h = sanitizePart({kind: 'handle', az: 0, top: 0.8, bot: 0.3, out: 40, thick: 10, wide: 20});
+  const sp = sanitizePart({kind: 'spout', az: 180, at: 0.6, len: 55, rise: 20, bore: 14, tip: 7});
+  state.parts = [h, sp];
+  const prof = userProfileMM(state);
+
+  const mh = partMetrics(prof, h), ms = partMetrics(prof, sp);
+  if (!(mh.len > 50 && mh.len < 400)) P(`длина ручки ${mh.len.toFixed(0)} мм вне разумного`);
+  if (!(ms.len > 20 && ms.len < 200)) P(`длина носика ${ms.len.toFixed(0)} мм вне разумного`);
+  if (!(mh.volMl > 3 && ms.volMl > 1)) P('объёмы прилепов пустые');
+
+  const withParts = computeProduction(state).massF;
+  state.parts = [];
+  const bare = computeProduction(state).massF;
+  state.parts = [h, sp];
+  const dm = withParts - bare;
+  if (!(dm > 0)) P('прилепы не добавляют массы');
+  if (Math.abs(dm - (mh.volMl + ms.volMl) * 1.92) > dm * 0.12) P('масса прилепов расходится с их объёмом');
+
+  const pr = computeProduction(state);
+  if (!pr.cutBySpout) P('носик ниже кромки, а вместимость не срезана');
+  if (!(pr.fillMl > 0 && pr.fillMl < pr.capMl)) P(`налив ${pr.fillMl.toFixed(0)} мл не между нулём и полной ${pr.capMl.toFixed(0)}`);
+  state.parts = [h];
+  if (computeProduction(state).cutBySpout) P('без носика вместимость резать нечем');
+  state.parts = [h, sp];
+
+  const rAt = y => prof.reduce((a, b) => (Math.abs(b.y - y) < Math.abs(a.y - y) ? b : a)).r;
+  const hp = partCurve(prof, h).getPoints(20);
+  if (!(hp[0].x <= rAt(hp[0].y) + 0.5)) P('верхний прилеп ручки висит в воздухе');
+  if (!(hp[20].x <= rAt(hp[20].y) + 0.5)) P('нижний прилеп ручки висит в воздухе');
+  if (!(hp[10].x > rAt(hp[10].y) + h.out * 0.5)) P('середина ручки не вынесена наружу');
+  const spp = partCurve(prof, sp).getPoints(20);
+  if (!(spp[0].x <= rAt(spp[0].y) + 0.5)) P('корень носика висит в воздухе');
+  if (!(spp[20].y > spp[0].y)) P('носик с положительным подъёмом должен смотреть вверх');
+
+  state.parts = [{...h, thick: 2}];
+  if (!partsWarnings(state, prof).some(w => w.lvl === 'bad')) P('лента тоньше стенки — нет замечания');
+  state.parts = [h, {...h, az: 5}];
+  if (!partsWarnings(state, prof).some(w => /друг от друга/.test(w.txt))) P('два прилепа рядом — нет замечания о слиянии');
+  state.parts = [h, {...h, az: 180}];
+  if (partsWarnings(state, prof).some(w => /друг от друга/.test(w.txt))) P('прилепы напротив ругаться не должны');
+
+  if (azGap(makePart('handle', [{az: 0}]).az, 0) < 170) P('вторая деталь должна вставать напротив первой');
+  if (partsHandMinutes([h, sp]) !== 10) P('ручная работа по прилепам считается не так');
+  if (fillLevelY(prof, [h]) !== prof[prof.length - 1].y) P('без носика уровень налива — это кромка');
+}
+state.parts = [];
+setShape(PRESETS[1].pts, 220, 160);
 
 console.log(`\nУсилие пресса: ⌀200 → ${f200.toFixed(1)} тс, ⌀400 → ${f400.toFixed(1)} тс (растёт как площадь)`);
 console.log(`Кинотеатр: самый резкий шаг меняет объём на ${(worst * 100).toFixed(1)} % (порог 12 %)`);

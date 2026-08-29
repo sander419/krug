@@ -18,6 +18,7 @@ import { initTheme, onTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
 import { resetPalette } from './ui/palette.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
+import { initParts, updateMechanics } from './ui/parts.js';
 import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
 import { coatWarnings } from './core/glazeCoat.js';
 import { byGlazeId } from './config/glazes.js';
@@ -43,6 +44,7 @@ function refreshNow(){
   }
   updateWarnings(warn);
   updateCoatPanel();
+  updateMechanics();
   drawEditor();
   scheduleHash();
 }
@@ -111,7 +113,7 @@ let restoredFrom='умолчание';
 step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;});
 
 step('чертёж',()=>initEditor($('profileCanvas')));
-step('панель',()=>{initTabs();initBlocks();initPanels();panelsAPI.sync();});
+step('панель',()=>{initTabs();initBlocks();initPanels();initParts();panelsAPI.sync();});
 step('обучение',()=>initKB());
 step('библиотека масс',()=>initLibrary());
 step('оснастка',()=>initTooling());

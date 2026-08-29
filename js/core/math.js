@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
-import { handleMetrics, handleWarnings } from './handle.js';
+import { partsVolumeMl, partsWarnings, fillLevelY } from './parts.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -78,7 +78,8 @@ export function computeProduction(state){
   const baseR=out[0].r;
   let vOut=0;
   for(let i=1;i<out.length;i++) vOut+=frustum(out[i-1].r,out[i].r,out[i].y-out[i-1].y);
-  let vCav=0;
+  let vCav=0, vFill=0;
+  const yFill=fillLevelY(out, state.parts);   // самый низкий носик режет уровень налива
   if(state.hollow){
     const floor=floorY(state);
     const inn=[];
@@ -86,12 +87,20 @@ export function computeProduction(state){
     if(inn.length){
       const r0=Math.max(radiusAt(out,floor)-wall,0);
       if(inn[0].y>floor) inn.unshift({r:r0,y:floor});
-      for(let i=1;i<inn.length;i++) vCav+=frustum(inn[i-1].r,inn[i].r,inn[i].y-inn[i-1].y);
+      for(let i=1;i<inn.length;i++){
+        const seg=frustum(inn[i-1].r,inn[i].r,inn[i].y-inn[i-1].y);
+        vCav+=seg;
+        if(inn[i-1].y>=yFill) continue;
+        if(inn[i].y<=yFill){ vFill+=seg; continue; }
+        const k=(yFill-inn[i-1].y)/Math.max(inn[i].y-inn[i-1].y,1e-9);
+        const rMid=inn[i-1].r+(inn[i].r-inn[i-1].r)*k;
+        vFill+=frustum(inn[i-1].r,rMid,yFill-inn[i-1].y);
+      }
     }
   }
   const vRec = footOn ? Math.PI*Math.pow(baseR*state.footK/100,2)*state.footH*0.65 : 0;
-  const hm=handleMetrics(out, state.handle);
-  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + hm.volMl;  // см³, вместе с ручкой
+  const partsMl=partsVolumeMl(out, state.parts);
+  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl;  // см³, вместе с прилепами
   const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;
@@ -108,7 +117,9 @@ export function computeProduction(state){
   }
   const yCom=areaSum>0?ySum/areaSum:state.H/2;
   const angle=Math.atan2(baseR,Math.max(yCom,1))*180/Math.PI;
-  return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,angle,baseR,handleMl:hm.volMl};
+  return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,
+          fillMl:(state.hollow?vFill:0)/1000, cutBySpout:yFill<out[out.length-1].y-0.5,
+          angle,baseR,partsMl};
 }
 
 /* запас прочности по пределу текучести (упрощённая модель осадки) */
@@ -152,7 +163,7 @@ export function computeWarnings(state, prod, str){
   if(over/(out.length-1)>.12) w.push({lvl:'warn',help:'overhang',txt:'Нависающий профиль — глина оплывёт без поддержки.'});
   if(str.minSF<1.5) w.push({lvl:'bad',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
   else if(str.minSF<2.5) w.push({lvl:'warn',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
-  for(const hw of handleWarnings(state,out)) w.push(hw);
+  for(const pw of partsWarnings(state,out)) w.push(pw);
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична, устойчива и печатаема.'});
   return w;
 }

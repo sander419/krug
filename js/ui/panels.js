@@ -13,6 +13,7 @@ import { openArticle } from './kb.js';
 import { $ } from './dom.js';
 import { icon } from './icons.js';
 import { shapeIcon } from './shapeIcon.js';
+import { syncParts } from './parts.js';
 import { clamp } from '../core/util.js';
 
 const S={};
@@ -153,20 +154,6 @@ export function initPanels(){
   S.allow=hookSlider('allowSl','allowOut',v=>v+'%',v=>{state.allow=v;emit();});
   $('hollowChk').addEventListener('change',e=>{state.hollow=e.target.checked;emit();});
 
-  /* ручка: доли высоты в процентах на ползунке, миллиметры в сечении */
-  const hNote=()=>{
-    const h=state.handle;
-    $('handleNote').textContent = h.on
-      ? `Лента ${h.thick}×${h.wide} мм, просвет под пальцы ${(h.out-h.thick).toFixed(0)} мм. Ручку прилепляют к подвяленному изделию — в «Кинотеатре» она появляется на подрезке.`
-      : 'Кружка без ручки — не кружка: ручка это 10–20 % массы и самый частый источник трещин по шву. Включите, и она войдёт в массу, замечания и выгрузку.';
-  };
-  $('handleChk').addEventListener('change',e=>{state.handle.on=e.target.checked;hNote();emit();});
-  S.hTop=hookSlider('hTopSl','hTopOut',v=>v+'% высоты',v=>{state.handle.top=v/100;hNote();emit();});
-  S.hBot=hookSlider('hBotSl','hBotOut',v=>v+'% высоты',v=>{state.handle.bot=v/100;hNote();emit();});
-  S.hOut=hookSlider('hOutSl','hOutOut',v=>v+' мм',v=>{state.handle.out=v;hNote();emit();});
-  S.hThick=hookSlider('hThickSl','hThickOut',v=>v+' мм',v=>{state.handle.thick=v;hNote();emit();});
-  S.hWide=hookSlider('hWideSl','hWideOut',v=>v+' мм',v=>{state.handle.wide=v;hNote();emit();});
-  hNote();
   buildPrintPanel();
   document.querySelectorAll('[data-kb]').forEach(b=>{
     if(!b.onclick) b.onclick=e=>{
@@ -183,9 +170,7 @@ export const panelsAPI = {
     S.height.sync(state.H/10);S.diam.sync(state.D/10);S.seg.sync(state.segments);S.rings.sync(state.rings);
     S.wall.sync(state.wall);S.footH.sync(state.footH);S.footK.sync(state.footK);S.allow.sync(state.allow);
     $('hollowChk').checked=state.hollow;
-    $('handleChk').checked=state.handle.on;
-    S.hTop.sync(Math.round(state.handle.top*100));S.hBot.sync(Math.round(state.handle.bot*100));
-    S.hOut.sync(state.handle.out);S.hThick.sync(state.handle.thick);S.hWide.sync(state.handle.wide);
+    syncParts();
     S.nozzle.sync(state.pr.nozzle);S.layer.sync(state.pr.lh);S.feed.sync(state.pr.feed);
     S.cart.sync(state.pr.cart);S.flow.sync(state.pr.flow);S.tau.sync(state.pr.tau);
     $('printerSel').value=state.pr.printer;

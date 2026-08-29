@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { sceneAPI } from './scene.js';
 import { buildPot } from '../core/geometry.js';
-import { handleCurve } from '../core/handle.js';
+import { partCurve, partSection } from '../core/parts.js';
+import { sweepGeometry } from './sweep.js';
 import { userProfileMM } from '../core/math.js';
 import { download, fileName } from '../core/files.js';
 
@@ -29,13 +30,16 @@ function mergeGeo(list){
   return out;
 }
 
-function handleGeo(state){
-  const h=state.handle;
-  if(!h || !h.on) return null;
-  const g=new THREE.TubeGeometry(handleCurve(userProfileMM(state),h), 56, h.thick/2, 14, false);
-  g.scale(1,1,h.wide/h.thick);
-  g.computeVertexNormals();
-  return g;
+/* Прилепы к выгрузке: каждый повёрнут на свой азимут, как в сцене. */
+function partsGeo(state){
+  const list=state.parts||[];
+  if(!list.length) return [];
+  const prof=userProfileMM(state);
+  return list.map(p=>{
+    const g=sweepGeometry(partCurve(prof,p), partSection(p), 48, 14);
+    g.rotateY(-(p.az||0)*Math.PI/180);
+    return g;
+  });
 }
 
 /* Фабрикационные форматы: готовая форма в сыром размере —
@@ -46,10 +50,10 @@ function fabricationGeo(state){
   state.stage=6;
   const built=buildPot(state);
   state.stage=saved;
-  const hg=handleGeo(state);
-  if(!hg) return built.geometry.clone();
-  const merged=mergeGeo([built.geometry, hg]);
-  hg.dispose();
+  const pg=partsGeo(state);
+  if(!pg.length) return built.geometry.clone();
+  const merged=mergeGeo([built.geometry, ...pg]);
+  for(const g of pg) g.dispose();
   return merged;
 }
 
@@ -57,10 +61,13 @@ function exportGeo(){
   const m=sceneAPI.pot();
   m.updateMatrix();
   const parts=[m.geometry.clone().applyMatrix4(m.matrix)];   // усадка обжига запечена
-  const h=sceneAPI.handle();
-  if(h && h.visible){
-    h.updateMatrix();
-    parts.push(h.geometry.clone().applyMatrix4(h.matrix));
+  const grp=sceneAPI.parts();
+  if(grp){
+    grp.updateMatrixWorld(true);
+    for(const c of grp.children){
+      if(!c.visible) continue;
+      parts.push(c.geometry.clone().applyMatrix4(c.matrixWorld));
+    }
   }
   if(parts.length===1) return parts[0];
   const merged=mergeGeo(parts);
