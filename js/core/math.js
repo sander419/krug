@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
-import { partsVolumeMl, partsWarnings, fillLevelY } from './parts.js';
+import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -119,6 +119,7 @@ export function computeProduction(state){
   const angle=Math.atan2(baseR,Math.max(yCom,1))*180/Math.PI;
   return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,
           fillMl:(state.hollow?vFill:0)/1000, cutBySpout:yFill<out[out.length-1].y-0.5,
+          fillBy:fillLimitedBy(out,state.parts),
           angle,baseR,partsMl};
 }
 

@@ -4,7 +4,9 @@
 import { state } from '../core/state.js';
 import { onChange, emit as emitRefresh } from '../core/bus.js';
 import { computeProduction } from '../core/math.js';
-import { partsHandMinutes } from '../core/parts.js';
+import { partsHandMinutes, partMouldEstimate } from '../core/parts.js';
+import { userProfileMM } from '../core/math.js';
+import { kindOf } from '../config/parts.js';
 import { analyzeFormability, recommendProcess, checks, toolingNumbers,
          batchPlan, techCard, rawForTarget, firedFromRaw } from '../core/tooling.js';
 import { PROCESSES, byId as processById } from '../config/processes.js';
@@ -156,7 +158,27 @@ function renderPlaster(stock) {
     `На матрицу нужно <b>${num(mix.plasterKg, 1)} кг</b> гипса и <b>${num(mix.waterL, 1)} л</b> воды ` +
     `<span class="dim">(тело формы ${num(stock.netLitres, 1)} л без полости)</span>` +
     (cost ? `<br>Материал формы ≈ ${rub(cost)} по цене ${Math.round(p.priceRub / p.packKg)} ₽/кг` : '') +
-    `<br><span class="dim">Замешать и разлить надо за ${dec(p.setMin[0])}–${dec(p.setMin[1])} минут: после конца схватывания раствор уже не течёт.</span>`;
+    `<br><span class="dim">Замешать и разлить надо за ${dec(p.setMin[0])}–${dec(p.setMin[1])} минут: после конца схватывания раствор уже не течёт.</span>` +
+    partsMouldHTML(waterRatio, p);
+}
+
+/* Прилепы формуются отдельно от корпуса: у каждого своя маленькая форма
+   из двух половин. Числа оценочные — это порядок величины, а не чертёж. */
+function partsMouldHTML(waterRatio, plaster) {
+  const list = (state.parts || []).filter(p => !kindOf(p).deform);
+  if (!list.length) return '';
+  const prof = userProfileMM(state);
+  const rows = list.map((p, i) => {
+    const e = partMouldEstimate(prof, p);
+    const mix = plasterMix(e.netL, waterRatio);
+    return `<li>${kindOf(p).name} ${i + 1}: блок ${e.boxMM.map(v => Math.round(v)).join('×')} мм,
+      две половины, гипса <b>${num(mix.plasterKg, 1)} кг</b></li>`;
+  }).join('');
+  const total = list.reduce((s2, p) => s2 + plasterMix(partMouldEstimate(prof, p).netL, waterRatio).plasterKg, 0);
+  return `<br><span class="dim">Формы под прилепы (оценка, разъём по плоскости детали):</span>
+    <ul class="parts-moulds">${rows}</ul>
+    <span class="dim">Итого на комплект прилепов ${num(total, 1)} кг гипса. Ресурс таких форм
+    не подтверждён: их меняют по состоянию, а не по числу циклов.</span>`;
 }
 
 function renderEconomics(prod, procId, mat) {

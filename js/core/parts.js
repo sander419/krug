@@ -78,8 +78,20 @@ function spoutCurve(prof, p) {
   ], false, 'catmullrom', 0.3);
 }
 
+/** Слив геометрии не имеет — он деформирует кромку. Кривая нужна только для
+    подписи в списке, поэтому это короткий отрезок наружу на месте отгиба. */
+function lipCurve(prof, p) {
+  const H = prof[prof.length - 1].y, r = radiusAt(prof, H);
+  return new THREE.CatmullRomCurve3([
+    new THREE.Vector3(r, H, 0),
+    new THREE.Vector3(r + (p.out || 0), H - (p.drop || 0), 0),
+  ]);
+}
+
 export function partCurve(prof, p) {
-  return p.kind === 'spout' ? spoutCurve(prof, p) : handleCurve(prof, p);
+  if (p.kind === 'spout') return spoutCurve(prof, p);
+  if (p.kind === 'lip') return lipCurve(prof, p);
+  return handleCurve(prof, p);
 }
 
 /** Полутолщина сечения вдоль детали и отношение ширины к толщине. */
@@ -87,6 +99,7 @@ export function partSection(p) {
   if (p.kind === 'spout') {
     return {rAt: t => (p.bore / 2) * (1 - t) + (p.tip / 2) * t, ratio: 1};
   }
+  if (p.kind === 'lip') return {rAt: () => 0.5, ratio: 1};
   // у ручки прилепы чуть толще середины: так её и примазывают
   return {rAt: t => (p.thick / 2) * (1 + 0.18 * Math.pow(2 * t - 1, 4)), ratio: p.wide / p.thick};
 }
@@ -108,20 +121,38 @@ export function partMetrics(prof, p) {
   const H = prof[prof.length - 1].y;
   const rootY = p.kind === 'spout' ? p.at * H : Math.min(p.top, p.bot) * H;
   const tip = curve.getPoint(1);
-  return {len, volMl: len * area / 1000, grip: p.kind === 'handle' ? p.out - p.thick : 0,
+  return {len, volMl: p.kind === 'lip' ? 0 : len * area / 1000,
+          grip: p.kind === 'handle' ? p.out - p.thick : 0,
           rootY, tipY: tip.y, reach: tip.x};
 }
 
 export function partsVolumeMl(prof, parts) {
-  return (parts || []).reduce((s, p) => s + partMetrics(prof, p).volMl, 0);
+  // слив глины не добавляет: это отогнутая стенка, а не приставная деталь
+  return (parts || []).filter(p => p.kind !== 'lip')
+    .reduce((s, p) => s + partMetrics(prof, p).volMl, 0);
 }
 
-/** Самый низкий носик решает, до какого уровня наливается изделие. */
+/** До какого уровня наливается изделие: ниже корня носика или ниже опущенной
+    сливом кромки — что раньше. */
 export function fillLevelY(prof, parts) {
   const H = prof[prof.length - 1].y;
   let y = H;
-  for (const p of parts || []) if (p.kind === 'spout') y = Math.min(y, p.at * H);
+  for (const p of parts || []) {
+    if (p.kind === 'spout') y = Math.min(y, p.at * H);
+    if (p.kind === 'lip') y = Math.min(y, H - (p.drop || 0));
+  }
   return y;
+}
+
+/** Что именно режет налив: носик или слив. */
+export function fillLimitedBy(prof, parts) {
+  const H = prof[prof.length - 1].y;
+  let y = H, kind = null;
+  for (const p of parts || []) {
+    const lvl = p.kind === 'spout' ? p.at * H : p.kind === 'lip' ? H - (p.drop || 0) : H;
+    if (lvl < y - 0.001) { y = lvl; kind = p.kind; }
+  }
+  return kind;
 }
 
 /* ---------- замечания ---------- */
@@ -149,6 +180,18 @@ export function partsWarnings(state, prof) {
       if (span < JOIN_SPAN_MIN)
         w.push({lvl: 'warn', help: 'handle', txt:
           `${label}: прилепы в ${span.toFixed(0)} мм друг от друга — держаться не за что.`});
+    } else if (p.kind === 'lip') {
+      if (state.wall > 8)
+        w.push({lvl: 'warn', help: 'spout', txt:
+          `${label}: стенка ${state.wall} мм — толстую кромку пальцем не оттянуть, слив выйдет мятым. Порог инструмента 8 мм.`});
+      if ((p.drop || 0) < 2)
+        w.push({lvl: 'warn', help: 'spout', txt:
+          `${label}: кромка не опущена — сливу неоткуда литься, вода пойдёт по всему краю.`});
+      if (p.width > 60)
+        w.push({lvl: 'warn', help: 'spout', txt:
+          `${label}: слив шире 60° — струя расходится и бежит по стенке. Узкий слив льёт точнее.`});
+      if (!state.hollow)
+        w.push({lvl: 'warn', help: 'spout', txt: `${label}: у сплошной формы нет кромки, которую можно оттянуть.`});
     } else {
       if (m.tipY < p.at * H + 2)
         w.push({lvl: 'warn', help: 'spout', txt:
@@ -178,8 +221,30 @@ export function partsWarnings(state, prof) {
   return w;
 }
 
+/** Прикидка гипсовой формы под деталь: блок вокруг габарита плюс стенка,
+    разъём по плоскости детали — две половины. Числа оценочные: настоящую форму
+    считает изготовитель оснастки, здесь только порядок величины. */
+export function partMouldEstimate(prof, p, wallMM = 20) {
+  if (kindOf(p).deform) return null;              // слив формы не требует
+  const pts = partCurve(prof, p).getPoints(24);
+  const sec = partSection(p);
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, rMax = 0;
+  pts.forEach((v, i) => {
+    const r = sec.rAt(i / (pts.length - 1));
+    rMax = Math.max(rMax, r);
+    minX = Math.min(minX, v.x - r); maxX = Math.max(maxX, v.x + r);
+    minY = Math.min(minY, v.y - r); maxY = Math.max(maxY, v.y + r);
+  });
+  const w = (maxX - minX) + wallMM * 2;
+  const h = (maxY - minY) + wallMM * 2;
+  const d = rMax * 2 * sec.ratio + wallMM * 2;
+  const boxMl = w * h * d / 1000;
+  const netL = Math.max(boxMl - partMetrics(prof, p).volMl, 0) / 1000;
+  return {halves: 2, boxMM: [w, h, d], netL};
+}
+
 /** Сколько ручной работы добавляют прилепы: минут на изделие. */
-export const HAND_MIN_PER_PART = {handle: 4, spout: 6};
+export const HAND_MIN_PER_PART = {handle: 4, spout: 6, lip: 2};
 export function partsHandMinutes(parts) {
   return (parts || []).reduce((s, p) => s + (HAND_MIN_PER_PART[p.kind] || 4), 0);
 }

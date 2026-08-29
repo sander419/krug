@@ -25,10 +25,10 @@ export function updateStats(prod,str,tris){
   $('stats').innerHTML=`
     <div class="chip"><span class="k">Габариты · круг</span><b>${Hs}×${Ds} см</b></div>
     <div class="chip"><span class="k">Габариты · обжиг</span><b>${Hf}×${Df} см</b></div>
-    <div class="chip" title="${prod.cutBySpout?'Носик режет уровень налива: выше него не налить':'До кромки'}">
+    <div class="chip" title="${prod.cutBySpout?(prod.fillBy==='lip'?'Слив опускает кромку: выше него не налить':'Носик режет уровень налива: выше него не налить'):'До кромки'}">
       <span class="k">${prod.cutBySpout?'Наливается':'Вместимость'}</span>
       <b>${state.hollow?Math.round(prod.cutBySpout?prod.fillMl:prod.capMl)+' мл':'— сплошная'}</b>
-      ${prod.cutBySpout?`<span class="k">до носика · ${Math.round(prod.capMl)} до кромки</span>`:''}
+      ${prod.cutBySpout?`<span class="k">до ${prod.fillBy==='lip'?'слива':'носика'} · ${Math.round(prod.capMl)} до кромки</span>`:''}
     </div>
     <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b></div>
     <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>

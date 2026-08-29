@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { userProfileMM, radiusAt, N_SAMP } from './math.js';
 import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
-import { buildLathe } from './lathe.js';
+import { buildLathe, applyLips } from './lathe.js';
 
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
@@ -95,6 +95,12 @@ export function buildPot(state, reuse){
 
   const path=buildPath(state,prof,{t,open,deep,cut});
   const geometry=buildLathe(path,state.segments,reuse);
+  // слив оттягивают на круге, пока изделие сырое — раньше, чем прилепляют ручки
+  const lips=(state.parts||[]).filter(p=>p.kind==='lip');
+  if(lips.length){
+    const grow=smooth(clamp((u-4.2)/0.8,0,1));
+    if(grow>0.001) applyLips(geometry, path.length, state.segments, lips, prof[prof.length-1].y, grow);
+  }
   const shrink=byId(state.mat).shrinkPct;
   const scale=1-(u>5?smooth(u-5)*shrink/100:0);
   return {path, geometry, scale, baseR};

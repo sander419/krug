@@ -32,7 +32,7 @@ function mergeGeo(list){
 
 /* Прилепы к выгрузке: каждый повёрнут на свой азимут, как в сцене. */
 function partsGeo(state){
-  const list=state.parts||[];
+  const list=(state.parts||[]).filter(p=>p.kind!=='lip');   // слив уже в корпусе
   if(!list.length) return [];
   const prof=userProfileMM(state);
   return list.map(p=>{

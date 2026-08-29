@@ -26,7 +26,9 @@ function rowText(p, i, prof) {
   const k = kindOf(p);
   const detail = p.kind === 'handle'
     ? `лента ${p.thick}×${p.wide} мм · просвет ${m.grip.toFixed(0)} мм`
-    : `длина ${p.len} мм · подъём ${p.rise}°`;
+    : p.kind === 'lip'
+      ? `ширина ${p.width}° · отгиб ${p.out} мм · кромка ниже на ${p.drop} мм`
+      : `длина ${p.len} мм · подъём ${p.rise}°`;
   return `<b>${icon(k.ico, 14)}${k.name} ${i + 1}</b><span>${p.az}° · ${detail}</span>`;
 }
 
@@ -140,7 +142,7 @@ export function updateMechanics() {
   const share = prod.massF > 0 ? (prod.partsMl * 1.92 / prod.massF * 100) : 0;
   const kinds = [...new Set(parts.map(p => p.kind))];
   const fill = prod.cutBySpout
-    ? `<dt>Наливается</dt><dd><b>${Math.round(prod.fillMl)} мл</b> до носика вместо ${Math.round(prod.capMl)} мл до кромки</dd>`
+    ? `<dt>Наливается</dt><dd><b>${Math.round(prod.fillMl)} мл</b> до ${prod.fillBy === 'lip' ? 'слива' : 'носика'} вместо ${Math.round(prod.capMl)} мл до кромки</dd>`
     : '';
   box.innerHTML = `
     <dl class="spec">

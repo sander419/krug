@@ -85,3 +85,54 @@ export function buildLathe(points, segments, reuse) {
   geo.computeBoundingBox();
   return geo;
 }
+
+/* Оттянутый слив: кромку в секторе отгибают наружу и опускают. Это не отдельное
+   тело, а сама стенка — поэтому деформируются готовые вершины, а не контур.
+   Азимут детали и угол сегмента связаны как phi = π/2 − az: в этом же порядке
+   прилепы поворачиваются в сцене. */
+export function applyLips(geo, pointCount, segments, lips, H, grow = 1) {
+  if (!lips || !lips.length) return;
+  const n = pointCount;
+  const pos = geo.attributes.position.array;
+  const zone = Math.min(30, H * 0.22);      // насколько вниз от кромки тянется отгиб
+  const smooth = t => 1 - t * t * (3 - 2 * t);
+
+  for (let i = 0; i <= segments; i++) {
+    const phi = i / segments * Math.PI * 2;
+    const sin = Math.sin(phi), cos = Math.cos(phi);
+    let az = Math.PI / 2 - phi;
+    az = ((az % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    for (const L of lips) {
+      const lipAz = ((L.az || 0) * Math.PI / 180) % (Math.PI * 2);
+      let d = Math.abs(az - lipAz);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      const half = Math.max((L.width || 30) * Math.PI / 360, 1e-3);
+      if (d >= half) continue;
+      const fA = smooth(d / half);
+      for (let j = 0; j < n; j++) {
+        const v = (i * n + j) * 3;
+        const dy = H - pos[v + 1];
+        if (dy >= zone || dy < 0) continue;
+        const f = fA * smooth(dy / zone) * grow;
+        if (f <= 0) continue;
+        if (Math.hypot(pos[v], pos[v + 2]) < 0.05) continue;   // ось не трогаем
+        pos[v] += (L.out || 0) * f * sin;
+        pos[v + 2] += (L.out || 0) * f * cos;
+        pos[v + 1] -= (L.drop || 0) * f;
+      }
+    }
+  }
+  geo.attributes.position.needsUpdate = true;
+  geo.computeVertexNormals();
+  // первый и последний столбцы — одни и те же точки: без сшивки по шву видна полоса
+  const nor = geo.attributes.normal.array;
+  for (let j = 0; j < n; j++) {
+    const a = j * 3, b = (segments * n + j) * 3;
+    const x = nor[a] + nor[b], y = nor[a + 1] + nor[b + 1], z = nor[a + 2] + nor[b + 2];
+    const l = Math.hypot(x, y, z) || 1;
+    nor[a] = nor[b] = x / l; nor[a + 1] = nor[b + 1] = y / l; nor[a + 2] = nor[b + 2] = z / l;
+  }
+  geo.attributes.normal.needsUpdate = true;
+  geo.computeBoundingBox();
+  geo.computeBoundingSphere();
+}

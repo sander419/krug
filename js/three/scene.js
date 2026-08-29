@@ -139,7 +139,8 @@ function applyEnv(){
    от корня, потому что их и прилепляют к подвяленному изделию, а не тянут
    вместе с корпусом. Каждый повёрнут вокруг оси на свой азимут. */
 function rebuildParts(state){
-  const parts=(!previewPath && state.stage>=5) ? (state.parts||[]) : [];
+  // слив живёт в корпусе (см. applyLips), отдельного тела у него нет
+  const parts=(!previewPath && state.stage>=5) ? (state.parts||[]).filter(p=>p.kind!=='lip') : [];
   while(partsGroup.children.length>parts.length){
     const m=partsGroup.children.pop();
     m.geometry.dispose();

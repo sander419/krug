@@ -13,7 +13,8 @@ import { userProfileMM } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
 import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap,
-         partsHandMinutes, fillLevelY } from '../js/core/parts.js';
+         partsHandMinutes, fillLevelY, fillLimitedBy, partMouldEstimate,
+         partsVolumeMl } from '../js/core/parts.js';
 import * as THREE from 'three';
 import { economics, pricePerKg } from '../js/core/economics.js';
 import { PLASTERS, plasterMix, byId as plasterById } from '../js/config/plasters.js';
@@ -239,6 +240,30 @@ state.wall = 6;
   if (azGap(makePart('handle', [{az: 0}]).az, 0) < 170) P('вторая деталь должна вставать напротив первой');
   if (partsHandMinutes([h, sp]) !== 10) P('ручная работа по прилепам считается не так');
   if (fillLevelY(prof, [h]) !== prof[prof.length - 1].y) P('без носика уровень налива — это кромка');
+
+  /* слив: деформация кромки, а не приставная деталь */
+  const lip = sanitizePart({kind: 'lip', az: 0, width: 34, out: 9, drop: 6});
+  state.parts = [lip];
+  if (partsVolumeMl(prof, [lip]) !== 0) P('слив глины не добавляет: это отогнутая стенка');
+  const pl = computeProduction(state);
+  if (!pl.cutBySpout) P('слив опускает кромку — налив обязан уменьшиться');
+  if (fillLimitedBy(prof, [lip]) !== 'lip') P('налив режет слив, а не что-то другое');
+  if (Math.abs(fillLevelY(prof, [lip]) - (prof[prof.length - 1].y - lip.drop)) > 0.01)
+    P('уровень налива со сливом не совпадает с опущенной кромкой');
+  if (partMouldEstimate(prof, lip) !== null) P('сливу гипсовая форма не нужна');
+  state.wall = 12;
+  if (!partsWarnings(state, prof).some(w => /оттянуть/.test(w.txt))) P('толстую кромку оттянуть нельзя — нет замечания');
+  state.wall = 6;
+  state.parts = [{...lip, drop: 0}];
+  if (!partsWarnings(state, prof).some(w => /не опущена/.test(w.txt))) P('слив без понижения кромки — нет замечания');
+
+  /* форма под прилеп: блок больше детали, гипса меньше блока */
+  state.parts = [h];
+  const est = partMouldEstimate(prof, h);
+  if (!(est && est.halves === 2)) P('форма под ручку должна быть из двух половин');
+  const boxL = est.boxMM[0] * est.boxMM[1] * est.boxMM[2] / 1e6;
+  if (!(est.netL > 0 && est.netL < boxL)) P('гипса в форме должно быть меньше объёма блока');
+  if (!(est.boxMM.every(v => v > 20))) P('габарит формы под прилеп подозрительно мал');
 }
 state.parts = [];
 setShape(PRESETS[1].pts, 220, 160);

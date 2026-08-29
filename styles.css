@@ -756,6 +756,9 @@ body.learning main,body.learning #metrics{display:none;}
   break-inside:avoid;
 }
 
+.parts-moulds{margin:4px 0 6px 18px;}
+.parts-moulds li{font-size:var(--fs-xs);line-height:1.6;color:var(--muted);margin-bottom:2px;}
+
 /* ---------- конструктор прилепов ---------- */
 .part-list{display:flex;flex-direction:column;gap:5px;}
 .part-row{display:flex;gap:4px;align-items:stretch;}
