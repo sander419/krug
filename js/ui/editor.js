@@ -12,13 +12,20 @@ import { clamp } from '../core/util.js';
 import { traceToRecipe } from '../core/trace.js';
 import { $ } from './dom.js';
 import { pal } from './palette.js';
-import { partCurve, partSection } from '../core/parts.js';
+import { partCurve, partSection, pathFromParams, pathFromStroke, pathPoints,
+         syncFieldsFromPath } from '../core/parts.js';
+import { selectedPart, syncParts } from './parts.js';
 import { strainerHoles } from '../core/strainer.js';
 import { kindOf } from '../config/parts.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let draftMode='points';         // 'points' — тянуть точки, 'draw' — вести линию
 let stroke=null;                // экранная ломаная, пока её ведут
+let partDrag=-1;                // индекс точки прилепа, которую тянут
+let partHover=-1;
+let drawTarget=null;            // 'body' | 'part' — выбрано человеком
+let strokeTarget='body';        // цель штриха, зафиксированная в начале
+let lastSelId=null;
 let onReshape=null;             // панель обязана перечитать высоту и диаметр
 let pressTimer=null, lastTap=0, lastTapPt=null;
 let mode='1:1';                 // '1:1' | 'fit'
@@ -230,6 +237,24 @@ export function drawEditor(){
   ectx.fillText((state.H/10).toFixed(1)+' см', view.axisX+4, Math.max(topY+11, view.baseY-state.H*px-6));
   ectx.fillText('⌀ '+(state.D/10).toFixed(1)+' см', view.axisX+4, view.baseY+14);
 
+  /* ручки выбранного прилепа: их правят так же, как точки профиля */
+  const ph=partHandles();
+  if(ph){
+    ectx.save();
+    const line=ph.pts.map(q=>mmToPx(q.x,q.y));
+    ectx.beginPath();
+    line.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
+    ectx.strokeStyle=P.text(ph.ghost?.28:.45);ectx.lineWidth=1.2;
+    ectx.setLineDash([4,4]);ectx.stroke();ectx.setLineDash([]);
+    line.forEach((q,i)=>{
+      ectx.beginPath();ectx.arc(q.x,q.y,i===partHover?7:5.5,0,Math.PI*2);
+      ectx.fillStyle=ph.ghost?P.sunken():P.text(.9);
+      ectx.fill();
+      ectx.lineWidth=2;ectx.strokeStyle=P.text(.75);ectx.stroke();
+    });
+    ectx.restore();
+  }
+
   /* ведомый штрих поверх всего: видно, что рука рисует, до пересборки */
   if(stroke&&stroke.length>1){
     ectx.beginPath();
@@ -253,6 +278,7 @@ export function drawEditor(){
     }
   });
 
+  syncTargetChip();
   const badge=$('draftScale');
   if(badge) badge.textContent = mode==='fit' ? 'по размеру' :
     (view.fits ? '1:1 с моделью' : '1:1 · не помещается');
@@ -316,6 +342,93 @@ function applyStroke(px){
   return true;
 }
 
+/* ---------- ручки выбранного прилепа ---------- */
+/* Профиль правят точками — прилеп должен править ими же. Пока кривой у детали
+   нет, точки показываются призраками прямо с параметрической кривой: тронул —
+   кривая появилась, и дальше ползунки формы её только пересказывают. */
+function partHandles(){
+  const p=selectedPart();
+  if(!p||kindOf(p).deform) return null;
+  const prof=userProfileMM(state);
+  const pts = p.path ? pathPoints(prof,p)
+    : pathFromParams(prof,p).map(q=>({x:Math.max(0,radiusAt(prof,q.t*prof[prof.length-1].y)+q.d),
+                                      y:q.t*prof[prof.length-1].y}));
+  return {p, prof, pts, ghost:!p.path};
+}
+
+/* Что правит штрих: корпус или выбранная деталь. Выбрали деталь — рисуем её;
+   переключатель в шапке чертежа даёт вернуться к корпусу, не снимая выбора. */
+function drawTargetNow(){
+  const p=selectedPart();
+  if(!p||kindOf(p).deform) return 'body';
+  return drawTarget||'part';
+}
+function syncTargetChip(){
+  const b=$('draftTarget');
+  if(!b) return;
+  const p=selectedPart(), can=p&&!kindOf(p).deform;
+  if(p&&p.id!==lastSelId){lastSelId=p.id;drawTarget=null;}   // сменили деталь — сбросить выбор
+  if(!p) lastSelId=null;
+  b.hidden = draftMode!=='draw'||!can;
+  const part = drawTargetNow()==='part';
+  if(!b.hidden){
+    const i=(state.parts||[]).indexOf(p);
+    b.textContent = part ? `рисую: ${kindOf(p).name.toLowerCase()} ${i+1}` : 'рисую: корпус';
+  }
+  // подсказка обязана говорить про то, что рисуют сейчас, а не про корпус вообще
+  const hb=$('draftHintBody'), hpt=$('draftHintPart');
+  if(hb) hb.hidden = part;
+  if(hpt) hpt.hidden = !part;
+}
+
+/* Штрих в кривую детали. Профиль так переснять нельзя: у ручки высота
+   не монотонна, поэтому у прилепов своя математика — js/core/parts.js. */
+function applyPartStroke(px){
+  const p=selectedPart();
+  if(!p||kindOf(p).deform) return false;
+  const prof=userProfileMM(state);
+  const mm=px.map(q=>({x:(q.x-view.axisX)/view.pxPerMM, y:(view.baseY-q.y)/view.pxPerMM}));
+  const path=pathFromStroke(prof,p,mm);
+  if(!path) return false;
+  p.path=path;
+  syncFieldsFromPath(prof,p);
+  state.activePreset=-1;
+  emit(); syncParts();
+  if(onReshape) onReshape({part:kindOf(p).name, points:path.length});
+  return true;
+}
+
+function hitPartPoint(px,py){
+  const h=partHandles();
+  if(!h) return -1;
+  let best=-1,bd=coarse()?26:15;
+  h.pts.forEach((q,i)=>{
+    const s=mmToPx(q.x,q.y), d=Math.hypot(s.x-px,s.y-py);
+    if(d<bd){bd=d;best=i;}
+  });
+  return best;
+}
+
+/* Экран → пара «доля высоты, отступ от стенки». Отступ, а не радиус: стенка
+   двигается вместе с силуэтом и диаметром, и прилеп обязан ехать с ней. */
+function pxToPart(prof,px,py){
+  const rmm=(px-view.axisX)/view.pxPerMM, ymm=(view.baseY-py)/view.pxPerMM;
+  const H=prof[prof.length-1].y||1;
+  return {t:ymm/H, d:rmm-radiusAt(prof,ymm)};
+}
+
+function dragPartPoint(i,px,py){
+  const h=partHandles();
+  if(!h||i<0) return;
+  const p=h.p;
+  if(!p.path) p.path=pathFromParams(h.prof,p);        // призрак стал кривой
+  const q=pxToPart(h.prof,px,py);
+  p.path[i]={t:clamp(q.t,-0.5,2), d:clamp(q.d,-40,300)};
+  syncFieldsFromPath(h.prof,p);
+  state.activePreset=-1;
+  emit(); syncParts();
+}
+
 function addPointAt(px,py){
   const c=pxToPt(px,py);
   if(c.t<=.02||c.t>=.98)return;
@@ -339,6 +452,7 @@ export function setDraftMode(m){
   const hp=$('draftHintPts'), hd=$('draftHintDraw');
   if(hp) hp.hidden = m==='draw';
   if(hd) hd.hidden = m!=='draw';
+  syncTargetChip();
   if(ec) ec.style.cursor='crosshair';
   hoverIdx=-1;
   if(eW) drawEditor();
@@ -353,6 +467,8 @@ export function initEditor(canvas, reshaped){
   if(toggle) toggle.onclick=()=>{mode=mode==='1:1'?'fit':'1:1';modeChosen=true;lastKey='';drawEditor();};
   document.querySelectorAll('#draftMode [data-dmode]')
     .forEach(b=>b.onclick=()=>setDraftMode(b.dataset.dmode));
+  const tgt=$('draftTarget');
+  if(tgt) tgt.onclick=()=>{drawTarget=drawTargetNow()==='part'?'body':'part';syncTargetChip();};
 
   ec.addEventListener('contextmenu',e=>e.preventDefault());
   ec.addEventListener('pointerdown',e=>{
@@ -360,9 +476,16 @@ export function initEditor(canvas, reshaped){
     const px=e.clientX-rect.left,py=e.clientY-rect.top;
     if(draftMode==='draw'){
       if(e.button===2)return;
+      strokeTarget=drawTargetNow();
       stroke=[{x:px,y:py}];
       try{ec.setPointerCapture(e.pointerId);}catch(_){}
       drawEditor();
+      return;
+    }
+    const pi=hitPartPoint(px,py);
+    if(pi>=0&&e.button!==2){
+      partDrag=pi;
+      try{ec.setPointerCapture(e.pointerId);}catch(_){}
       return;
     }
     const idx=hitPoint(px,py);
@@ -393,6 +516,7 @@ export function initEditor(canvas, reshaped){
       if(Math.hypot(px-last.x,py-last.y)>=2){stroke.push({x:px,y:py});drawEditor();}
       return;
     }
+    if(partDrag>=0){ clearTimeout(pressTimer); dragPartPoint(partDrag,px,py); return; }
     if(dragIdx>=0){
       clearTimeout(pressTimer);
       const p=state.points[dragIdx],c=pxToPt(px,py);
@@ -402,19 +526,21 @@ export function initEditor(canvas, reshaped){
       else p.t=clamp(c.t,state.points[dragIdx-1].t+.02,state.points[dragIdx+1].t-.02);
       state.activePreset=-1;emit();
     }else{
-      const h=hitPoint(px,py);
-      if(h!==hoverIdx){hoverIdx=h;drawEditor();}
-      ec.style.cursor=h>=0?'grab':'crosshair';
+      const ph=hitPartPoint(px,py);
+      const h=ph>=0?-1:hitPoint(px,py);
+      if(h!==hoverIdx||ph!==partHover){hoverIdx=h;partHover=ph;drawEditor();}
+      ec.style.cursor=(h>=0||ph>=0)?'grab':'crosshair';
     }
   });
   const endStroke=ok=>{
     if(!stroke)return;
-    const s=stroke; stroke=null;
-    if(ok && !applyStroke(s) && onReshape) onReshape(null);   // штрих не сложился
+    const s=stroke, tgt=strokeTarget; stroke=null;
+    const done = ok && (tgt==='part' ? applyPartStroke(s) : applyStroke(s));
+    if(ok && !done && onReshape) onReshape(null, tgt);        // штрих не сложился
     drawEditor();
   };
-  ec.addEventListener('pointerup',()=>{clearTimeout(pressTimer);dragIdx=-1;endStroke(true);});
-  ec.addEventListener('pointercancel',()=>{clearTimeout(pressTimer);dragIdx=-1;endStroke(false);});
+  ec.addEventListener('pointerup',()=>{clearTimeout(pressTimer);dragIdx=-1;partDrag=-1;endStroke(true);});
+  ec.addEventListener('pointercancel',()=>{clearTimeout(pressTimer);dragIdx=-1;partDrag=-1;endStroke(false);});
   ec.addEventListener('dblclick',e=>{
     if(draftMode==='draw')return;
     const rect=ec.getBoundingClientRect();

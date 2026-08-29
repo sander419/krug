@@ -852,6 +852,16 @@ body.learning main,body.learning #metrics{display:none;}
   .env-pop{left:auto;right:0;transform:none;width:min(300px,80vw);}
 }
 
+/* нарисованная кривая прилепа: ползунков формы нет, их место занимает сводка */
+.part-drawn{
+  display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+  background:color-mix(in oklab, var(--accent) 10%, var(--panel2));
+  border:1px solid color-mix(in oklab, var(--accent) 40%, var(--line));
+  border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;
+}
+.part-drawn b{font-size:var(--fs-sm);}
+.part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
+
 /* ---------- задача: «что вы делаете» ---------- */
 /* Кнопка в шапке всегда показывает выбранную задачу: иначе человек не понимает,
    почему у него три вкладки, а на скриншоте в справке пять. */

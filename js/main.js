@@ -116,9 +116,14 @@ step('сцена',()=>sceneAPI.init($('viewport')));
 let restoredFrom='умолчание';
 step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;});
 
-step('чертёж',()=>initEditor($('profileCanvas'),info=>{
+step('чертёж',()=>initEditor($('profileCanvas'),(info,target)=>{
   // линия переопределяет высоту и диаметр: ползунки обязаны это показать
-  if(!info){ toast('Линия не сложилась в профиль — проведите её от дна к кромке'); return; }
+  if(!info){
+    toast(target==='part' ? 'Линия не сложилась в прилеп — ведите её от стенки наружу'
+                          : 'Линия не сложилась в профиль — проведите её от дна к кромке');
+    return;
+  }
+  if(info.part){ toast(`${info.part} нарисована по чертежу: точек ${info.points}`); return; }
   panelsAPI.sync();
   toast(`Профиль нарисован: ${(info.H/10).toFixed(1)}×${(info.D/10).toFixed(1)} см, точек ${info.points}`
     + (info.squeezed?' · рисунок ужат под пределы 5…40 см':''));

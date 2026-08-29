@@ -33,9 +33,28 @@ function rowText(p, i, prof) {
   return `<b>${icon(k.ico, 14)}${k.name} ${i + 1}</b><span>${p.az}° · ${detail}</span>`;
 }
 
+/* Поля, которые задают форму кривой. Когда кривая нарисована, ползунков у них
+   быть не должно: они бы спорили с рисунком. Числа при этом никуда не деваются —
+   их считает syncFieldsFromPath и показывает строка ниже. */
+const SHAPE_FIELDS = {handle: ['top', 'bot', 'out'], spout: ['at', 'len', 'rise'], lip: []};
+
+function drawnNote(p) {
+  const L = PART_LIMITS;
+  const nums = p.kind === 'spout'
+    ? `корень ${Math.round(p.at * 100)}${L.at.unit}, длина ${p.len}${L.len.unit}, подъём ${p.rise}${L.rise.unit}`
+    : `прилепы ${Math.round(p.bot * 100)}–${Math.round(p.top * 100)}${L.top.unit}, вылет ${p.out}${L.out.unit}`;
+  return `<div class="part-drawn">
+    <b>Кривая нарисована на чертеже</b>
+    <span>Точек ${p.path.length} · ${nums} — сняты с рисунка. Тяните точки на чертеже
+      или проведите линию заново; сечение и поворот остаются ползунками.</span>
+    <button class="btn small" id="partUndraw">Вернуть параметры</button>
+  </div>`;
+}
+
 function editorHTML(p) {
   const k = kindOf(p);
-  const fields = k.fields.map(f => {
+  const hide = p.path ? (SHAPE_FIELDS[p.kind] || []) : [];
+  const fields = k.fields.filter(f => !hide.includes(f)).map(f => {
     const L = PART_LIMITS[f];
     const step = FRACTION.has(f) ? L.step : L.step;
     return `<div class="slider-row">
@@ -46,8 +65,14 @@ function editorHTML(p) {
   }).join('');
   return `<div class="part-edit">
     <p class="hint">${esc(k.lead)}</p>
+    ${p.path ? drawnNote(p) : ''}
     ${fields}
   </div>`;
+}
+
+/** Выбранная в конструкторе деталь: чертёж правит именно её. */
+export function selectedPart() {
+  return (state.parts || []).find(p => p.id === sel) || null;
 }
 
 export function syncParts() {
@@ -114,6 +139,13 @@ export function syncParts() {
       syncParts(); emit();
     };
   });
+  const undraw = $('partUndraw');
+  if (undraw) undraw.onclick = () => {
+    const p = state.parts.find(x => x.id === sel);
+    if (!p) return;
+    delete p.path;                       // вернулись к ползункам: числа уже сняты с кривой
+    syncParts(); emit();
+  };
   box.querySelectorAll('input[data-f]').forEach(inp => {
     const out = inp.parentElement.querySelector('output');
     const f = inp.dataset.f, L = PART_LIMITS[f];

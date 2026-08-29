@@ -409,6 +409,7 @@
         <button data-dmode="points" class="active" title="Тянуть точки по одной">Точки</button>
         <button data-dmode="draw" title="Провести линию профиля одним движением">Линия</button>
       </div>
+      <button class="chip-btn" id="draftTarget" hidden title="Что правит линия: корпус или выбранный прилеп">рисую: корпус</button>
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
     </div>
     <canvas id="profileCanvas"></canvas>
@@ -417,8 +418,10 @@
       <span class="on-touch"><b>Тяните</b> точки · <b>двойное касание</b> — новая · <b>долгое</b> — удалить</span>
     </p>
     <p class="draft-hint" id="draftHintDraw" hidden>
-      <b>Проведите линию</b> профиля от дна к кромке — точки расставятся сами.
-      Высота и диаметр возьмутся с рисунка; отмена — Ctrl+Z.
+      <span id="draftHintBody"><b>Проведите линию</b> профиля от дна к кромке — точки расставятся сами.
+        Высота и диаметр возьмутся с рисунка; отмена — Ctrl+Z.</span>
+      <span id="draftHintPart" hidden><b>Проведите линию</b> прилепа от стенки наружу — концы сядут
+        на стенку сами. Сечение и поворот остаются ползунками; отмена — Ctrl+Z.</span>
     </p>
   </section>
 

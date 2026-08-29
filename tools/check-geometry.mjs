@@ -9,10 +9,11 @@ import { analyzeFormability, recommendProcess, toolingNumbers, shrinkFactor,
          rawForTarget, firedFromRaw, undercutList } from '../js/core/tooling.js';
 import { modelPath, cavityPath, corePath, rollerProfile, cavityStock, wareProfiles,
          MOULD_DEFAULTS } from '../js/core/mould.js';
-import { userProfileMM } from '../js/core/math.js';
+import { userProfileMM, radiusAt } from '../js/core/math.js';
 import { buildDXF } from '../js/core/dxf.js';
 import { buildPot } from '../js/core/geometry.js';
 import { makePart, sanitizePart, partMetrics, partsWarnings, partCurve, azGap, partSelfOverlap,
+         pathFromParams, pathFromStroke, syncFieldsFromPath,
          partsHandMinutes, fillLevelY, fillLimitedBy,
          partsVolumeMl } from '../js/core/parts.js';
 import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../js/three/partMould.js';
@@ -323,6 +324,61 @@ state.wall = 6;
     if (m.keys !== m2.keys) P(`у половин ${p.kind} разное число замков`);
     if (!(m.keys >= 2)) P(`форма ${p.kind}: замков ${m.keys} — половины не сцентрировать`);
     m2.geometry.dispose();
+  }
+
+  /* Нарисованная кривая прилепа. Ручку правят на чертеже так же, как профиль,
+     и кривая обязана быть равноправной с ползунками: та же геометрия, те же
+     числа в панели, та же форма под неё. */
+  {
+    const base = sanitizePart({kind: 'handle', az: 0});
+    const path = pathFromParams(prof, base);
+    const drawn = sanitizePart({...base, path});
+    if (!drawn.path) P('нарисованная кривая не пережила sanitizePart');
+    const a = partCurve(prof, base), b = partCurve(prof, drawn);
+    let worst = 0;
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20;
+      worst = Math.max(worst, a.getPointAt(u).distanceTo(b.getPointAt(u)));
+    }
+    if (worst > 3) P(`кривая, снятая с параметров, расходится с ними на ${worst.toFixed(1)} мм`);
+
+    // числа в панели пересчитываются по кривой, а не остаются от ползунков
+    const moved = sanitizePart({...drawn, path: path.map(q => ({...q, d: q.d * 1.5}))});
+    syncFieldsFromPath(prof, moved);
+    if (!(moved.out > base.out)) P('вылет не пересчитался по раздутой кривой');
+
+    // штрих в кривую: ведём дугу от стенки наружу и обратно
+    const H = prof[prof.length - 1].y;
+    const mm = [];
+    for (let i = 0; i <= 30; i++) {
+      const t = i / 30, ang = Math.PI * t - Math.PI / 2;
+      mm.push({x: radiusAt(prof, 0.6 * H) + 40 * Math.cos(ang) + 2, y: 0.6 * H + 45 * Math.sin(ang)});
+    }
+    const fromStroke = pathFromStroke(prof, base, mm);
+    if (!fromStroke) P('дуга от стенки наружу не сложилась в кривую прилепа');
+    else {
+      if (fromStroke[0].d > 0 || fromStroke[fromStroke.length - 1].d > 0)
+        P('концы нарисованной ручки не сели на стенку');
+      if (fromStroke.length < 3 || fromStroke.length > 24)
+        P(`в нарисованной кривой ${fromStroke.length} точек`);
+      // штрих, нарисованный в обратную сторону, даёт ту же деталь
+      const back = pathFromStroke(prof, base, mm.slice().reverse());
+      if (!back || Math.abs(back.length - fromStroke.length) > 1)
+        P('ручка, нарисованная сверху вниз, вышла другой');
+    }
+    if (pathFromStroke(prof, base, mm.map(q => ({x: radiusAt(prof, q.y), y: q.y}))))
+      P('линия по стенке принята за ручку');
+    if (pathFromStroke(prof, sanitizePart({kind: 'spout', az: 0}), mm.slice(0, 3)))
+      P('три точки приняты за носик');
+
+    // форма под нарисованную ручку строится так же, как под параметрическую
+    if (!partSelfOverlap(prof, drawn)) {
+      const g = partMouldGeometry(prof, drawn, 20, {half: 'bump'}).geometry;
+      const au = edgeAudit(g);
+      if (au.open || au.flipped)
+        P(`форма под нарисованную ручку: ${au.open} открытых, ${au.flipped} вывернутых рёбер`);
+      g.dispose();
+    }
   }
 
   /* Крайние прилепы. Здесь вылезли две вещи сразу: облойная канавка идёт

@@ -33,6 +33,116 @@ export function makePart(kind, existing = []) {
 }
 
 /** Привести значения к пределам: ДНК приходит извне, ей верить нельзя. */
+/* ---------- нарисованная кривая прилепа ---------- */
+/* Ползунками задают ручку «вообще»: два прилепа и вылет. Настоящая ручка так
+   не описывается — у неё есть характер, и рисуется он на чертеже, как профиль.
+   Поэтому у прилепа может быть своя кривая: массив точек вдоль детали.
+   Точка хранится не в миллиметрах от оси, а парой «доля высоты — отступ от
+   стенки»: стенка двигается, когда меняют диаметр или силуэт, и прилеп обязан
+   ехать вместе с ней, а не отрываться. */
+const PATH_MAX = 24;
+const T_LIM = [-0.5, 2];        // доли высоты: носик задирается выше кромки
+const D_LIM = [-40, 300];       // мм от стенки: минус — утоплен в стенку
+
+export function sanitizePath(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  for (const q of raw) {
+    const t = +(q && q.t), d = +(q && q.d);
+    if (!Number.isFinite(t) || !Number.isFinite(d)) return null;
+    out.push({t: clamp(t, T_LIM[0], T_LIM[1]), d: clamp(d, D_LIM[0], D_LIM[1])});
+    if (out.length === PATH_MAX) break;
+  }
+  return out.length >= 3 ? out : null;
+}
+
+/** Точки нарисованной кривой в миллиметрах сечения. */
+export function pathPoints(prof, p) {
+  const H = prof[prof.length - 1].y;
+  return p.path.map(q => ({x: Math.max(0, radiusAt(prof, q.t * H) + q.d), y: q.t * H}));
+}
+
+/** Снять кривую с параметров: с этого начинается правка руками. */
+export function pathFromParams(prof, p, n) {
+  const H = prof[prof.length - 1].y;
+  const curve = partCurve(prof, {...p, path: null});
+  const k = n || (p.kind === 'spout' ? 5 : 7);
+  const out = [];
+  for (let i = 0; i < k; i++) {
+    const v = curve.getPointAt(i / (k - 1));
+    const t = H > 0 ? v.y / H : 0;
+    out.push({t: clamp(t, T_LIM[0], T_LIM[1]),
+              d: clamp(v.x - radiusAt(prof, v.y), D_LIM[0], D_LIM[1])});
+  }
+  return out;
+}
+
+/**
+ * Штрих на чертеже — в кривую прилепа. В миллиметрах сечения, как рисовали.
+ * В отличие от профиля тут нельзя сортировать по высоте: ручка идёт вверх,
+ * наружу и обратно вниз — высота у неё не монотонна и монотонной быть не должна.
+ * Поэтому штрих прореживается как двумерная кривая, а концы сажаются на стенку.
+ */
+export function pathFromStroke(prof, p, mm) {
+  if (!Array.isArray(mm) || mm.length < 4) return null;
+  const H = prof[prof.length - 1].y || 1;
+  let len = 0;
+  for (let i = 1; i < mm.length; i++) len += Math.hypot(mm[i].x - mm[i - 1].x, mm[i].y - mm[i - 1].y);
+  if (len < 15) return null;                       // мазок, а не деталь
+
+  let keep = simplify2d(mm, 1.5), tol = 1.5;
+  while (keep.length > 12 && tol < 12) { tol *= 1.6; keep = simplify2d(mm, tol); }
+  if (keep.length < 3) return null;
+
+  let path = keep.map(q => ({t: q.y / H, d: q.x - radiusAt(prof, q.y)}));
+  // носик ведут от стенки наружу; нарисовали наоборот — развернём
+  if (p.kind === 'spout' ? path[path.length - 1].d < path[0].d
+                         : path[path.length - 1].t > path[0].t) path.reverse();
+  if (Math.max(...path.map(q => q.d)) < 5) return null;   // кривая легла на стенку
+
+  const sink = p.kind === 'spout' ? -1.5 : -(p.thick || 10) * 0.25;
+  path[0].d = sink;
+  if (p.kind !== 'spout') path[path.length - 1].d = sink;  // у ручки на стенке оба конца
+  return sanitizePath(path);
+}
+
+/* Рамер—Дуглас—Пекер по двум координатам: та же математика, что у профиля,
+   но здесь кривая может заворачиваться, поэтому расстояние честно двумерное. */
+function simplify2d(pts, tol) {
+  if (pts.length < 3) return pts.slice();
+  const a = pts[0], b = pts[pts.length - 1];
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+  let far = 0, dmax = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = Math.abs((pts[i].x - a.x) * dy - (pts[i].y - a.y) * dx) / len;
+    if (d > dmax) { dmax = d; far = i; }
+  }
+  if (dmax <= tol) return [a, b];
+  return simplify2d(pts.slice(0, far + 1), tol).slice(0, -1).concat(simplify2d(pts.slice(far), tol));
+}
+
+/* Ползунки формы остаются правдой и при нарисованной кривой: числа в панели,
+   замечания и техкарта читают их, а не кривую. Поэтому после каждой правки
+   они пересчитываются по кривой, а не расходятся с ней. */
+export function syncFieldsFromPath(prof, p) {
+  if (!p.path) return p;
+  const H = prof[prof.length - 1].y || 1;
+  const ts = p.path.map(q => q.t), ds = p.path.map(q => q.d);
+  if (p.kind === 'handle') {
+    p.top = clamp(Math.max(...ts), 0.2, 1);
+    p.bot = clamp(Math.min(...ts), 0.05, 0.9);
+    p.out = clamp(Math.round(Math.max(...ds)), 15, 90);
+  } else if (p.kind === 'spout') {
+    const root = p.path[0], tip = p.path[p.path.length - 1];
+    p.at = clamp(root.t, 0.15, 0.98);
+    const pts = pathPoints(prof, p);
+    const a = pts[0], b = pts[pts.length - 1];
+    p.len = clamp(Math.round(Math.hypot(b.x - a.x, b.y - a.y)), 20, 140);
+    p.rise = clamp(Math.round(Math.atan2(b.y - a.y, Math.max(b.x - a.x, 1e-6)) * 180 / Math.PI), -10, 60);
+  }
+  return p;
+}
+
 export function sanitizePart(raw) {
   const kind = PART_KINDS[raw && raw.kind] ? raw.kind : 'handle';
   const def = PART_KINDS[kind].defaults;
@@ -45,6 +155,9 @@ export function sanitizePart(raw) {
       ? clamp(val, L.min / 100, L.max / 100)          // доли высоты храним 0…1
       : clamp(val, L.min, L.max);
   }
+  // слив — не тело, а отгиб кромки: рисовать там нечего
+  const path = kind === 'lip' ? null : sanitizePath(raw && raw.path);
+  if (path) out.path = path;
   return out;
 }
 
@@ -92,6 +205,9 @@ function lipCurve(prof, p) {
 }
 
 export function partCurve(prof, p) {
+  if (p.path && p.path.length >= 3)
+    return new THREE.CatmullRomCurve3(
+      pathPoints(prof, p).map(q => new THREE.Vector3(q.x, q.y, 0)), false, 'catmullrom', 0.4);
   if (p.kind === 'spout') return spoutCurve(prof, p);
   if (p.kind === 'lip') return lipCurve(prof, p);
   return handleCurve(prof, p);
@@ -122,7 +238,8 @@ export function partMetrics(prof, p) {
   }
   area /= N;
   const H = prof[prof.length - 1].y;
-  const rootY = p.kind === 'spout' ? p.at * H : Math.min(p.top, p.bot) * H;
+  const rootY = p.path ? Math.min(...p.path.map(q => q.t)) * H
+              : p.kind === 'spout' ? p.at * H : Math.min(p.top, p.bot) * H;
   const tip = curve.getPoint(1);
   return {len, volMl: p.kind === 'lip' ? 0 : len * area / 1000,
           grip: p.kind === 'handle' ? p.out - p.thick : 0,
