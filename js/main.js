@@ -13,6 +13,7 @@ import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
+import { initEnvironment } from './ui/environment.js';
 import { resetPalette } from './ui/palette.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
 import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
@@ -80,13 +81,14 @@ initGlazeLab();
 syncGlaze();
 sceneAPI.applyMaterial(state);
 $('kbBtn').onclick=()=>openKB();
-initTheme();
+initEnvironment();   // окружение выбирается до темы: тема лишь пересобирает его
 onTheme(t=>{                       // цвета canvas и сцены живут в тех же токенах
   resetPalette();
   sceneAPI.applyTheme(t);
   drawEditor();
   syncGlaze();
 });
+initTheme();         // подписка раньше вызова: иначе сцена не узнает тему при запуске
 paintIcons();
 initLayout();
 initMobile();

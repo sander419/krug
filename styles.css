@@ -755,6 +755,36 @@ body.learning main,body.learning #metrics{display:none;}
   break-inside:avoid;
 }
 
+/* ---------- выбор окружения ---------- */
+#viewport[data-env="studio"] .vignette,
+#viewport[data-env="tech"] .vignette{display:none;}
+.env-wrap{position:relative;display:flex;}
+.env-pop{
+  display:none;position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  z-index:40;width:min(330px,88vw);padding:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 18px 40px var(--shade);
+}
+.env-pop.open{display:flex;flex-direction:column;gap:3px;}
+.env-item{
+  display:flex;gap:11px;align-items:center;text-align:left;cursor:pointer;color:var(--text);
+  background:none;border:1px solid transparent;border-radius:8px;padding:8px 10px;
+  transition:border-color .15s,background .15s;
+}
+.env-item:hover{background:var(--panel2);border-color:var(--line);}
+.env-item.active{background:color-mix(in oklab, var(--accent) 18%, transparent);border-color:var(--accent);}
+.env-ico{
+  flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  background:var(--sunken);border:1px solid var(--line);color:var(--accent2);
+}
+.env-item.active .env-ico{color:var(--accent);border-color:var(--accent);}
+.env-main{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.env-main b{font-size:var(--fs-sm);}
+.env-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;text-wrap:pretty;}
+@media (max-width:940px){
+  .env-pop{left:auto;right:0;transform:none;width:min(300px,80vw);}
+}
+
 /* ---------- подсказка «как здесь работать» ---------- */
 #guide{
   position:fixed;inset:0;z-index:70;display:none;padding:24px;

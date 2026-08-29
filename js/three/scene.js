@@ -8,24 +8,44 @@ import { MATERIALS, byId } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { coatProfile } from '../core/glazeCoat.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
+import { createDome, setDomeColors } from './dome.js';
+import { byEnvId } from '../config/environments.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
-let groundMat, baseMat, shaftMat, hemi;   // меняются вместе с темой
+let groundMat, baseMat, shaftMat, hemi, keyLight, dome, grid;
+let groundMesh, baseMesh, shaftMesh;
+let envId='workshop', themeNow='dark';   // окружение и тема меняют сцену вместе
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
-let platenMat, lastPlatenR=0;
+let platenMat, lastPlatenR=0, lastBaseR=80;
 let lastProfile=[];   // профиль последней сборки, в мм — для привязки чертежа
 let previewPath=null; // контур оснастки: пока задан, в сцене показывается он, а не изделие
 
-function rebuildPlaten(baseR){
-  const rad=Math.max(baseR+35,80);
-  if(platen && Math.abs(rad-lastPlatenR)<2) return;
+/* Подставка под изделием — часть окружения: гончарный круг, подиум, доска,
+   полка печи. Геометрия одна, меняются пропорции и материал. */
+function rebuildPlaten(baseR, force){
+  const ped=byEnvId(envId).pedestal;
+  if(ped.kind==='none'){
+    if(platen) platen.visible=false;
+    if(baseMesh) baseMesh.visible=shaftMesh.visible=false;
+    if(groundMesh) groundMesh.position.y=-0.4;
+    lastPlatenR=0;
+    return;
+  }
+  const rad=Math.max(baseR+ped.pad,80), h=ped.height;
+  if(platen && !force && Math.abs(rad-lastPlatenR)<2){ platen.visible=true; return; }
   lastPlatenR=rad;
   if(platen){platen.geometry.dispose();wheelGroup.remove(platen);}
-  platen=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad*1.05,15,64),platenMat);
-  platen.position.y=-7.5;
+  const taper=ped.kind==='wheel'?1.05:1.0;
+  platen=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad*taper,h,64),platenMat);
+  platen.position.y=-h/2;
+  platen.visible=true;
   platen.castShadow=platen.receiveShadow=true;
   wheelGroup.add(platen);
+  // круг стоит на станине, всё остальное — просто поверхность
+  const wheel=ped.kind==='wheel';
+  if(baseMesh) baseMesh.visible=shaftMesh.visible=wheel;
+  if(groundMesh) groundMesh.position.y=-h-0.4;
 }
 
 function ensureAttr(geo,name,size){
@@ -76,6 +96,40 @@ function applyCoat(geo, path, state){
   const a=ensureAttr(geo,'aCoat',1).array;
   for(let v=0;v<cnt;v++) a[v]=coat[v%n];
   return {runMax, sharpest};
+}
+
+/* Применить окружение вместе с текущей темой: купол, туман, свет, тень,
+   подставка и сетка. Одно место на все шесть вариантов. */
+function applyEnv(){
+  const e=byEnvId(envId), light=themeNow==='light';
+  const c=light?e.light:e.dark;
+  setDomeColors(dome,c.sky,c.ground);
+  if(e.fog){ scene.fog.color.setHex(c.ground); scene.fog.near=e.fog[0]; scene.fog.far=e.fog[1]; }
+  else { scene.fog.near=1e6; scene.fog.far=1e7; }        // туман выключен
+  keyLight.color.setHex(e.key.color);
+  keyLight.intensity=e.key.intensity;
+  keyLight.position.set(e.key.pos[0],e.key.pos[1],e.key.pos[2]);
+  const h=light?e.hemi.light:e.hemi.dark;
+  hemi.color.setHex(h[0]); hemi.groundColor.setHex(h[1]); hemi.intensity=h[2];
+  renderer.toneMappingExposure=light?e.exposure.light:e.exposure.dark;
+  groundMat.opacity=light?e.shadow.light:e.shadow.dark;
+  grid.visible=!!e.grid;
+  if(grid.visible){
+    grid.material.transparent=true;
+    grid.material.opacity=light?0.4:0.55;
+    grid.material.color.setHex(light?0x6f6a64:0xb5aca1);
+  }
+  const ped=e.pedestal;
+  if(ped.kind!=='none'){
+    platenMat.color.setHex(light?ped.color.light:ped.color.dark);
+    platenMat.roughness=ped.roughness;
+    platenMat.metalness=ped.metalness;
+    baseMat.color.setHex(light?0x8d7f70:0x241d18);
+    shaftMat.color.setHex(light?0xa2968a:0x3a322b);
+  }
+  rebuildPlaten(lastBaseR,true);
+  renderer.shadowMap.needsUpdate=true;
+  camDirty=true;
 }
 
 /* Габариты содержимого сцены с учётом усадки. */
@@ -189,6 +243,7 @@ export const sceneAPI = {
     controls.maxPolarAngle=Math.PI*.58;
 
     const dir=new THREE.DirectionalLight(0xffe4c4,2.6);
+    keyLight=dir;
     dir.position.set(300,420,240);
     dir.castShadow=true;
     dir.shadow.mapSize.set(coarse?1024:2048,coarse?1024:2048);
@@ -200,16 +255,26 @@ export const sceneAPI = {
 
     groundMat=new THREE.ShadowMaterial({opacity:.38});
     const ground=new THREE.Mesh(new THREE.CircleGeometry(1200,48),groundMat);
+    groundMesh=ground;
     ground.rotation.x=-Math.PI/2;ground.position.y=-15.6;ground.receiveShadow=true;
     scene.add(ground);
 
+    dome=createDome();
+    scene.add(dome);
+    grid=new THREE.GridHelper(2400,48,0x000000,0x000000);
+    grid.position.y=-15.4;
+    grid.visible=false;
+    scene.add(grid);
+
     baseMat=new THREE.MeshStandardMaterial({color:0x241d18,roughness:.7,metalness:.35});
     const base=new THREE.Mesh(new THREE.CylinderGeometry(18,68,46,40),baseMat);
+    baseMesh=base;
     base.position.y=-38;base.receiveShadow=true;scene.add(base);
 
     wheelGroup=new THREE.Group();scene.add(wheelGroup);
     shaftMat=new THREE.MeshStandardMaterial({color:0x3a322b,roughness:.5,metalness:.7});
     const shaft=new THREE.Mesh(new THREE.CylinderGeometry(12,12,44,24),shaftMat);
+    shaftMesh=shaft;
     shaft.position.y=-37;wheelGroup.add(shaft);
 
     platenMat=new THREE.MeshStandardMaterial({color:0x332a23,roughness:.62,metalness:.25});
@@ -223,20 +288,11 @@ export const sceneAPI = {
 
   /* Сцена живёт по ту же сторону переключателя тем, что и вёрстка: на светлой
      теме круг и тень другие, иначе посреди светлой страницы висит чёрная дыра. */
-  applyTheme(t){
-    const light = t==='light';
-    scene.fog.color.setHex(light?0xe4dacb:0x16110d);
-    groundMat.opacity = light?0.18:0.38;
-    baseMat.color.setHex(light?0x8d7f70:0x241d18);
-    shaftMat.color.setHex(light?0xa2968a:0x3a322b);
-    platenMat.color.setHex(light?0x9b8b7a:0x332a23);
-    hemi.color.setHex(light?0xfff4e6:0xbfa98f);
-    hemi.groundColor.setHex(light?0xcbbba6:0x241a12);
-    hemi.intensity = light?0.85:0.5;
-    renderer.toneMappingExposure = light?0.95:1.05;
-    renderer.shadowMap.needsUpdate=true;
-    camDirty=true;
-  },
+  /* Сцена и вёрстка живут по одну сторону переключателя: и тема, и окружение
+     меняют одни и те же материалы, поэтому применяются вместе. */
+  applyTheme(t){ themeNow=t; applyEnv(); },
+  setEnvironment(id){ envId=id; applyEnv(); },
+  environment:()=>envId,
 
   /* Приблизить или отдалить кнопкой: колесо мыши есть не у всех, а на ноутбуке
      тачпадом попасть в нужный масштаб трудно. k>1 — ближе. */
@@ -268,6 +324,7 @@ export const sceneAPI = {
     if(built.geometry!==prev){ prev.dispose(); potMesh.geometry=built.geometry; }
     potMesh.scale.setScalar(built.scale);
     potMesh.updateMatrix();
+    lastBaseR=built.baseR;
     rebuildPlaten(built.baseR);
     camDirty=true;
     renderer.shadowMap.needsUpdate=true;   // тени сами не обновляются, см. init
