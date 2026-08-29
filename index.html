@@ -34,6 +34,10 @@
       <button class="btn icon" id="resetLayoutBtn" data-icon="rotate-ccw" title="Сбросить раскладку: ширины колонок и порядок блоков" aria-label="Сбросить раскладку"></button>
       <button class="btn icon" id="uiUpBtn" title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
     </div>
+    <div class="undo-group" role="group" aria-label="Отмена">
+      <button class="btn icon" id="undoBtn" data-icon="undo-2" title="Отменить (Ctrl+Z)" aria-label="Отменить" disabled></button>
+      <button class="btn icon" id="redoBtn" data-icon="redo-2" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить" disabled></button>
+    </div>
     <span class="menu-cap">Название изделия</span>
     <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
     <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>

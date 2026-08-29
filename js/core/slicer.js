@@ -17,13 +17,19 @@ export function sliceGCode(state){
   const cartArea=Math.PI*Math.pow(pr.cart/2,2);
   const ePerMM=(pr.lh*bead*flow)/cartArea;
 
+  // центр стола: у портальной машины ноль в углу, у дельты — в центре.
+  // Без этого сдвига половина траектории уходит в минус и печать срывается.
+  const cx=P0.origin==='center'?0:P0.bed[0]/2;
+  const cy=P0.origin==='center'?0:P0.bed[1]/2;
+
   const L=[];
   const mat=byId(state.mat), shrink=mat.shrinkPct;
   L.push('; ============================================');
   L.push(`; КРУГ — LDM G-code · ${state.name||'форма'}`);
   L.push(`; принтер: ${P0.name} (${P0.note})`);
+  L.push(`; ноль стола: ${P0.origin==='center'?'центр':'угол'} · центр изделия X${cx} Y${cy}`);
   L.push(`; сопло ${pr.nozzle} мм · слой ${pr.lh} мм · ${pr.feed} мм/мин · поток ${pr.flow}%`);
-  L.push(`; периметров: ${P} · vase-спираль, без ретракций`);
+  L.push(`; периметров: ${P} · ${P===1?'непрерывная спираль, без ретракций':'послойный обход'}`);
   L.push(`; печать в сыром размере; после обжига усадка -${shrink}%`);
   L.push('; ============================================');
   L.push('G21','G90','M82','G28','G92 E0');
@@ -36,7 +42,7 @@ export function sliceGCode(state){
     const d=Math.hypot(x-(lastX??x),y-(lastY??y),z-(lastZ??z));
     pathLen+=d;eAcc+=d*ePerMM;
     lastX=x;lastY=y;lastZ=z;
-    L.push(`G1 X${fN(x)} Y${fN(y)} Z${fN(z)} E${fE(eAcc)} F${pr.feed}`);
+    L.push(`G1 X${fN(x+cx)} Y${fN(y+cy)} Z${fN(z)} E${fE(eAcc)} F${pr.feed}`);
   }
 
   /* сплошное дно: спираль от центра */
@@ -45,7 +51,7 @@ export function sliceGCode(state){
   const stepsB=revsB*segs;
   L.push('; --- сплошное дно (спираль) ---');
   moveTo(bead*0.4,0,pr.lh/2);
-  L.push(`G1 X${fN(bead*0.4)} Y0 Z${fN(pr.lh/2)} F${pr.feed}`);
+  L.push(`G1 X${fN(bead*0.4+cx)} Y${fN(cy)} Z${fN(pr.lh/2)} F${pr.feed}`);
   for(let k=1;k<=stepsB;k++){
     const q=k/stepsB, ang=q*revsB*Math.PI*2;
     const r=bead*0.4+(r0-bead*0.4)*q;
@@ -53,25 +59,39 @@ export function sliceGCode(state){
     ext(r*Math.cos(ang),r*Math.sin(ang),z);
   }
 
-  /* стенки: периметры-спирали снаружи внутрь */
-  for(let p=0;p<P;p++){
-    const offset=p*bead*0.95;
-    const rw=z=>Math.max(radiusAt(out,z)-offset-bead/2,0.6);
-    if(rw(floor)<1)break;
-    if(p>0){
-      L.push(`; --- периметр ${p+1}: клапан закрыт, переезд ---`);
-      L.push(`G1 X${fN(rw(floor))} Y0 Z${fN(floor)} F${pr.feed}`);
-      lastX=rw(floor);lastY=0;lastZ=floor;
-    }
-    L.push(`; --- периметр ${p+1}: спираль ---`);
+  /* стенки. Один периметр — непрерывная спираль без единого переезда, как и
+     принято в LDM. Несколько периметров спиралями подряд печатать нельзя:
+     закончив первый наверху, сопло пришлось бы опустить вниз сквозь только что
+     напечатанную стенку. Поэтому от двух периметров переходим на послойный
+     обход: все петли слоя, потом подъём. */
+  const rw=(z,p)=>Math.max(radiusAt(out,z)-p*bead*0.95-bead/2,0.6);
+  if(P===1){
+    L.push('; --- стенка: непрерывная спираль ---');
     const stepsW=Math.max(segs,Math.round((H-floor)/pr.lh)*segs);
     for(let k=1;k<=stepsW;k++){
       const q=k/stepsW, ang=q*Math.PI*2*((H-floor)/pr.lh);
-      const z=floor+(H-floor)*q;
-      const r=rw(z);
+      const z=floor+(H-floor)*q, r=rw(z,0);
       ext(r*Math.cos(ang),r*Math.sin(ang),z);
     }
+  }else{
+    L.push(`; --- стенка: ${P} периметра, обход послойно ---`);
+    const layers=Math.max(1,Math.round((H-floor)/pr.lh));
+    for(let li=1;li<=layers;li++){
+      const z=floor+(H-floor)*li/layers;
+      for(let p=0;p<P;p++){
+        const r=rw(z,p);
+        if(r<=0.7) break;
+        // переезд на начало петли — на той же высоте и без подачи
+        L.push(`G1 X${fN(r+cx)} Y${fN(cy)} Z${fN(z)} F${pr.feed}`);
+        lastX=r;lastY=0;lastZ=z;
+        for(let k=1;k<=segs;k++){
+          const ang=k/segs*Math.PI*2;
+          ext(r*Math.cos(ang),r*Math.sin(ang),z);
+        }
+      }
+    }
   }
+
   L.push('; --- завершение ---');
   L.push('G1 Z'+fN(H+15)+' F600','M5','M2');
 
@@ -91,14 +111,31 @@ export function sliceGCode(state){
     }
   }
   if(overLayers>3) warns.push({cls:'w',txt:`Нависание >45° на ~${overLayers} слоях — возможен завал свежей стенки.`});
-  if(state.wall>bead*1.6 && P===4) warns.push({cls:'w',txt:'Стенка заметно толще бусины — периметров может не хватить.'});
+  // печатается бусина шириной bead, а масса и прочность считаны по стенке рецепта
+  const printedWall=P*bead*0.95+bead*0.05;
+  if(Math.abs(printedWall-state.wall)>0.6)
+    warns.push({cls:'w',txt:`Печатается стенка ${printedWall.toFixed(1)} мм (${P} × бусина ${bead.toFixed(1)} мм), а в рецепте ${state.wall} мм — масса и запас прочности считаны по рецепту. Под сопло ${pr.nozzle} мм ровно ложится стенка ${(Math.max(1,Math.round(state.wall/(bead*0.95)))*bead*0.95).toFixed(1)} мм.`});
+
+  /* Время оборота в самом узком месте. Узкая шейка печатается быстро, свежая
+     паста не успевает набрать прочность, и стенка ползёт — при том, что расчёт
+     осадки по весу столба этого не видит: он статический. */
+  let rMin=Infinity;
+  for(const o of out){
+    if(o.y<=floor) continue;
+    const r=Math.max(o.r-bead/2,0.6);
+    if(r<rMin) rMin=r;
+  }
+  const layerSec=Number.isFinite(rMin) ? 60*(2*Math.PI*rMin*P)/pr.feed : 0;
+  if(layerSec>0 && layerSec<6)
+    warns.push({cls:layerSec<3?'e':'w', txt:
+      `Оборот слоя в самом узком месте — ${layerSec.toFixed(1)} с. Паста не успевает схватиться, стенка поплывёт: снизьте подачу или ставьте на стол сразу два изделия. Порог 6 с — умолчание инструмента, не отраслевой норматив.`});
 
   const volMM=pathLen*pr.lh*bead;
   const grams=volMM/1000*density(mat);
   const mins=pathLen/pr.feed;
   return {
     text: L.join('\n'),
-    stats: {layers:Math.round(H/pr.lh), lenM:pathLen/1000, mins, grams},
+    stats: {layers:Math.round(H/pr.lh), lenM:pathLen/1000, mins, grams, layerSec},
     warnings: warns,
   };
 }

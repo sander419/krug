@@ -19,7 +19,9 @@ export const state = {
   seed: 48213,
   stage: 6, playing: false,
   spin: true, wire: false, heatmap: false,
-  pr: {printer:0, nozzle:3.0, lh:1.6, feed:1200, cart:48, flow:100, tau:8},
+  // принтер по умолчанию — с камерой, куда влезает форма по умолчанию: иначе
+  // первое же нажатие «Слайсить» встречает человека красной ошибкой
+  pr: {printer:1, nozzle:4.0, lh:2.4, feed:1800, cart:20, flow:100, tau:8},
   glaze: {al:0.35, si:4.2, ca:0.7},
   glazeId: 'clear-gloss',       // id из js/config/glazes.js
 };
@@ -37,9 +39,13 @@ export function encodeDNA(){
 // Читает location.hash и мутирует state. Возвращает true, если ДНК применена.
 export function applyDNAFromHash(){
   const m = location.hash.match(/#dna=([\w-]+)/);
-  if(!m) return false;
+  return m ? applyDNA(m[1]) : false;
+}
+
+// Применяет ДНК из строки (ссылка или автосохранение). true, если получилось.
+export function applyDNA(code){
   try{
-    const d = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
+    const d = JSON.parse(decodeURIComponent(escape(atob(String(code).replace(/-/g,'+').replace(/_/g,'/')))));
     if(d.v > 4 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));

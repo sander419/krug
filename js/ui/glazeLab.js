@@ -164,4 +164,5 @@ export function syncGlaze(){
   R.al.sync(state.glaze.al);
   R.si.sync(state.glaze.si);
   R.ca.sync(state.glaze.ca);
+  renderGlazeList();      // после отмены выбранная глазурь могла смениться
 }

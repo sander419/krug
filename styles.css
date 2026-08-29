@@ -103,6 +103,7 @@ header{
 .btn.icon{min-width:36px;padding:6px 8px;justify-content:center;font-size:var(--fs-sm);}
 .btn:disabled{opacity:.45;cursor:default;}
 .btn:disabled:hover{border-color:var(--line);transform:none;}
+.undo-group{display:flex;gap:4px;align-items:center;}
 .view-group{
   display:flex;gap:4px;align-items:center;padding:3px;
   border:1px solid var(--line);border-radius:calc(var(--radius) + 3px);background:var(--sunken);

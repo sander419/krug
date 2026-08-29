@@ -100,7 +100,8 @@ export function initTools(refreshNow){
   $('fitBtn').onclick=()=>sceneAPI.refit();
   // те же действия с клавиатуры: руки на клавишах, мышь на форме
   addEventListener('keydown',e=>{
-    if(e.target.matches('input,select,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+    if(e.metaKey||e.ctrlKey||e.altKey)return;
+    if(e.target instanceof Element && e.target.matches('input,select,textarea'))return;
     if(e.key==='+'||e.key==='=') sceneAPI.zoomBy(1.25);
     else if(e.key==='-'||e.key==='_') sceneAPI.zoomBy(1/1.25);
     else if(e.key==='0') sceneAPI.refit();

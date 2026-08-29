@@ -99,7 +99,10 @@ export function computeProduction(state){
     const ri2=state.hollow?Math.max(ro2-wall,0):0;
     const a=(ro1*ro1+ro2*ro1+ro2*ro2)/3-(ri1*ri1+ri2*ri1+ri2*ri2)/3;
     const ym=(out[i-1].y+out[i].y)/2;
-    areaSum+=a;ySum+=a*ym;
+    // вклад пояска пропорционален его высоте: шаг выборки по профилю неравномерный,
+    // без dy центр масс уезжает вверх и устойчивость выходит заниженной
+    const dy=out[i].y-out[i-1].y;
+    areaSum+=a*dy;ySum+=a*dy*ym;
   }
   const yCom=areaSum>0?ySum/areaSum:state.H/2;
   const angle=Math.atan2(baseR,Math.max(yCom,1))*180/Math.PI;

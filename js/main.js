@@ -1,8 +1,9 @@
 // file: js/main.js
 // Точка сборки: инициализация, пакетная пересборка, цикл рендера, ДНК.
 import * as THREE from 'three';
-import { state, encodeDNA, applyDNAFromHash } from './core/state.js';
-import { onChange } from './core/bus.js';
+import { state, encodeDNA, applyDNAFromHash, applyDNA } from './core/state.js';
+import { onChange, emit } from './core/bus.js';
+import { initHistory, record, undo, redo, canUndo, canRedo } from './core/history.js';
 import { computeProduction, computeStrength, computeWarnings } from './core/math.js';
 import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
@@ -50,11 +51,41 @@ function scheduleRefresh(){
   requestAnimationFrame(()=>{rafPending=false;refreshNow();});
 }
 
-/* ---------- ДНК в URL ---------- */
+/* ---------- отмена ---------- */
+/* После отката рецепт поменялся весь сразу, поэтому панель, библиотека и глазурь
+   перечитывают state целиком — точечных обновлений тут не хватит. */
+function syncAll(){
+  $('nameInput').value=state.name;
+  panelsAPI.sync();
+  syncLibrary();
+  syncGlaze();
+  sceneAPI.applyMaterial(state);
+  emit();
+}
+function syncHistoryButtons(){
+  $('undoBtn').disabled=!canUndo();
+  $('redoBtn').disabled=!canRedo();
+}
+
+/* ---------- ДНК в URL и автосохранение ---------- */
+/* Ссылка передаёт работу другому человеку, автосохранение возвращает её тому же:
+   раньше закрытая вкладка означала потерю всего, если не догадаться скопировать ДНК. */
+const AUTOSAVE='krug.work';
 let hashTimer=null;
 function scheduleHash(){
   clearTimeout(hashTimer);
-  hashTimer=setTimeout(()=>history.replaceState(null,'','#dna='+encodeDNA()),400);
+  hashTimer=setTimeout(()=>{
+    const dna=encodeDNA();
+    history.replaceState(null,'','#dna='+dna);
+    try{ localStorage.setItem(AUTOSAVE,dna); }catch(_){}
+  },400);
+}
+/* Ссылка важнее автосохранения: по ней пришли смотреть конкретную форму. */
+function restoreWork(){
+  if(applyDNAFromHash()) return 'ссылка';
+  let saved=null;
+  try{ saved=localStorage.getItem(AUTOSAVE); }catch(_){}
+  return saved && applyDNA(saved) ? 'автосохранение' : 'умолчание';
 }
 async function copyText(s){
   try{await navigator.clipboard.writeText(s);}
@@ -65,36 +96,41 @@ async function copyText(s){
 }
 
 /* ---------- инициализация ---------- */
-sceneAPI.init($('viewport'));
-applyDNAFromHash();
-$('nameInput').value=state.name;
+/* Каждый шаг в своей скорлупе. Один упавший модуль раньше уносил всю страницу:
+   исключение обрывало main.js, и не оставалось ни кнопок, ни цикла рендера
+   (так однажды это и случилось из-за ellipse() с отрицательным радиусом). */
+const broken=[];
+function step(name,fn){
+  try{ fn(); }
+  catch(e){ console.error(`КРУГ: сбой при инициализации «${name}»`,e); broken.push(name); }
+}
 
-initEditor($('profileCanvas'));
-initTabs();
-initBlocks();
-initPanels();
-panelsAPI.sync();
-initKB();
-initLibrary();
-initTooling();
-initGlazeLab();
-syncGlaze();
+step('сцена',()=>sceneAPI.init($('viewport')));
+let restoredFrom='умолчание';
+step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;});
+
+step('чертёж',()=>initEditor($('profileCanvas')));
+step('панель',()=>{initTabs();initBlocks();initPanels();panelsAPI.sync();});
+step('обучение',()=>initKB());
+step('библиотека масс',()=>initLibrary());
+step('оснастка',()=>initTooling());
+step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);
 $('kbBtn').onclick=()=>openKB();
-initEnvironment();   // окружение выбирается до темы: тема лишь пересобирает его
+step('окружение',()=>initEnvironment());   // выбирается до темы: тема лишь пересобирает его
 onTheme(t=>{                       // цвета canvas и сцены живут в тех же токенах
   resetPalette();
   sceneAPI.applyTheme(t);
   drawEditor();
   syncGlaze();
 });
-initTheme();         // подписка раньше вызова: иначе сцена не узнает тему при запуске
-paintIcons();
-initLayout();
-initMobile();
-initCinema(refreshNow);
-initGuide();
-initTools(refreshNow);
+step('тема',()=>initTheme());   // подписка раньше вызова: иначе сцена не узнает тему при запуске
+step('иконки',()=>paintIcons());
+step('раскладка',()=>initLayout());
+step('телефон',()=>initMobile());
+step('кинотеатр',()=>initCinema(refreshNow));
+step('подсказка',()=>initGuide());
+step('инструменты вида',()=>initTools(refreshNow));
 
 $('nameInput').addEventListener('input',e=>{state.name=e.target.value;scheduleHash();});
 $('dnaBtn').onclick=()=>{
@@ -118,8 +154,31 @@ new ResizeObserver(()=>{
   if(!framed){framed=true;sceneAPI.frameView();}   // аспект известен только после раскладки
 }).observe($('viewport'));
 onChange(scheduleRefresh);
+onChange(record);
+initHistory(syncHistoryButtons);
+$('undoBtn').onclick=()=>{ if(undo()){ syncAll(); syncHistoryButtons(); toast('Отменено'); } };
+$('redoBtn').onclick=()=>{ if(redo()){ syncAll(); syncHistoryButtons(); toast('Возвращено'); } };
+addEventListener('keydown',e=>{
+  // e.target может быть не элементом (document, window) — matches там нет
+  if(!(e.ctrlKey||e.metaKey))return;
+  if(e.target instanceof Element && e.target.matches('input,textarea,select'))return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){ e.preventDefault(); $('undoBtn').click(); }
+  else if((k==='z'&&e.shiftKey)||k==='y'){ e.preventDefault(); $('redoBtn').click(); }
+});
 refreshNow();
 sceneAPI.frameView();
+if(broken.length) toast('Не загрузилось: '+broken.join(', ')+'. Остальное работает.');
+else if(restoredFrom==='автосохранение') toast('Вернулись к последней работе — «'+state.name+'»');
+
+/* Ошибка в обработчике не должна оставлять человека наедине с замершим экраном. */
+let told=false;
+const complain=where=>{
+  if(told)return; told=true;
+  toast('Сбой в «'+where+'». Перезагрузите страницу; рецепт сохранён в адресной строке.');
+};
+addEventListener('error',e=>{ console.error('КРУГ:',e.error||e.message); complain('интерфейсе'); });
+addEventListener('unhandledrejection',e=>{ console.error('КРУГ:',e.reason); complain('фоновой задаче'); });
 
 /* ---------- цикл рендера ---------- */
 const clock=new THREE.Clock();

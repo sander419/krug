@@ -15,6 +15,7 @@ const CHECKS = [
   ['Глазури',      'check-glazes.mjs'],
   ['Энциклопедия', 'check-kb.mjs'],
   ['Геометрия',    'check-geometry.mjs'],
+  ['Слайсер',      'check-gcode.mjs'],
 ];
 
 let failed = 0;

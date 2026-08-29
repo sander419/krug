@@ -130,7 +130,8 @@ function buildPrintPanel(){
     res.style.display='block';
     const time=stats.mins<90?Math.round(stats.mins)+' мин':(stats.mins/60).toFixed(1)+' ч';
     const grams=stats.grams>=1000?(stats.grams/1000).toFixed(2)+' кг':Math.round(stats.grams)+' г';
-    res.innerHTML=`Готово: <b>${stats.layers} слоёв</b> · путь <b>${stats.lenM.toFixed(0)} м</b> · ≈<b>${time}</b> · паста <b>${grams}</b>`
+    const lay=stats.layerSec>0?` · оборот слоя <b>${stats.layerSec.toFixed(1)} с</b>`:'';
+    res.innerHTML=`Готово: <b>${stats.layers} слоёв</b> · путь <b>${stats.lenM.toFixed(0)} м</b> · ≈<b>${time}</b> · паста <b>${grams}</b>${lay}`
       +(warnings.length?'<br>'+warnings.map(w=>`<span class="${w.cls}">⚠ ${w.txt}</span>`).join('<br>')
       :'<br><span style="color:var(--ok)">✓ Технология печати соблюдена</span>')
       +`<br><button class="btn small" id="sliceHelp">Как читать эти числа</button>`;
