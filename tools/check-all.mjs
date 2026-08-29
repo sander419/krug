@@ -18,6 +18,7 @@ const CHECKS = [
   ['Слайсер',      'check-gcode.mjs'],
   ['Задачи',       'check-routes.mjs'],
   ['Линия',        'check-trace.mjs'],
+  ['Картинка',     'check-silhouette.mjs'],
 ];
 
 let failed = 0;

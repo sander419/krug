@@ -862,6 +862,31 @@ body.learning main,body.learning #metrics{display:none;}
 .part-drawn b{font-size:var(--fs-sm);}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 
+/* ---------- обводка картинки ---------- */
+#photoScreen{
+  position:fixed;inset:0;z-index:78;display:none;padding:24px;
+  background:color-mix(in oklab, var(--bg) 82%, transparent);backdrop-filter:blur(5px);
+}
+#photoScreen.open{display:grid;place-items:center;}
+.photo-card{
+  width:min(820px,100%);max-height:92vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 24px 20px;box-shadow:0 26px 70px var(--shade);
+}
+.photo-body{display:grid;grid-template-columns:1fr 260px;gap:16px;align-items:start;}
+#photoCanvas{
+  width:100%;display:block;border-radius:var(--radius);
+  border:1px solid var(--line);background:var(--sunken);
+}
+.photo-side{display:flex;flex-direction:column;gap:10px;}
+.photo-side .seg{width:100%;}
+.photo-side .seg button{flex:1;}
+@media (max-width:640px){
+  #photoScreen{padding:0;}
+  .photo-card{max-height:100vh;height:100%;border-radius:0;border:none;}
+  .photo-body{grid-template-columns:1fr;}
+}
+
 /* ---------- задача: «что вы делаете» ---------- */
 /* Кнопка в шапке всегда показывает выбранную задачу: иначе человек не понимает,
    почему у него три вкладки, а на скриншоте в справке пять. */

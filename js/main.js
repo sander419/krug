@@ -12,6 +12,7 @@ import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
+import { initPhoto } from './ui/photo.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
@@ -130,6 +131,13 @@ step('чертёж',()=>initEditor($('profileCanvas'),(info,target)=>{
 }));
 step('панель',()=>{initTabs();initBlocks();initPanels();initParts();panelsAPI.sync();});
 step('задача',()=>initRoute());   // после вкладок: задача их и прячет
+step('картинка',()=>initPhoto(info=>{
+  if(!info){ toast('Файл не открылся как картинка'); return; }
+  panelsAPI.sync();
+  toast(`Обведено: ${(info.H/10).toFixed(1)}×${(info.D/10).toFixed(1)} см, точек ${info.points}`
+    + (info.half?' · как половина сечения':''));
+  sceneAPI.frameView();
+}));
 step('обучение',()=>initKB());
 step('библиотека масс',()=>initLibrary());
 step('оснастка',()=>initTooling());

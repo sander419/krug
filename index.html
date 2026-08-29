@@ -79,6 +79,8 @@
           <summary class="block-title">Пресеты</summary>
           <div class="block-body">
             <div class="presets" id="presets"></div>
+            <button class="preset wide" id="photoBtn" data-icon="image">Обвести картинку</button>
+            <input type="file" id="photoFile" accept="image/*" hidden>
             <p class="hint">seed: <b id="seedOut">—</b> — один и тот же seed даёт одну и ту же форму.</p>
           </div>
         </details>
@@ -460,6 +462,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 
 <!-- ================= подсказка новичку ================= -->
+<div id="photoScreen" aria-hidden="true"></div>
 <div id="routeScreen" aria-hidden="true"></div>
 <div id="guide" aria-hidden="true"></div>
 
