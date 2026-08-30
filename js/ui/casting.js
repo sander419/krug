@@ -13,6 +13,10 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { CAST_DEFAULTS, castingPlan } from '../core/casting.js';
 import { $, num } from './dom.js';
+import { castMouldNumbers, castMouldGeometry } from '../three/castMould.js';
+import { sceneAPI } from '../three/scene.js';
+import { exportGeoSTL } from '../three/exporters.js';
+import { toast } from './overlays.js';
 
 const F = [
   {k: 'calibMM',  n: 'Замер: набралось', u: 'мм',   min: 0.5, max: 20,  step: 0.5},
@@ -25,6 +29,7 @@ const F = [
 ];
 
 const opts = () => ({...CAST_DEFAULTS, perDay: 10, ...(state.cast || {})});
+let preview = false;      // показываем ли половину формы вместо изделия
 
 /**
  * @param a {dryG, cavityL, plasterKg, parts} — приходят из общего расчёта панели
@@ -34,6 +39,7 @@ export function renderCasting(a) {
   if (!box) return;
   const o = opts();
   const plan = castingPlan({...a, wallMM: state.wall, perDay: o.perDay}, o);
+  const cm = castMouldNumbers(state);
 
   const fields = F.map(f => `
     <label class="field-row"><span>${f.n}</span>
@@ -59,15 +65,45 @@ export function renderCasting(a) {
         ? `<b>${plan.cap.mouldsNeeded} шт</b> на ${o.perDay} изделий в день
            <span class="dim">(одна форма даёт ${num(plan.cap.perMouldPerDay, 1)} в день)</span>`
         : '<span class="dim">задайте дневной план</span>'}</dd>
-      <dt>Части формы</dt><dd>${a.parts} <span class="dim">по разъёмам профиля</span> ·
-        литник ${plan.sprueMM} мм над кромкой, срезается по кожетвёрдому</dd>
+      <dt>Форма</dt><dd><b>две половины</b> <span class="dim">(разъём вертикальный, через ось —
+        поднутрения литью не мешают)</span> · блок ${cm.blockMM.map(v => Math.round(v)).join('×')} мм
+        на половину · гипса <b>${num(cm.plasterL * 1.42, 1)} кг</b> на каждую
+        <span class="dim">(${num(cm.plasterL, 1)} л тела)</span> · замков ${cm.keys}</dd>
+      <dt>Литник</dt><dd>воронка ⌀${cm.funnelR * 2} × ${cm.funnelH} мм над кромкой,
+        ${num(cm.funnelL * 2, 2)} л запаса шликера на усадку при наборе; срезается по кожетвёрдому</dd>
     </dl>
     <div class="cast-ticks">${table}</div>
+    <div class="btn-row">
+      <button class="btn small" id="castShow">Показать половину</button>
+      <button class="btn small" id="castStl">STL обеих половин</button>
+    </div>
     <p class="note">«Форма примет N подряд» — это насыщение гипса водой. На практике набор
       замедляется раньше: вторая и третья отливки идут дольше первой. Замерьте на второй —
       расчёт пойдёт от неё. Расход шликера учитывает ${o.wastePct} % потерь на плёнку
       в воронке и ведре; вода в свежем черепке принята за ${o.greenMoisturePct} % сухой массы.</p>`;
 
+  const show = $('castShow');
+  if (show) {
+    show.classList.toggle('active', preview);
+    show.onclick = () => {
+      preview = !preview;
+      /* Сцена подменяет геометрию не сразу, а на ближайшей пересборке: без emit()
+         предпросмотр молча не появлялся бы. */
+      sceneAPI.setPreviewMesh(preview ? castMouldGeometry(state, {half: 'bump'}).geometry : null);
+      if (preview) toast('Половина формы для литья: разъём вверх, замки бугорками, литник сбоку');
+      emit();
+      sceneAPI.frameView();          // блок формы крупнее изделия — кадр нужно пересобрать
+    };
+  }
+  const stl = $('castStl');
+  if (stl) stl.onclick = () => {
+    for (const [half, suffix] of [['bump', '1-бугорки'], ['socket', '2-лунки']]) {
+      const m = castMouldGeometry(state, {half});
+      exportGeoSTL(state, m.geometry, `форма-литьё-${suffix}`);
+      m.geometry.dispose();
+    }
+    toast('Обе половины формы сохранены: замки бугорками и лунками');
+  };
   box.querySelectorAll('[data-cast]').forEach(inp => {
     inp.oninput = () => {
       const f = F.find(x => x.k === inp.dataset.cast);

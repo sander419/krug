@@ -199,7 +199,11 @@ export function checks(state, an, procId) {
 
   if (an.undercuts === 0) add('ok', 'Поднутрений нет: профиль снимается с оснастки вдоль оси.', 'tooling-basics');
   else if (rigid) add('bad', `Поднутрение ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм — ${an.deepest.kind} (всего перегибов ${an.undercuts}). Для «${proc.short}» нужна форма из ${an.parts} частей — процесс не подходит. Уберите завал профиля, и форма станет пригодной.`, 'tooling-basics');
-  else add('warn', `Перегибов профиля ${an.undercuts}, самый глубокий ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм (${an.deepest.kind}) — форма разъёмная, из ${an.parts} частей. Линия разъёма на высоте ${Math.round(an.partingY)} мм.`, 'casting');
+  /* У литья разъём вертикальный, через ось: половина снимается вбок, и завал
+     профиля ей не мешает. Поэтому поднутрения, из-за которых жёсткой оснастке
+     нужны три части, здесь не добавляют ни одной — это и есть причина, по
+     которой сложные формы льют, а не штампуют. */
+  else add('warn', `Перегибов профиля ${an.undercuts}, самый глубокий ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм (${an.deepest.kind}). Литью это не мешает: разъём вертикальный, через ось, форма из двух половин.`, 'casting');
 
   if (an.minDraftDeg >= tune('draftDeg'))
     add('ok', `Минимальный уклон ${an.minDraftDeg.toFixed(1)}° — изделие сходит с формы.`, 'tooling-basics');
@@ -252,6 +256,15 @@ export function toolingNumbers(state, prod, an, procId) {
 }
 
 /* Сколько комплектов форм нужно на тираж и что известно про ресурс. */
+/** Части формы для выбранного способа: у литья разъём вертикальный, у жёсткой
+    оснастки — поперёк оси по поднутрениям. */
+export function mouldParts(procId, an) {
+  return procId === 'casting'
+    ? {parts: 2, vertical: true, note: 'разъём вертикальный, через ось'}
+    : {parts: an.parts, vertical: false,
+       note: `разъём поперёк оси на высоте ${Math.round(an.partingY)} мм`};
+}
+
 export function batchPlan(procId, pieces) {
   const proc = processById(procId);
   if (!proc.mouldLife) return {known: false, proc};
@@ -284,7 +297,10 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
   L.push(`- Модель оснастки (сырой размер): ${fmt(n.model.H)} × ⌀${fmt(n.model.D)} мм, стенка ${fmt(n.model.wall)} мм`);
   L.push(`- После обжига: ${fmt(n.fired.H)} × ⌀${fmt(n.fired.D)} мм`);
   L.push(`- Коэффициент усадки: ×${n.shrink.k.toFixed(4)} (полная усадка ${n.mat.shrinkPct} %)`);
-  L.push(`- Линия разъёма: высота ${fmt(n.partingY)} мм, частей формы ${n.parts}`);
+  const mp = mouldParts(procId, an);
+  L.push(mp.vertical
+    ? `- Разъём вертикальный, через ось: форма из ${mp.parts} половин (поднутрения литью не мешают)`
+    : `- Линия разъёма: высота ${fmt(n.partingY)} мм, частей формы ${mp.parts}`);
   L.push('');
   L.push('## Прессование');
   L.push(`- Проекционная площадь: ${fmt(n.projAreaMM2 / 100)} см²`);

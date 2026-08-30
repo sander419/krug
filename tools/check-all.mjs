@@ -22,6 +22,7 @@ const CHECKS = [
   ['Автономность', 'check-offline.mjs'],
   ['Печи',         'check-kilns.mjs'],
   ['Литьё',        'check-casting.mjs'],
+  ['Форма литья',  'check-castmould.mjs'],
   ['Схема',        'check-sheet.mjs'],
   ['Настройки',    'check-tuning.mjs'],
   ['Читаемость',   'check-contrast.mjs'],

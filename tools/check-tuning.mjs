@@ -14,6 +14,7 @@ import { economics } from '../js/core/economics.js';
 import { sanitizePart, partsWarnings } from '../js/core/parts.js';
 import { partMouldFeatures, partMouldBlock } from '../js/three/partMould.js';
 import { kilnLoad, firingCost } from '../js/core/kiln.js';
+import { castMouldNumbers } from '../js/three/castMould.js';
 import { byKilnId } from '../js/config/kilns.js';
 
 const problems = [];
@@ -94,6 +95,10 @@ const PROBES = {
   land: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
   flashW: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
   flashD: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
+  castWall: () => castMouldNumbers(state).plasterL,
+  castBase: () => castMouldNumbers(state).plasterL,
+  funnelR: () => castMouldNumbers(state).funnelL,
+  funnelH: () => castMouldNumbers(state).funnelL,
   gapItem: () => kilnLoad(kiln, {d: 120, h: 140}).perShelf,
   gapWall: () => kilnLoad(kiln, {d: 120, h: 140}).perShelf,
   gapTier: () => kilnLoad(kiln, {d: 120, h: 200}).tiers,
