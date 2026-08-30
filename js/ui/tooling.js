@@ -20,6 +20,7 @@ import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
 import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../three/partMould.js';
 import { partSelfOverlap } from '../core/parts.js';
+import { kilnPerItem } from './kiln.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -240,7 +241,9 @@ function bindPartMoulds() {
 }
 
 function renderEconomics(prod, procId, mat) {
-  const ec = economics(state, prod, procId, {...econ, batch});
+  // обжиг — такая же статья себестоимости, как глина и труд
+  const fire = kilnPerItem();
+  const ec = economics(state, prod, procId, {...econ, batch, firePerPiece: fire || 0});
   const proc = processById(procId);
   const priceRow = ec.perKg == null
     ? `<dt>Материал</dt><dd class="dim">цена этой массы в реестре не указана</dd>`
@@ -273,6 +276,9 @@ function renderEconomics(prod, procId, mat) {
       <dt>Руками</dt><dd><b>${rub(ec.manualPerPiece)}</b> за штуку · ${rub(ec.manualTotal)} за партию</dd>
       <dt>Время</dt><dd>${num(ec.machineHours, 1)} ч машиной · ${num(ec.manualHours, 0)} ч руками <span class="dim">(${num(ec.shifts, 1)} смены)</span></dd>
       <dt>Глина</dt><dd>${num(ec.clayKgMachine, 0)} кг на партию</dd>
+      <dt>Обжиг</dt><dd>${fire
+        ? `${rub(ec.firePerPiece)} за штуку · ${rub(ec.fireTotal)} за партию <span class="dim">(из садки: см. «Печь и садка»)</span>`
+        : '<span class="dim">не посчитан: изделие не входит в выбранную печь</span>'}</dd>
       ${partsRow}
     </dl>
     <div class="econ-verdict ${cls}">${verdict}</div>`;
@@ -372,7 +378,9 @@ export function initTooling() {
   $('toolCard').onclick = () => {
     const an = analyzeFormability(state);
     const prod = computeProduction(state);
-    const text = techCard(state, prod, an, currentProcId(an), batch, econ, {mould, plasterId, waterRatio});
+    // техкарта считает ту же себестоимость, что и панель: обжиг в неё входит
+    const text = techCard(state, prod, an, currentProcId(an), batch,
+      {...econ, firePerPiece: kilnPerItem() || 0}, {mould, plasterId, waterRatio});
     download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
     toast('Техкарта сохранена');
   };

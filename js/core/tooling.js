@@ -349,6 +349,9 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
   L.push(`- Машиной: ${Math.round(ec.machinePerPiece)} ₽/шт, ${Math.round(ec.machineTotal)} ₽ за партию, ${ec.machineHours.toFixed(1)} ч`);
   L.push(`- Руками: ${Math.round(ec.manualPerPiece)} ₽/шт, ${Math.round(ec.manualTotal)} ₽ за партию, ${ec.manualHours.toFixed(0)} ч`);
   L.push(`- Глины на партию: ${Math.round(ec.clayKgMachine)} кг`);
+  if (ec.firePerPiece > 0)
+    L.push(`- Обжиг: ${Math.round(ec.firePerPiece)} ₽/шт, ${Math.round(ec.fireTotal)} ₽ за партию (из садки печи, входит в обе строки выше)`);
+  else L.push('- Обжиг: не посчитан — изделие не входит в выбранную печь или печь не выбрана');
   if (ec.cheaper === 'machine') L.push(`- На этом тираже оснастка выгоднее на ${Math.round(ec.manualTotal - ec.machineTotal)} ₽`);
   else if (ec.breakEven) L.push(`- Оснастка окупается начиная с ${ec.breakEven} шт`);
   else L.push('- На этих цифрах оснастка не окупается ни при каком тираже');

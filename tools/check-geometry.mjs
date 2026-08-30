@@ -144,6 +144,18 @@ if (!(big.machinePerPiece < small.machinePerPiece)) P('оснастка не р�
 if (small.cheaper !== 'manual') P('на десяти штуках оснастка не должна быть выгоднее рук');
 if (big.cheaper !== 'machine') P('на двадцати тысячах штук машина должна выигрывать');
 if (!(small.breakEven > 10)) P(`точка окупаемости ${small.breakEven} — должна быть больше десяти штук`);
+/* Обжиг ложится на обе дороги одинаково, поэтому себестоимость он поднимает,
+   а точку безубыточности не двигает: иначе печь «выбирала» бы способ формовки. */
+const noFire = economics(state, prodCup, 'ram', {batch: 500});
+const withFire = economics(state, prodCup, 'ram', {batch: 500, firePerPiece: 30});
+if (Math.abs(withFire.machinePerPiece - noFire.machinePerPiece - 30) > 0.01)
+  P('обжиг не попал в машинную себестоимость');
+if (Math.abs(withFire.manualPerPiece - noFire.manualPerPiece - 30) > 0.01)
+  P('обжиг не попал в ручную себестоимость');
+if (withFire.breakEven !== noFire.breakEven)
+  P('обжиг сдвинул точку безубыточности, хотя ложится на оба способа поровну');
+if (Math.abs(withFire.fireTotal - 30 * 500) > 0.01) P('обжиг за партию посчитан неверно');
+
 const noPrice = economics({...state, mat: 'mkf-2'}, prodCup, 'ram', {batch: 500});
 if (noPrice.perKg !== null) P('масса без цены должна давать perKg = null, а не число');
 if (!isFinite(noPrice.machineTotal)) P('без цены материала расчёт всё равно должен считаться');

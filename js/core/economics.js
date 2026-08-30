@@ -12,6 +12,7 @@ export const ECON_DEFAULTS = {
   labourRubPerHour: 600,  // ставка с накладными
   manualPerHour: 8,       // сколько изделий делает гончар на круге за час
   shiftHours: 8,
+  firePerPiece: 0,          // ₽ за обжиг одного изделия, из блока «Печь и садка»
 };
 
 /* Цена массы за килограмм — из фасовки и цены-ориентира в реестре. */
@@ -45,8 +46,13 @@ export function economics(state, prod, procId, opt = {}) {
   const labourMachine = machineHoursPerPiece * e.labourRubPerHour;
   const labourManual = manualHoursPerPiece * e.labourRubPerHour;
 
-  const varMachine = (matMachine || 0) + labourMachine;
-  const varManual = (matManual || 0) + labourManual;
+  /* Обжиг ложится на обе дороги одинаково: изделие обжигают и после пресса,
+     и после круга. Поэтому точку безубыточности он не двигает — но без него
+     себестоимость это не себестоимость, а половина её. Цена берётся из садки
+     (js/core/kiln.js): она зависит от того, сколько влезло в печь. */
+  const fire = Math.max(0, e.firePerPiece || 0);
+  const varMachine = (matMachine || 0) + labourMachine + fire;
+  const varManual = (matManual || 0) + labourManual + fire;
 
   const totalFor = n => {
     const sets = mouldSets(procId, n);
@@ -74,6 +80,7 @@ export function economics(state, prod, procId, opt = {}) {
     perKg, blankKg, manualKg,
     matMachine, matManual,
     labourMachine, labourManual,
+    firePerPiece: fire, fireTotal: fire * e.batch,
     varMachine, varManual,
     sets: at.sets,
     machineTotal: at.machine, manualTotal: at.manual,
