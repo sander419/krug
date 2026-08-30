@@ -11,6 +11,7 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { KILNS, byKilnId } from '../config/kilns.js';
 import { kilnEconomy, firedSize } from '../core/kiln.js';
+import { sanitizeLid, lidProfile } from '../core/lid.js';
 import { tune } from '../core/tuning.js';
 import { userProfileMM } from '../core/math.js';
 import { partMetrics } from '../core/parts.js';
@@ -28,7 +29,9 @@ function kilnNow() {
 function itemNow() {
   const prof = userProfileMM(state);
   const parts = (state.parts || []).map(p => partMetrics(prof, p));
-  return firedSize(prof, parts, byId(state.mat).shrinkPct);
+  const lid = sanitizeLid(state.lid);
+  const lidPts = lid.on ? lidProfile(prof, lid, state.wall).pts : null;
+  return firedSize(prof, parts, byId(state.mat).shrinkPct, lidPts);
 }
 
 function shelfSVG(load, itemD) {

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
+import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -100,7 +101,11 @@ export function computeProduction(state){
   }
   const vRec = footOn ? Math.PI*Math.pow(baseR*state.footK/100,2)*state.footH*0.65 : 0;
   const partsMl=partsVolumeMl(out, state.parts);
-  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl;  // см³, вместе с прилепами
+  /* Крышка — отдельная деталь, но глину на неё берут из того же куска и обжигают
+     в той же садке. В объём изделия она входит, в его вместимость — нет. */
+  const lid=sanitizeLid(state.lid);
+  const lidMl=lid.on?lidMetrics(out,lid,wall,1,byId(state.mat).shrinkPct).volMl:0;
+  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl + lidMl;  // см³, вместе с прилепами и крышкой
   const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;
@@ -120,7 +125,7 @@ export function computeProduction(state){
   return {massF,massN,waste:massN-massF,volMl:vPiece,capMl:vCav/1000,
           fillMl:(state.hollow?vFill:0)/1000, cutBySpout:yFill<out[out.length-1].y-0.5,
           fillBy:fillLimitedBy(out,state.parts),
-          angle,baseR,partsMl};
+          angle,baseR,partsMl,lidMl};
 }
 
 /* запас прочности по пределу текучести (упрощённая модель осадки) */
@@ -168,6 +173,7 @@ export function computeWarnings(state, prod, str){
   if(str.minSF<1.5) w.push({lvl:'bad',area:'print',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
   else if(str.minSF<2.5) w.push({lvl:'warn',area:'print',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
   for(const pw of partsWarnings(state,out)) w.push(pw);
+  for(const lw of lidWarnings(state,out,byId(state.mat))) w.push(lw);
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична и устойчива.'});
   return w;
 }

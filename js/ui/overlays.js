@@ -31,7 +31,7 @@ export function updateStats(prod,str,tris){
       <b>${state.hollow?Math.round(prod.cutBySpout?prod.fillMl:prod.capMl)+' мл':'— сплошная'}</b>
       ${prod.cutBySpout?`<span class="k">до ${prod.fillBy==='lip'?'слива':'носика'} · ${Math.round(prod.capMl)} до кромки</span>`:''}
     </div>
-    <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b></div>
+    <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b>${prod.lidMl?`<span class="k">из них крышка ${Math.round(prod.lidMl)}</span>`:''}</div>
     <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>
     <div class="chip"><span class="k">Масса изделия</span><b>${fmtG(prod.massF)}</b></div>
     <div class="chip"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>

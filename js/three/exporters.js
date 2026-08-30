@@ -3,7 +3,9 @@ import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { sceneAPI } from './scene.js';
 import { buildPot } from '../core/geometry.js';
+import { buildLathe } from '../core/lathe.js';
 import { partCurve, partSection } from '../core/parts.js';
+import { sanitizeLid, lidProfile } from '../core/lid.js';
 import { sweepGeometry } from './sweep.js';
 import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
@@ -71,8 +73,8 @@ function exportGeo(){
     st.updateMatrix();
     parts.push(st.geometry.clone().applyMatrix4(st.matrix));
   }
-  const grp=sceneAPI.parts();
-  if(grp){
+  for(const grp of [sceneAPI.parts(), sceneAPI.lid()]){
+    if(!grp) continue;
     grp.updateMatrixWorld(true);
     for(const c of grp.children){
       if(!c.visible) continue;
@@ -105,10 +107,22 @@ function stlBlob(geometry){
   return new Blob([buf],{type:'model/stl'});
 }
 
+/* Крышка уезжает своим файлом. Приварить её к корпусу было бы неправдой:
+   это вторая вещь — её отдельно лепят, отдельно сушат и ставят на изделие
+   только в печи. */
+function lidGeo(state){
+  const lid=sanitizeLid(state.lid);
+  if(!lid.on) return null;
+  const L=lidProfile(userProfileMM(state), lid, state.wall);
+  return buildLathe(L.pts.map(p=>({x:Math.max(p.r,0.01),y:p.y})), Math.max(state.segments,48));
+}
+
 export function exportSTL(state){
   const geo=fabricationGeo(state);
   download(stlBlob(geo), fileName(state,'stl'));
   geo.dispose();
+  const lg=lidGeo(state);
+  if(lg){ download(stlBlob(lg), fileName(state,'крышка.stl')); lg.dispose(); }
 }
 
 /* Полуформа прилепа: готовая геометрия -> STL. */

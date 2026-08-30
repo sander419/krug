@@ -26,7 +26,8 @@ import { partCurve } from '../core/parts.js';
 import { encodeDNA } from '../core/state.js';
 import { castingPlan } from '../core/casting.js';
 import { buildSheet } from '../core/sheet.js';
-import { byId as materialById } from '../config/materials.js';
+import { sanitizeLid, lidMetrics } from '../core/lid.js';
+import { byId as materialById, density } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
@@ -203,6 +204,14 @@ function sheetSVG() {
     ['Обжиг на изделие', fire ? `${num(fire, 1)} ₽` : '—'],
     ['Прилепов', String(parts.length)],
   ];
+  const LD = sanitizeLid(state.lid);
+  if (LD.on) {
+    const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct);
+    rows.push(['Крышка', LD.type === 'inset' ? 'в горловину' : 'внахлёст'],
+      ['Поясок крышки', `⌀${num(lm.seatR * 2, 1)} мм`],
+      ['Зазор после обжига', `${num(lm.gapFired, 1)} мм`],
+      ['Глина на крышку', `${Math.round(lm.massG)} г`]);
+  }
 
   return buildSheet({
     name: state.name || 'Без названия',
@@ -212,6 +221,11 @@ function sheetSVG() {
     wall: state.wall, footH: state.footH, footR: state.D / 2 * state.footK / 100,
     H: state.H, D: state.D, shrinkPct: mat.shrinkPct,
     parts, rows,
+    lid: LD.on ? (() => {
+      const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct);
+      return {pts: lm.pts, outline: lm.outer, seatD: lm.seatR * 2, seatDFired: lm.firedSeatMM,
+              gapFired: lm.gapFired, topY: lm.topY, outD: lm.outR * 2};
+    })() : null,
     notes: [
       'Прилепы на видах спереди и в разрезе развёрнуты в плоскость листа; по азимутам они стоят на виде сверху.',
       'Размеры сырые, до обжига: по ним делают форму. Готовое изделие меньше на усадку массы.',

@@ -79,6 +79,34 @@ const ratio = scale(twice) / scale(svg);
 if (!(ratio > 1.7 && ratio < 2.3))
   P(`масштаб не следует за размером изделия: 1:${scale(svg).toFixed(1)} → 1:${scale(twice).toFixed(1)}`);
 
+/* ---------- крышка на листе ---------- */
+/* Крышку обжигают на изделии: на листе она обязана быть и не обязана вылезать
+   за рамку — иначе на печати обрежется ровно то, ради чего лист и делают. */
+const lidPts = [];
+for (let i = 0; i <= 20; i++) {
+  const t = i / 20;
+  lidPts.push({r: 62 * Math.cos(t * Math.PI / 2), y: 220 + 26 * Math.sin(t * Math.PI / 2)});
+}
+lidPts.push({r: 0.01, y: 214}, {r: 56, y: 214}, {r: 56, y: 208}, {r: 62, y: 220});
+const withLid = buildSheet({...model, lid: {pts: lidPts, seatD: 112, seatDFired: 101.8,
+  gapFired: 0.9, topY: 262, outD: 124}});
+if (/NaN|undefined/.test(withLid)) P('лист с крышкой собрался с NaN');
+if (!withLid.includes('поясок ⌀112')) P('на листе нет диаметра посадочного пояска');
+if (!withLid.includes('262 с крышкой')) P('на листе нет высоты изделия в сборе с крышкой');
+if (!withLid.includes('крышка ⌀124')) P('на виде сверху нет габарита крышки');
+/* Высокая крышка обязана мельчить масштаб: иначе купол уедет за рамку вида. */
+const tallLid = buildSheet({...model, lid: {pts: lidPts.map(p => ({r: p.r, y: p.y * 2.5})),
+  seatD: 112, seatDFired: 101.8, gapFired: 0.9, topY: 655, outD: 124}});
+if (!(scale(tallLid) > scale(withLid) * 1.5))
+  P(`высокая крышка не уменьшила масштаб: 1:${scale(withLid).toFixed(1)} → 1:${scale(tallLid).toFixed(1)}`);
+for (const [T, doc] of [['с крышкой', withLid], ['с высокой крышкой', tallLid]]) {
+  const body = doc.replace(/<defs>[\s\S]*?<\/defs>/, '');   // стрелка размера живёт в своих координатах
+  const pt = [...body.matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)];
+  const xs = pt.map(m => +m[1]), ys = pt.map(m => +m[2]);
+  if (Math.min(...ys) < 10 || Math.max(...ys) > 287) P(`лист ${T}: линии вида вышли за поле по высоте`);
+  if (Math.min(...xs) < 10 || Math.max(...xs) > 410) P(`лист ${T}: линии вида вышли за поле по ширине`);
+}
+
 /* Изделие без прилепов — тоже лист, а не ошибка. */
 const bare = buildSheet({...model, parts: []});
 if (!bare.includes('Вид сверху') || /NaN/.test(bare)) P('лист без прилепов не собрался');

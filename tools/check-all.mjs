@@ -25,6 +25,7 @@ const CHECKS = [
   ['Форма литья',  'check-castmould.mjs'],
   ['Схема',        'check-sheet.mjs'],
   ['Настройки',    'check-tuning.mjs'],
+  ['Крышка',       'check-lid.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
 ];
 

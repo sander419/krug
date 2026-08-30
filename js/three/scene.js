@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildPot } from '../core/geometry.js';
+import { buildLathe } from '../core/lathe.js';
 import { computeStrength } from '../core/math.js';
 import { MATERIALS, byId } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
@@ -11,13 +12,14 @@ import { partCurve, partSection } from '../core/parts.js';
 import { sweepGeometry } from './sweep.js';
 import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
+import { lidProfile, sanitizeLid } from '../core/lid.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
 import { byEnvId } from '../config/environments.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
 let groundMat, baseMat, shaftMat, hemi, keyLight, dome, grid;
-let groundMesh, baseMesh, shaftMesh, partsGroup, strainMesh;
+let groundMesh, baseMesh, shaftMesh, partsGroup, lidGroup, strainMesh;
 let envId='workshop', themeNow='dark';   // окружение и тема меняют сцену вместе
 let lastCoat=null;   // толщина глазури последней сборки: {runMax, sharpest}
 let camDirty=true;   // камера или модель сдвинулись — чертежу нужен пересчёт масштаба
@@ -140,6 +142,31 @@ function applyEnv(){
 /* Прилепы — отдельные тела: ручки и носики. Появляются на подрезке и растут
    от корня, потому что их и прилепляют к подвяленному изделию, а не тянут
    вместе с корпусом. Каждый повёрнут вокруг оси на свой азимут. */
+/* Крышка: отдельное тело вращения на кромке. Строится тем же токарем, что
+   и корпус, но своим профилем — она не часть изделия, а вторая вещь в печи. */
+let lidMesh=null;
+function rebuildLid(state){
+  const lid=state.lid&&state.lid.on&&!previewPath&&!previewGeo&&state.stage>=5;
+  if(!lid){ if(lidMesh) lidMesh.visible=false; return; }
+  const prof=userProfileMM(state);
+  const L=lidProfile(prof, sanitizeLid(state.lid), state.wall);
+  if(!lidMesh){
+    lidMesh=new THREE.Mesh(new THREE.BufferGeometry(), potMesh.material);
+    lidMesh.castShadow=lidMesh.receiveShadow=true;
+    lidGroup.add(lidMesh);
+  }
+  // токарь ждёт точки контура как {x, y}: x — радиус
+  const pts=L.pts.map(p=>({x:Math.max(p.r,0.01), y:p.y}));
+  const geo=buildLathe(pts, state.segments||72);
+  const n=geo.attributes.position.count;
+  geo.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
+  lidMesh.geometry.dispose();
+  lidMesh.geometry=geo;
+  lidMesh.material=potMesh.material;
+  lidMesh.visible=true;
+  lidGroup.scale.copy(potMesh.scale);
+}
+
 function rebuildParts(state){
   // слив живёт в корпусе (см. applyLips), отдельного тела у него нет
   const parts=(!previewPath && !previewGeo && state.stage>=5) ? (state.parts||[]).filter(p=>p.kind!=='lip') : [];
@@ -329,6 +356,11 @@ export const sceneAPI = {
     partsGroup=new THREE.Group();
     wheelGroup.add(partsGroup);
 
+    /* Крышка живёт в своей группе, а не среди прилепов: rebuildParts подрезает
+       partsGroup по числу прилепов и вместе с лишним мешем выбросил бы её. */
+    lidGroup=new THREE.Group();
+    wheelGroup.add(lidGroup);
+
     strainMesh=new THREE.Mesh(new THREE.BufferGeometry(),clayMat);
     strainMesh.castShadow=strainMesh.receiveShadow=true;
     strainMesh.visible=false;
@@ -379,6 +411,7 @@ export const sceneAPI = {
       lastProfile=[];
       strainMesh.visible=false;
       rebuildParts(state);
+      rebuildLid(state);
       previewGeo.computeBoundingBox();
       lastBaseR=Math.max(60, previewGeo.boundingBox.max.x, -previewGeo.boundingBox.min.x);
       rebuildPlaten(lastBaseR);
@@ -410,6 +443,7 @@ export const sceneAPI = {
       sg.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
     }
     rebuildParts(state);
+    rebuildLid(state);
     rebuildPlaten(built.baseR);
     camDirty=true;
     renderer.shadowMap.needsUpdate=true;   // тени сами не обновляются, см. init
@@ -427,6 +461,7 @@ export const sceneAPI = {
     const glazed = state.firing==='glaze' && !state.heatmap && !previewPath && !previewGeo;
     potMesh.material = glazed ? glazeMat : clayMat;
     if(partsGroup) for(const m of partsGroup.children) m.material=potMesh.material;
+    if(lidGroup) for(const m of lidGroup.children) m.material=potMesh.material;
     if(strainMesh) strainMesh.material=potMesh.material;
     if(glazed){ applyGlazeLook(glazeMat, byGlazeId(state.glazeId), c.bisque); return; }
     if(state.heatmap){
@@ -501,6 +536,7 @@ export const sceneAPI = {
 
   pot:()=>potMesh,
   parts:()=>partsGroup,
+  lid:()=>lidGroup,
   strainer:()=>strainMesh,
   renderer:()=>renderer,
   scene:()=>scene,

@@ -15,12 +15,15 @@ import { tune } from './tuning.js';
 /* Зазоры и режим печи — из настроек расчёта; умолчания те же, что в реестре. */
 const gap = () => ({item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')});
 
-/** Габарит изделия после обжига: диаметр с прилепами и высота, мм. */
-export function firedSize(prof, parts, shrinkPct) {
+/** Габарит изделия после обжига: диаметр с прилепами и высота, мм.
+    Крышку обжигают на изделии — она поднимает высоту садки и может быть шире
+    кромки. Забыть её значит недосчитаться яруса на полке. */
+export function firedSize(prof, parts, shrinkPct, lidPts) {
   const k = 1 - shrinkPct / 100;
   let r = 0, h = 0;
   for (const p of prof) { r = Math.max(r, p.r); h = Math.max(h, p.y); }
   for (const q of parts || []) r = Math.max(r, q.reach || 0);   // ручка торчит за габарит
+  for (const p of lidPts || []) { r = Math.max(r, p.r); h = Math.max(h, p.y); }
   return {d: 2 * r * k, h: h * k};
 }
 

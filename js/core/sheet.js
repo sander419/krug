@@ -45,7 +45,8 @@ const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)} ${p.y.t
 
 /**
  * @param m {name, date, dna, prof, wall, H, D, firedH, firedD, shrinkPct,
- *           parts:[{name, az, pts, reach}], rows:[[label, value]], notes:[string]}
+ *           parts:[{name, az, pts, reach}], rows:[[label, value]], notes:[string],
+ *           lid?:{pts:[{r,y}], outline:[{r,y}], seatD, seatDFired, gapFired, topY, outD}}
  */
 export function buildSheet(m) {
   const {pad} = SHEET;
@@ -62,8 +63,13 @@ export function buildSheet(m) {
   const reach = Math.max(m.D / 2, ...m.parts.map(p => p.reach || 0));
   /* Масштаб один на все виды: чертёж, снятый по-разному, сравнивать нельзя.
      Ограничивает самый тесный вид — сверху, где укладывается два вылета. */
-  const k = Math.min((col[2] - 18) / (reach * 2), (col[0] - 14) / (reach + m.D / 2),
-                     (viewH - 26) / m.H);
+  /* Крышку обжигают на изделии, и на лист она попадает вместе с ним: иначе
+     мастер не увидит ни высоты в сборе, ни того, куда садится поясок. */
+  const lid = m.lid || null;
+  const hTotal = Math.max(m.H, lid ? lid.topY : 0);
+  const dTotal = Math.max(m.D, lid ? lid.outD : 0);
+  const k = Math.min((col[2] - 18) / (reach * 2), (col[0] - 14) / (reach + dTotal / 2),
+                     (viewH - 26) / hTotal);
 
   const outer = m.prof.map(p => ({r: p.r, y: p.y}));
   const base = top + viewH - 14;                    // общая линия земли для видов
@@ -78,6 +84,12 @@ export function buildSheet(m) {
       fill="none" stroke="${INK}" stroke-width="0.5" stroke-linejoin="round"/>
     <line x1="${fx}" y1="${base + 4}" x2="${fx}" y2="${base - m.H * k - 8}"
       stroke="${AXIS}" stroke-width="0.25" stroke-dasharray="6 2 1 2"/>`;
+  /* Спереди крышку видно силуэтом: наружная поверхность и её зеркало,
+     внутренние линии на этом виде — мусор, их место в разрезе. */
+  const lidOut = lid ? (lid.outline || lid.pts) : [];
+  const lidFront = lid ? `<path d="${path(lidOut.map(q => P(q.r, q.y)))}
+      ${path(lidOut.slice().reverse().map(q => P(-q.r, q.y))).replace('M', 'L')} Z"
+      fill="none" stroke="${INK}" stroke-width="0.5" stroke-linejoin="round"/>` : '';
   const partsFront = m.parts.map(p =>
     `<path d="${path(p.pts.map(q => P(q.x, q.y)))}" fill="none"
        stroke="${INK}" stroke-width="0.5" stroke-linecap="round"/>`).join('');
@@ -100,6 +112,11 @@ export function buildSheet(m) {
     <text x="${sx - 2}" y="${base - m.H * k - 10}" font-size="2.8" fill="${AXIS}"
       text-anchor="end">ось</text>`;
 
+  /* Крышка в разрезе — та же штриховка материала, что и у корпуса: видно,
+     как поясок входит в горловину и какой между ними зазор. */
+  const lidSection = lid ? `<path d="${path(lid.pts.map(q => S(q.r, q.y)))} Z"
+      fill="#ded8d2" stroke="${INK}" stroke-width="0.45" stroke-linejoin="round"/>` : '';
+
   /* ---- вид сверху: окружности и прилепы по азимутам ---- */
   const tx = x0[2] + col[2] / 2, ty = top + viewH / 2;
   const plan = [`<circle cx="${tx}" cy="${ty}" r="${(m.D / 2) * k}" fill="none"
@@ -111,6 +128,10 @@ export function buildSheet(m) {
     `<line x1="${tx}" y1="${ty - (reach + 5) * k}" x2="${tx}" y2="${ty + (reach + 5) * k}"
       stroke="${AXIS}" stroke-width="0.25" stroke-dasharray="6 2 1 2"/>`,
   ];
+  if (lid) plan.push(`<circle cx="${tx}" cy="${ty}" r="${(lid.outD / 2) * k}" fill="none"
+      stroke="${INK}" stroke-width="0.35" stroke-dasharray="3 1.5"/>
+    <text x="${tx}" y="${ty - (lid.outD / 2) * k - 1.5}" font-size="2.8" fill="${INK}"
+      text-anchor="middle">крышка ⌀${Math.round(lid.outD)}</text>`);
   for (const p of m.parts) {
     const a = (p.az || 0) * Math.PI / 180;
     const r0 = (m.D / 2) * k, r1 = (p.reach || m.D / 2) * k;
@@ -128,6 +149,9 @@ export function buildSheet(m) {
     dimH(fx - (m.D / 2) * k, fx + (m.D / 2) * k, base + 8, `⌀${Math.round(m.D)}`),
     dimV(base, base - m.H * k, x0[0] + 6, `${Math.round(m.H)}`),
     dimH(sx, sx + m.wall * k, base - m.H * k * 0.5, `${m.wall}`),
+    lid ? dimH(fx - (lid.seatD / 2) * k, fx + (lid.seatD / 2) * k, base - lid.topY * k - 4,
+               `поясок ⌀${lid.seatD.toFixed(1)}`) : '',
+    lid ? dimV(base, base - lid.topY * k, x0[0] + 12, `${Math.round(lid.topY)} с крышкой`) : '',
   ].join('');
   /* ---- таблица данных ---- */
   const tblX = pad;
@@ -159,7 +183,7 @@ export function buildSheet(m) {
   ${frame(x0[0], top, col[0], viewH, 'Вид спереди')}
   ${frame(x0[1], top, col[1], viewH, 'Разрез')}
   ${frame(x0[2], top, col[2], viewH, 'Вид сверху')}
-  ${front}${partsFront}${section}${plan.join('')}${dims}
+  ${front}${partsFront}${lidFront}${section}${lidSection}${plan.join('')}${dims}
 
   <line x1="${pad}" y1="${tblY}" x2="${SHEET.w - pad}" y2="${tblY}"
     stroke="${INK}" stroke-width="0.4"/>
