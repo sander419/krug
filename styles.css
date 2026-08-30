@@ -940,6 +940,20 @@ body.learning main,body.learning #metrics{display:none;}
 .part-drawn b{font-size:var(--fs-sm);}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 
+.own-tag{
+  display:inline-block;margin-left:8px;padding:1px 7px;border-radius:6px;
+  font-size:var(--fs-micro);font-weight:600;color:var(--warn);
+  background:color-mix(in oklab, var(--warn) 16%, transparent);
+  border:1px solid color-mix(in oklab, var(--warn) 45%, transparent);
+}
+/* Формула глазури разошлась с паспортом — об этом говорят прямо, а не молчат. */
+.own-note{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;
+  padding:9px 11px;border-radius:var(--radius);font-size:var(--fs-xs);line-height:1.5;
+  background:color-mix(in oklab, var(--warn) 14%, transparent);
+  border:1px solid color-mix(in oklab, var(--warn) 45%, var(--line));color:var(--text);
+}
+
 /* ---------- литьё ---------- */
 /* Части формы списком: у каждой свой габарит, вес и кнопки — так и заказывают
    гипс, по частям, а не «всего столько-то». */

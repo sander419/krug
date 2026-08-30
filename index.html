@@ -218,7 +218,7 @@
           </div>
         </details>
 
-        <details class="block" data-block="matcard" open>
+        <details class="block" data-block="matcard">
           <summary class="block-title">Паспорт массы</summary>
           <div class="block-body" id="matDetail"></div>
         </details>
@@ -301,6 +301,7 @@
             <button class="help-dot" data-kb="umf" data-icon="circle-help" data-icon-size="15" title="Как читать UMF" aria-label="Справка о формуле Зегера"></button>
           </summary>
           <div class="block-body">
+            <p class="own-note" id="glazeOwnNote" hidden></p>
             <div id="stullWrap"><canvas id="stullCanvas"></canvas></div>
             <div class="slider-row">
               <div class="slider-head"><span>Al₂O₃ — стабилизатор</span><output id="alOut"></output></div>
@@ -376,11 +377,6 @@
             <label class="field-row"><span>Борт над кромкой</span>
               <input type="number" id="mouldRim" min="0" max="60" step="2" inputmode="numeric"><i class="unit">мм</i></label>
             <p class="tool-note" id="toolStock"></p>
-            <select id="plasterSel" aria-label="Марка гипса"></select>
-            <p class="hint" id="plasterNote"></p>
-            <label class="field-row"><span>Воды на 100 частей гипса</span>
-              <input type="number" id="plasterWR" min="40" max="120" step="1" inputmode="numeric"><i class="unit">%</i></label>
-            <p class="tool-note" id="plasterMix"></p>
             <div class="btn-row">
               <button class="btn small" id="toolStlModel">Модель STL</button>
               <button class="btn small" id="toolStlLower">Матрица STL</button>
@@ -388,6 +384,19 @@
               <button class="btn small" id="toolDxf">Профили DXF</button>
             </div>
             <p class="note">Полуформы строятся как тела вращения по сырому размеру: полость матрицы — наружная поверхность изделия, выступ пуансона — внутренняя. Замки, штифты, воздушные каналы и облойная канавка не строятся: их закладывает изготовитель оснастки.</p>
+          </div>
+        </details>
+
+        <details class="block" data-block="plaster">
+          <summary class="block-title">Гипс и полуформы прилепов
+            <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15" title="Какой гипс и сколько" aria-label="Справка о гипсе"></button>
+          </summary>
+          <div class="block-body">
+            <select id="plasterSel" aria-label="Марка гипса"></select>
+            <p class="hint" id="plasterNote"></p>
+            <label class="field-row"><span>Воды на 100 частей гипса</span>
+              <input type="number" id="plasterWR" min="40" max="120" step="1" inputmode="numeric"><i class="unit">%</i></label>
+            <p class="tool-note" id="plasterMix"></p>
           </div>
         </details>
 

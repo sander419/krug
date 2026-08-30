@@ -7,7 +7,7 @@ import { computeProduction } from '../core/math.js';
 import { partsHandMinutes, partMetrics } from '../core/parts.js';
 import { userProfileMM } from '../core/math.js';
 import { kindOf } from '../config/parts.js';
-import { analyzeFormability, recommendProcess, checks, toolingNumbers,
+import { analyzeFormability, recommendProcess, checks, toolingNumbers, mouldParts,
          batchPlan, techCard, rawForTarget, firedFromRaw } from '../core/tooling.js';
 import { PROCESSES, byId as processById } from '../config/processes.js';
 import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
@@ -111,18 +111,20 @@ function render() {
     ? `<dt>Усилие пресса</dt><dd><b>${num(n.forceTons[0])}–${num(n.forceTons[1])} тс</b> (${num(n.forceKN[0])}–${num(n.forceKN[1])} кН) при ${proc.pressureMPa[0]}–${proc.pressureMPa[1]} МПа</dd>`
     : `<dt>Давление</dt><dd class="dim">${esc(proc.pressureNote)}</dd>`;
 
+  const mp = mouldParts(procId, an);
   $('toolNumbers').innerHTML = `
     <dl class="spec">
-      <dt>Модель оснастки</dt><dd>${num(n.model.H)} × ⌀${num(n.model.D)} мм — это сырой размер, то что нарисовано</dd>
-      <dt>После обжига</dt><dd>${num(n.fired.H)} × ⌀${num(n.fired.D)} мм</dd>
       <dt>Коэффициент усадки</dt><dd>×${n.shrink.k.toFixed(4)} <span class="dim">(${esc(mat.name)}, усадка ${mat.shrinkPct} %${n.shrink.split ? ', сушка и обжиг раздельно' : ''})</span></dd>
       <dt>Проекционная площадь</dt><dd>${num(n.projAreaMM2 / 100)} см²</dd>
       ${forceRow}
-      <dt>Масса изделия</dt><dd>${num(n.pieceG, 0)} г</dd>
-      <dt>Заготовка с облоем</dt><dd>${num(n.blankG, 0)} г <span class="dim">(+${n.flashPct} %)</span></dd>
-      <dt>Разъём формы</dt><dd>высота ${num(n.partingY, 0)} мм · частей ${n.parts}</dd>
+      <dt>Заготовка с облоем</dt><dd>${num(n.blankG, 0)} г <span class="dim">(+${n.flashPct} %)</span> — изделие ${num(n.pieceG, 0)} г</dd>
+      <dt>Разъём формы</dt><dd>${mp.vertical
+        ? `вертикальный, через ось · частей ${mp.parts}`
+        : `высота ${num(n.partingY, 0)} мм · частей ${mp.parts}`}</dd>
       <dt>Оснастка</dt><dd>${esc(proc.tooling)}</dd>
-    </dl>`;
+    </dl>
+    <p class="hint">Габариты сырые и после обжига, масса изделия и вместимость стоят
+      в строке метрик под рабочей областью — здесь только то, чего там нет.</p>`;
 
   $('toolBatchOut').innerHTML = bp.known
     ? `Ресурс формы ${bp.lo}–${bp.hi} циклов → нужно <b>${bp.setsLo}–${bp.setsHi}</b> комплектов оснастки на ${batch} шт`

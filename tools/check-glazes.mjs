@@ -1,4 +1,7 @@
-// Проверка реестра глазурей и модели покрытия: node tools/check-glazes.mjs
+// Проверка реестра глазурей и модели покрытия:
+//   node --import ./tools/node-three.mjs tools/check-glazes.mjs
+// (резолвер three нужен из-за умолчаний состояния: они тянут ядро целиком)
+import { state as DEFAULTS } from '../js/core/state.js';   // модуль отдаёт умолчания до правок
 import { GLAZES, GLAZES_SCHEMA, GLAZE_FAMILIES, CONE_C, byGlazeId, firingFit } from '../js/config/glazes.js';
 import { coatProfile, coatWarnings } from '../js/core/glazeCoat.js';
 import { checkContract } from './registry-contract.mjs';
@@ -115,6 +118,20 @@ for (const g of GLAZES) {
               `натёк ${s.runMax.toFixed(2)}×`);
 }
 if (warn.length) { console.log('\nЗамечания:'); for (const w of warn) console.log('  · ' + w); }
+/* Формула по умолчанию обязана быть паспортной у глазури по умолчанию:
+   разошедшиеся умолчания означают, что инструмент с первой секунды считает
+   не ту глазурь, которая горит в списке. */
+{
+  const g = GLAZES.find(x => x.id === DEFAULTS.glazeId);
+  if (!g) problems.push(`глазурь по умолчанию «${DEFAULTS.glazeId}» не найдена в реестре`);
+  else if (g.umf) {
+    const d = DEFAULTS.glaze;
+    for (const k of ['al', 'si', 'ca'])
+      if (Math.abs(d[k] - g.umf[k]) > 1e-9)
+        problems.push(`умолчание формулы ${k}=${d[k]} не совпадает с паспортом «${g.name}» (${g.umf[k]})`);
+  }
+}
+
 if (problems.length) {
   console.log('\nОШИБКИ:');
   for (const p of problems) console.log('  ✗ ' + p);

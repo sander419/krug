@@ -74,17 +74,53 @@ function renderGlazeList(){
   $('glzList').innerHTML=list.length?list.map(rowHTML).join(''):'<div class="empty">В этом семействе пока пусто.</div>';
   $('glzList').querySelectorAll('[data-gid]').forEach(b=>{b.onclick=()=>selectGlaze(b.dataset.gid);});
   $('glzCount').textContent=`${GLAZES.length} семейств`;
+  // выбранная строка честно говорит, что числа уже не её
+  const cur=$('glzList').querySelector(`[data-gid="${state.glazeId}"]`);
+  if(cur&&state.glazeOwn&&!cur.querySelector('.own-tag'))
+    cur.insertAdjacentHTML('beforeend','<span class="own-tag">формула своя</span>');
 }
 
 /** Выбор глазури: подставляет её UMF в лабораторию и сразу показывает на изделии. */
+/* Формула разошлась с паспортом: помечаем и показываем, как вернуть. */
+function markOwn(){
+  const g=byGlazeId(state.glazeId);
+  if(!g.umf) return;
+  const same = Math.abs(state.glaze.al-g.umf.al)<1e-9 && Math.abs(state.glaze.si-g.umf.si)<1e-9
+            && Math.abs(state.glaze.ca-g.umf.ca)<1e-9;
+  state.glazeOwn = !same;
+  renderGlazeList();
+  syncOwnNote();
+}
+
+function syncOwnNote(){
+  const box=$('glazeOwnNote');
+  if(!box) return;
+  const g=byGlazeId(state.glazeId);
+  box.hidden = !state.glazeOwn;
+  if(state.glazeOwn)
+    box.innerHTML = `Формула своя, по мотивам «${esc(g.name)}»: паспортные числа изменены
+      ползунками, и вердикт считается по вашим.
+      <button class="btn small" id="glazeRestore">Вернуть паспортную</button>`;
+  const b=$('glazeRestore');
+  if(b) b.onclick=()=>{
+    const gl=byGlazeId(state.glazeId);
+    if(!gl.umf) return;
+    state.glaze.al=gl.umf.al; state.glaze.si=gl.umf.si; state.glaze.ca=gl.umf.ca;
+    state.glazeOwn=false;
+    syncGlaze(); renderGlazeList(); syncOwnNote(); updateGlaze(); emit();
+  };
+}
+
 export function selectGlaze(id){
   const g=GLAZES.find(x=>x.id===id);
   if(!g)return;
   state.glazeId=id;
+  state.glazeOwn=false;            // выбрали из реестра — формула снова паспортная
   if(g.umf){                       // у сигиллаты формулы нет — ползунки не трогаем
     state.glaze.al=g.umf.al;state.glaze.si=g.umf.si;state.glaze.ca=g.umf.ca;
     syncGlaze();
   }
+  syncOwnNote();
   state.firing='glaze';            // смотреть глазурь на утиле бессмысленно
   document.querySelectorAll('#firingSeg button').forEach(x=>x.classList.toggle('active',x.dataset.f==='glaze'));
   renderGlazeList();
@@ -161,13 +197,20 @@ export function initGlazeLab(){
     setTimeout(()=>{pending=false;drawStull();},0);
   }).observe($('stullWrap'));
   onChange(updateGlaze);   // смена глины меняет CTE черепка — вердикт пересчитать
-  R.al=hookSlider('alSl','alOut',v=>v.toFixed(2),v=>{state.glaze.al=v;updateGlaze();});
-  R.si=hookSlider('siSl','siOut',v=>v.toFixed(2),v=>{state.glaze.si=v;updateGlaze();});
-  R.ca=hookSlider('caSl','caOut',v=>Math.round(v*100)+'%',v=>{state.glaze.ca=v;updateGlaze();});
+  /* Сдвинул ползунок — формула перестала быть паспортной. Раньше это проходило
+     молча: в списке горела «Прозрачная глянцевая», а считалось по чужим числам.
+     Молчаливое расхождение с источником — худшее, что может делать этот
+     инструмент, поэтому глазурь честно становится своей. */
+  const own=fn=>v=>{ fn(v); markOwn(); updateGlaze(); };
+  R.al=hookSlider('alSl','alOut',v=>v.toFixed(2),own(v=>{state.glaze.al=v;}));
+  R.si=hookSlider('siSl','siOut',v=>v.toFixed(2),own(v=>{state.glaze.si=v;}));
+  R.ca=hookSlider('caSl','caOut',v=>Math.round(v*100)+'%',own(v=>{state.glaze.ca=v;}));
 }
 export function syncGlaze(){
   R.al.sync(state.glaze.al);
   R.si.sync(state.glaze.si);
   R.ca.sync(state.glaze.ca);
-  renderGlazeList();      // после отмены выбранная глазурь могла смениться
+  /* Сверяемся с паспортом каждый раз: формула могла приехать из чужой ссылки
+     или из отмены, и «своя» она или нет — решает сравнение, а не память. */
+  markOwn();
 }
