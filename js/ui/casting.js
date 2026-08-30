@@ -24,6 +24,9 @@ import { partMouldBlock, partMouldFeatures, partMouldGeometry } from '../three/p
 import { sceneAPI } from '../three/scene.js';
 import { exportGeoSTL } from '../three/exporters.js';
 import { toast } from './overlays.js';
+import { openBlock } from './panels.js';
+import { analyzeFormability, recommendProcess } from '../core/tooling.js';
+import { byId as processById } from '../config/processes.js';
 
 const F = [
   {k: 'calibMM',  n: 'Замер: набралось', u: 'мм',   min: 0.5, max: 20,  step: 0.5},
@@ -71,16 +74,36 @@ function renderPick(list, cur) {
   const box = $('castPickBody');
   if (!box) return;
   const parts = list.filter(s => s.kind === 'part').length;
+  /* Способ решает, какая форма вообще нужна: под литьё — разъёмная гипсовая,
+     под штамповку и ролик — жёсткая матрица с пуансоном. Их считает «Оснастка»,
+     и мы туда ведём, а не строим второй такой же расчёт здесь. */
+  const an = analyzeFormability(state);
+  const rec = recommendProcess(state, an);
+  const proc = processById(rec.id);
+  const casting = rec.id === 'casting';
+
   box.innerHTML = `
     <div class="seg wrap" role="group" aria-label="Что формуем">
       ${list.map(s => `<button data-subj="${esc(s.id)}"${s.id === cur.id ? ' class="active"' : ''}>
         ${esc(s.name)}</button>`).join('')}
     </div>
+    <dl class="spec">
+      <dt>Способ</dt><dd><b>${casting ? 'литьё в гипсовую форму' : esc(proc.name.toLowerCase())}</b>
+        <span class="dim">— ${esc(rec.why[0] || '')}</span></dd>
+    </dl>
+    ${casting ? '' : `<p class="hint">Этой форме КРУГ советует не литьё: жёсткую матрицу
+      и пуансон считает вкладка «Оснастка». Форму под отливку можно сделать и так —
+      литью поднутрения безразличны, — но пласт для неё придётся раскатывать вручную.
+      <button class="btn small" id="castToTool">Открыть оснастку</button></p>`}
     <p class="hint">На изделие нужна не одна форма: корпус льют в своей,
       ${state.lid && state.lid.on ? 'крышку — в своей, ' : ''}${parts
         ? `${parts === 1 ? 'прилеп формуется' : 'прилепы формуются'} в паре половин каждый`
         : 'прилепы формуются каждый в своей паре половин'}.
       Их не отливают заодно с корпусом: прилепляют по кожетвёрдому.</p>`;
+  const toTool = $('castToTool');
+  if (toTool) toTool.onclick = () => {
+    if (!openBlock('process')) toast('Оснастка убрана этой задачей — смените задачу на «Тираж в гипсе»');
+  };
   box.querySelectorAll('[data-subj]').forEach(b => {
     b.onclick = () => {
       subjectId = b.dataset.subj;
