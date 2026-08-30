@@ -71,8 +71,12 @@ for (const f of scripts) {
      сказано, откуда оно взято, и ссылка показывается человеку для клика.
      Запроса она не делает. Везде, кроме данных, адрес в коде — это загрузка. */
   if (!name.startsWith('js/config/'))
-    for (const m of text.matchAll(/['"`](https?:)?\/\/[^'"`\s]+['"`]/g))
+    for (const m of text.matchAll(/['"`](https?:)?\/\/[^'"`\s]+['"`]/g)) {
+      // пространства имён XML — это идентификаторы, а не адреса: браузер по ним
+      // никуда не ходит, но без них SVG не откроется как картинка
+      if (/w3\.org\/(2000\/svg|1999\/xlink|XML\/1998)/.test(m[0])) continue;
       P(`${name}: внешний адрес в коде ${m[0].slice(0, 60)}`);
+    }
   for (const bad of ['XMLHttpRequest', 'navigator.sendBeacon', 'EventSource', 'new WebSocket'])
     if (text.includes(bad)) P(`${name}: ${bad} — сеть в браузере`);
 }

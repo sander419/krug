@@ -29,6 +29,8 @@ export const state = {
   parts: [],
   // печь: id из реестра или 'own' со своими размерами, и цена киловатт-часа
   kiln: {id: 'studio-60', kwh: 6},
+  // литьё: замер набора стенки и свойства шликера — калибровка мастерской
+  cast: {},
 };
 
 
@@ -36,7 +38,7 @@ export function encodeDNA(){
   const d = {v:6, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
-    pr:state.pr, gz:state.glaze, kl:state.kiln};
+    pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -76,6 +78,7 @@ export function applyDNA(code){
     // v3 и старше глазури не знали — остаётся прозрачная по умолчанию
     if(d.gid && GLAZES.some(g=>g.id===d.gid)) state.glazeId=d.gid;
     // v6 — список прилепов; в v5 была одна ручка с выключателем
+    if(d.ct&&typeof d.ct==='object') state.cast={...d.ct};
     if(d.kl&&typeof d.kl==='object')
       state.kiln={id:String(d.kl.id||'studio-60'), kwh:clamp(+d.kl.kwh||6,0,100),
                   ...(d.kl.own?{own:d.kl.own}:{})};

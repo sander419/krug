@@ -388,6 +388,14 @@
           </div>
         </details>
 
+        <details class="block" data-block="casting">
+          <summary class="block-title">Литьё: выдержка, шликер, формы
+            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
+                    title="Про литьё в гипсовые формы" aria-label="Справка о литье"></button>
+          </summary>
+          <div class="block-body" id="castBody"></div>
+        </details>
+
         <details class="block" data-block="economy">
           <summary class="block-title">Тираж и экономика</summary>
           <div class="block-body">
@@ -412,6 +420,8 @@
           <summary class="block-title">Выгрузка</summary>
           <div class="block-body">
             <button class="btn primary wide" id="toolCard">Техкарта оснастки</button>
+            <button class="btn wide" id="toolSheet" data-icon="file-text"
+                    title="Лист с тремя видами, размерами и таблицей данных — для передачи на производство">Схема изделия (SVG)</button>
             <p class="note">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</p>
             <p class="note src-list" id="toolSrc"></p>
           </div>

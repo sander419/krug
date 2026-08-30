@@ -939,6 +939,14 @@ body.learning main,body.learning #metrics{display:none;}
 .part-drawn b{font-size:var(--fs-sm);}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 
+/* ---------- литьё ---------- */
+.cast-ticks{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px;}
+.cast-tick{
+  font-size:var(--fs-micro);color:var(--muted);background:var(--sunken);
+  border:1px solid var(--line);border-radius:7px;padding:3px 7px;white-space:nowrap;
+}
+.cast-tick b{color:var(--accent2);}
+
 /* ---------- печь и садка ---------- */
 .kiln-out{display:flex;gap:var(--gap-3);align-items:flex-start;margin-top:var(--gap-2);flex-wrap:wrap;}
 .kiln-map{width:150px;height:150px;flex:none;}

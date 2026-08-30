@@ -21,6 +21,8 @@ const CHECKS = [
   ['Картинка',     'check-silhouette.mjs'],
   ['Автономность', 'check-offline.mjs'],
   ['Печи',         'check-kilns.mjs'],
+  ['Литьё',        'check-casting.mjs'],
+  ['Схема',        'check-sheet.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
 ];
 

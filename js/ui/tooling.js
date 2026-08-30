@@ -21,6 +21,11 @@ import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
 import { partMouldGeometry, partMouldBlock, partMouldFeatures } from '../three/partMould.js';
 import { partSelfOverlap } from '../core/parts.js';
 import { kilnPerItem } from './kiln.js';
+import { renderCasting } from './casting.js';
+import { partCurve } from '../core/parts.js';
+import { encodeDNA } from '../core/state.js';
+import { castingPlan } from '../core/casting.js';
+import { buildSheet } from '../core/sheet.js';
 import { byId as materialById } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
@@ -139,6 +144,14 @@ function render() {
   document.querySelectorAll('#toolPartSeg button').forEach(b =>
     b.classList.toggle('active', b.dataset.part === part));
   renderPlaster(stock);
+  /* Литьё считается по тем же числам, что уже посчитаны для формы: сухая масса
+     черепка, внешний объём тела (в него льют) и масса гипса самой формы. */
+  renderCasting({
+    dryG: prod.massF,
+    cavityL: (prod.volMl + prod.capMl) / 1000,
+    plasterKg: plasterMix(stock.netLitres, waterRatio).plasterKg,
+    parts: an.parts,
+  });
 
   renderEconomics(prod, procId, mat);
 
@@ -146,6 +159,64 @@ function render() {
     `<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>`).join('<br>');
 }
 
+
+/* Лист для производства: собираем модель из тех же чисел, что показывает панель.
+   Вида три, а источник один — иначе чертёж и экран разойдутся. */
+function sheetSVG() {
+  const prof = userProfileMM(state);
+  const prod = computeProduction(state);
+  const an = analyzeFormability(state);
+  const mat = materialById(state.mat);
+  const stock = cavityStock(state, mould);
+  const mix = plasterMix(stock.netLitres, waterRatio);
+  const k = 1 - mat.shrinkPct / 100;
+  const fire = kilnPerItem();
+
+  const parts = (state.parts || []).filter(p => !kindOf(p).deform).map((p, i) => {
+    const m = partMetrics(prof, p);
+    const curve = partCurve(prof, p);
+    return {
+      name: `${kindOf(p).name} ${i + 1}`, az: p.az, reach: m.reach,
+      pts: curve.getPoints(24).map(v => ({x: v.x, y: v.y})),
+    };
+  });
+
+  const dna = encodeDNA();
+  const rows = [
+    ['Высота на круге', `${Math.round(state.H)} мм`],
+    ['Диаметр', `⌀${Math.round(state.D)} мм`],
+    ['Стенка', `${num(state.wall, 1)} мм`],
+    ['Масса', mat.name],
+    ['После обжига', `${Math.round(state.H * k)}×${Math.round(state.D * k)} мм`],
+    ['Усадка', `${num(mat.shrinkPct, 1)} %`],
+    ['Обжиг', mat.firing && mat.firing.glazeC ? `${mat.firing.glazeC.join('–')} °C` : '—'],
+    ['Масса сырца', `${num(prod.massN / 1000, 2)} кг`],
+    ['После обжига, масса', `${num(prod.massF / 1000, 2)} кг`],
+    ['Вместимость', `${Math.round(prod.capMl)} мл`],
+    ['Способ', processById(currentProcId(an)).short],
+    ['Частей формы', String(an.parts)],
+    ['Гипса на форму', `${num(mix.plasterKg, 1)} кг`],
+    ['Литьё: выдержка', `${num(castingPlan({dryG: prod.massF, cavityL: (prod.volMl + prod.capMl) / 1000,
+        plasterKg: mix.plasterKg, wallMM: state.wall, parts: an.parts}, state.cast || {}).hold, 0)} мин`],
+    ['Обжиг на изделие', fire ? `${num(fire, 1)} ₽` : '—'],
+    ['Прилепов', String(parts.length)],
+  ];
+
+  return buildSheet({
+    name: state.name || 'Без названия',
+    date: new Date().toLocaleDateString('ru'),
+    dna: `ДНК ${dna.slice(0, 14)}…${dna.slice(-6)} · полная ссылка — в техкарте`,
+    prof: prof.map(q => ({r: q.r, y: q.y})),
+    wall: state.wall, footH: state.footH, footR: state.D / 2 * state.footK / 100,
+    H: state.H, D: state.D, shrinkPct: mat.shrinkPct,
+    parts, rows,
+    notes: [
+      'Прилепы на видах спереди и в разрезе развёрнуты в плоскость листа; по азимутам они стоят на виде сверху.',
+      'Размеры сырые, до обжига: по ним делают форму. Готовое изделие меньше на усадку массы.',
+      'Числа посчитаны в КРУГе по паспорту массы; пороги технологичности — умолчания инструмента, а не норматив.',
+    ],
+  });
+}
 
 function renderPlaster(stock) {
   const p = plasterById(plasterId);
@@ -383,6 +454,10 @@ export function initTooling() {
       {...econ, firePerPiece: kilnPerItem() || 0}, {mould, plasterId, waterRatio});
     download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
     toast('Техкарта сохранена');
+  };
+  $('toolSheet').onclick = () => {
+    download(new Blob([sheetSVG()], {type: 'image/svg+xml'}), fileName(state, 'схема.svg'));
+    toast('Схема сохранена: три вида, размеры и таблица данных');
   };
   onChange(render);      // рецепт изменился — пересчитать оснастку
   render();
