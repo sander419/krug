@@ -8,6 +8,8 @@
 // Всё в сыром размере: оснастка делается по модели, которая больше готового изделия
 // на усадку. В КРУГе размеры на круге и есть сырой размер.
 import { userProfileMM, floorY } from './math.js';
+import { sanitizeLid, lidProfile } from './lid.js';
+import { kindOf } from '../config/parts.js';
 
 export const MOULD_DEFAULTS = {
   wallMM: 30,     // толщина тела формы сбоку
@@ -31,6 +33,50 @@ export function wareProfiles(state) {
   const floor = floorY(state);
   const inner = outer.filter(p => p.y >= floor).map(p => ({r: Math.max(p.r - state.wall, 0), y: p.y}));
   return {outer, inner, floor, maxR: Math.max(...outer.map(p => p.r)), H: outer[outer.length - 1].y};
+}
+
+/**
+ * Что вообще формуют под отливку. Не только корпус: крышка — такое же тело
+ * вращения, а ручки и носики формуются каждый в своей паре половин. Раньше
+ * они лежали в разных вкладках, и «сделать формы на изделие» означало обойти
+ * две панели; список собран здесь, чтобы обходить было нечего.
+ *
+ * @returns [{id, kind:'lathe'|'part', name, subject?, part?}]
+ */
+export function castSubjects(state) {
+  const out = [{id: 'ware', kind: 'lathe', name: 'Корпус', subject: wareProfiles(state)}];
+
+  const lid = sanitizeLid(state.lid);
+  if (lid.on) {
+    /* Крышку формуют куполом вниз: залив идёт со стороны посадки — с той,
+       где у готовой крышки отверстие. Иначе шликер некуда налить. */
+    const L = lidProfile(userProfileMM(state), lid, state.wall);
+    const top = Math.max(...L.outer.map(p => p.y));
+    /* Порядок берём обходом контура, а не сортировкой по высоте: на полке
+       и на торце пояска две точки стоят на одной высоте, и сортировка ставит
+       их как попало — контур завязывается узлом. */
+    const flipped = L.outer.map(p => ({r: Math.max(p.r, AX), y: top - p.y})).reverse();
+    /* Форма считает контур как r(y): на одной высоте один радиус. У крышки
+       есть горизонтальные грани — торец пояска и полка на кромке, — где на
+       одной высоте два радиуса. Такую ступеньку разводим на сотку: полость
+       становится очень пологим конусом вместо кольца нулевой высоты, которое
+       вырождается в двусторонние треугольники и рвёт сетку. Сотая миллиметра
+       меньше любого допуска гипсовой формы. */
+    const outer = [];
+    for (const p of flipped) {
+      const prev = outer[outer.length - 1];
+      outer.push(prev && p.y <= prev.y + 1e-4 ? {r: p.r, y: prev.y + 0.01} : p);
+    }
+    const H = outer[outer.length - 1].y;
+    out.push({id: 'lid', kind: 'lathe', name: 'Крышка',
+              subject: {outer: clean(outer), maxR: Math.max(...outer.map(p => p.r)), H}});
+  }
+
+  (state.parts || []).forEach((p, i) => {
+    if (kindOf(p).deform) return;            // слив не приставляют, формовать нечего
+    out.push({id: 'part:' + i, kind: 'part', name: `${kindOf(p).name} ${i + 1}`, part: p, index: i});
+  });
+  return out;
 }
 
 /* Модель (болван): само изделие сплошным телом — по нему формуют гипс. */

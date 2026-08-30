@@ -93,7 +93,7 @@
       <button class="tab" data-tab="print"><i>3</i>Печать</button>
       <button class="tab" data-tab="glaze"><i>4</i>Глазурь</button>
       <button class="tab" data-tab="tool"><i>5</i>Оснастка</button>
-      <button class="tab" data-tab="cast"><i>6</i>Литьё</button>
+      <button class="tab" data-tab="cast"><i>6</i>Отливка</button>
     </nav>
 
     <div class="panel-scroll">
@@ -208,7 +208,7 @@
 
         <details class="block" data-block="kiln">
           <summary class="block-title">Печь и садка
-            <button class="help-dot" data-kb="firing-basics" data-icon="circle-help" data-icon-size="15"
+            <button class="help-dot" data-kb="bisque" data-icon="circle-help" data-icon-size="15"
                     title="Про обжиг" aria-label="Справка об обжиге"></button>
           </summary>
           <div class="block-body" id="kilnBody"></div>
@@ -396,7 +396,7 @@
         </details>
 
         <details class="block" data-block="plaster">
-          <summary class="block-title">Гипс и полуформы прилепов
+          <summary class="block-title">Гипс на матрицу
             <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15" title="Какой гипс и сколько" aria-label="Справка о гипсе"></button>
           </summary>
           <div class="block-body">
@@ -442,19 +442,32 @@
 
       <!-- ---------- Литьё ---------- -->
       <section class="tabpane" data-pane="cast">
-        <p class="pane-intro">Форма под отливку и сам процесс: из скольких частей она собирается, сколько держать шликер и сколько форм нужно на дневной план.</p>
+        <p class="pane-intro">Мастерская гипсовых форм: корпус, крышка и каждый прилеп — своя форма. Части, литник, замки, гипс и STL. Ниже — сам процесс отливки.</p>
+
+        <details class="block" data-block="castpick" open>
+          <summary class="block-title">Что формуем</summary>
+          <div class="block-body" id="castPickBody"></div>
+        </details>
 
         <details class="block" data-block="castform" open>
-          <summary class="block-title">Форма для литья
-            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
+          <summary class="block-title">Части формы
+            <button class="help-dot" data-kb="casting" data-icon="circle-help" data-icon-size="15"
                     title="Как устроена литьевая форма" aria-label="Справка о литьевой форме"></button>
           </summary>
           <div class="block-body" id="castFormBody"></div>
         </details>
 
+        <details class="block" data-block="castplaster">
+          <summary class="block-title">Гипс и замес
+            <button class="help-dot" data-kb="plaster-tooling" data-icon="circle-help" data-icon-size="15"
+                    title="Какой гипс и сколько" aria-label="Справка о гипсе"></button>
+          </summary>
+          <div class="block-body" id="castPlasterBody"></div>
+        </details>
+
         <details class="block" data-block="casting">
-          <summary class="block-title">Литьё: выдержка, шликер, формы
-            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
+          <summary class="block-title">Процесс отливки: выдержка, шликер, формы
+            <button class="help-dot" data-kb="casting" data-icon="circle-help" data-icon-size="15"
                     title="Про литьё в гипсовые формы" aria-label="Справка о литье"></button>
           </summary>
           <div class="block-body" id="castBody"></div>

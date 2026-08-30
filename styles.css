@@ -335,6 +335,15 @@ input[type=range]::-moz-range-thumb{
   border-radius:7px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;transition:background .15s,color .15s;
 }
 .seg button:hover{color:var(--text);}
+/* Выбор «что формуем»: кнопок столько, сколько прилепов, — в одну строку они
+   не влезают и сжимаются в нечитаемые огрызки. Поэтому переносятся. */
+.seg.wrap{flex-wrap:wrap;}
+.seg.wrap button{flex:1 1 40%;}
+.warn-inline{
+  font-size:var(--fs-xs);line-height:1.6;color:var(--text);background:var(--sunken);
+  border:1px solid var(--line);border-left:3px solid var(--bad);
+  border-radius:var(--radius);padding:9px 11px;
+}
 .seg button.active{background:var(--accent);color:var(--onAccent);}
 
 select{

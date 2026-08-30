@@ -1,19 +1,26 @@
 // file: js/ui/casting.js
-// Литьё в гипсовую форму: панель для маленькой мастерской.
+// Отливка: мастерская гипсовых форм и сам процесс литья.
 //
-// Заводской расчёт отвечает на вопрос «сколько это стоит при тираже 20 000».
-// Мастерская спрашивает другое: сколько держать шликер, сколько его налить,
-// сколько отливок форма примет до сушки и сколько форм нужно, чтобы делать
-// десять штук в день. Этот блок отвечает на эти четыре вопроса.
+// Раньше форма под отливку была блоком внутри задачи «тираж в гипсе», а формы
+// под ручки и носики — вообще на другой вкладке, среди гипса для матрицы.
+// Человек, пришедший «сделать форму на эту вазу», обходил две панели и половину
+// не находил. Теперь вкладка одна и начинается с вопроса «что формуем»: корпус,
+// крышку или конкретный прилеп. Дальше — части формы, гипс на них и STL.
 //
-// Считает js/core/casting.js. Здесь только показ и поля ввода — все числа,
-// зависящие от конкретного шликера и гипса, вводятся руками: они калибровка,
-// а не константа.
+// Считают: js/three/castMould.js (корпус и крышка — две половины с ярусами,
+// литником и замками), js/three/partMould.js (прилепы — пара половин с канавкой),
+// js/core/casting.js (процесс: выдержка, шликер, ресурс формы).
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { CAST_DEFAULTS, castingPlan } from '../core/casting.js';
-import { $, num } from './dom.js';
+import { castSubjects } from '../core/mould.js';
+import { userProfileMM } from '../core/math.js';
+import { partMetrics, partSelfOverlap } from '../core/parts.js';
+import { kindOf } from '../config/parts.js';
+import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js';
+import { $, esc, num, dec, rub } from './dom.js';
 import { castMouldNumbers, castMouldGeometry } from '../three/castMould.js';
+import { partMouldBlock, partMouldFeatures, partMouldGeometry } from '../three/partMould.js';
 import { sceneAPI } from '../three/scene.js';
 import { exportGeoSTL } from '../three/exporters.js';
 import { toast } from './overlays.js';
@@ -29,27 +36,75 @@ const F = [
 ];
 
 const opts = () => ({...CAST_DEFAULTS, perDay: 10, ...(state.cast || {})});
-let preview = false;      // показываем ли половину формы вместо изделия
+const plasterNow = () => ({id: 'gvvs-16', wr: 70, ...(state.plaster || {})});
 
-/**
- * @param a {dryG, cavityL, plasterKg, parts} — приходят из общего расчёта панели
- */
-/* ---------- форма для литья: части, ярусы, литник, выгрузка ---------- */
-function renderCastForm() {
-  const box = $('castFormBody');
+const MOULD_WALL = 20;      // мм гипса вокруг прилепа
+
+let subjectId = 'ware';     // что формуем сейчас
+let preview = false;        // на сцене показана половина формы, а не изделие
+
+/* Список того, что формуем, и выбранное сейчас. Список пересобирается каждый
+   раз: крышку выключили, прилеп удалили — выбор обязан за этим следовать. */
+function subjects() {
+  const list = castSubjects(state);
+  if (!list.some(s => s.id === subjectId)) subjectId = 'ware';
+  return {list, cur: list.find(s => s.id === subjectId)};
+}
+
+function stopPreview() {
+  preview = false;
+  sceneAPI.setPreviewMesh(null);
+  emit();
+  sceneAPI.frameView();
+}
+
+function showMesh(geo, msg) {
+  preview = true;
+  sceneAPI.setPreviewMesh(geo);
+  toast(msg);
+  emit();
+  sceneAPI.frameView();
+}
+
+/* ---------- что формуем ---------- */
+function renderPick(list, cur) {
+  const box = $('castPickBody');
   if (!box) return;
-  const cm = castMouldNumbers(state);
+  const parts = list.filter(s => s.kind === 'part').length;
+  box.innerHTML = `
+    <div class="seg wrap" role="group" aria-label="Что формуем">
+      ${list.map(s => `<button data-subj="${esc(s.id)}"${s.id === cur.id ? ' class="active"' : ''}>
+        ${esc(s.name)}</button>`).join('')}
+    </div>
+    <p class="hint">На изделие нужна не одна форма: корпус льют в своей,
+      ${state.lid && state.lid.on ? 'крышку — в своей, ' : ''}${parts
+        ? `${parts === 1 ? 'прилеп формуется' : 'прилепы формуются'} в паре половин каждый`
+        : 'прилепы формуются каждый в своей паре половин'}.
+      Их не отливают заодно с корпусом: прилепляют по кожетвёрдому.</p>`;
+  box.querySelectorAll('[data-subj]').forEach(b => {
+    b.onclick = () => {
+      subjectId = b.dataset.subj;
+      if (preview) stopPreview(); else emit();
+    };
+  });
+}
+
+/* ---------- форма корпуса и крышки: половины, ярусы, литник ---------- */
+function renderLatheMould(cur) {
+  const cm = castMouldNumbers(state, cur.subject);
+  const mixOf = l => plasterMix(l, plasterNow().wr);
   const rows = cm.perTier.map((t, i) => `
     <div class="tier-row">
       <span class="tier-n">${cm.tiers > 1 ? `Ярус ${i + 1}` : 'Половина'}</span>
       <span class="tier-mm">${t.mm.join('×')} мм</span>
-      <span class="tier-kg"><b>${num(t.kg, 1)} кг</b> гипса</span>
+      <span class="tier-kg"><b>${num(mixOf(t.plasterL).plasterKg, 1)} кг</b> гипса →
+        часть ${num(t.kg, 1)} кг</span>
       <span class="tier-keys">замков ${t.keys}${t.joints ? ` · штифтов ${t.joints}` : ''}</span>
       <button class="btn small" data-tier-show="${i}">Показать</button>
       <button class="btn small" data-tier-stl="${i}">STL</button>
     </div>`).join('');
 
-  box.innerHTML = `
+  return `
     <p class="hint">Разъём вертикальный, через ось: половина снимается вбок, и завал профиля
       ей не мешает. Поднутрения, из-за которых жёсткой оснастке нужны три части, литью
       безразличны — поэтому сложные формы льют, а не штампуют.</p>
@@ -60,45 +115,124 @@ function renderCastForm() {
       <dt>Литник</dt><dd>воронка ⌀${cm.funnelR * 2} × ${cm.funnelH} мм над кромкой ·
         ${num(cm.funnelL * 2, 2)} л запаса шликера на усадку при наборе ·
         срезается по кожетвёрдому</dd>
-      <dt>Гипса всего</dt><dd><b>${num(cm.plasterL * 2 * 1.42, 1)} кг</b> на комплект
-        <span class="dim">(${num(cm.plasterL * 2, 1)} л тела, стенка ${cm.wall} мм, дно ${cm.base} мм)</span></dd>
+      <dt>Гипса всего</dt><dd><b>${num(mixOf(cm.plasterL * 2).plasterKg, 1)} кг</b> отвесить
+        на комплект <span class="dim">(${num(cm.plasterL * 2, 1)} л тела, стенка ${cm.wall} мм,
+        дно ${cm.base} мм; готовый комплект весит ${num(cm.plasterL * 2 * 1.42, 1)} кг —
+        схватившийся гипс держит воду)</span></dd>
     </dl>
     <div class="tier-list">${rows}</div>
     <div class="btn-row">
       <button class="btn small" id="castStl">STL всех частей</button>
-      <button class="btn small" id="castStop">Вернуть изделие</button>
+      ${preview ? '<button class="btn small" id="castStop">Вернуть изделие</button>' : ''}
     </div>
-    <p class="note">Ручки и носики отливаются в своих полуформах — они в «Оснастке»:
-      к корпусу их прилепляют по кожетвёрдому, а не отливают заодно.
+    <p class="note">«Отвесить» — сухой порошок под ваш замес; «часть N кг» — сколько весит
+      схватившаяся половина, её и таскают с полки на полку.
       Размеры формы, литника и порог веса части — в «Настройках расчёта».
       Часть тяжелее порога режется поперёк: гипс тяжелеет как объём, и цельная половина
       крупной вазы одному не по силам.</p>`;
+}
 
-  box.querySelectorAll('[data-tier-show]').forEach(b2 => {
-    b2.onclick = () => {
-      preview = true;
-      sceneAPI.setPreviewMesh(castMouldGeometry(state, {half: 'bump', tier: +b2.dataset.tierShow}).geometry);
-      toast(`Половина формы, ярус ${+b2.dataset.tierShow + 1}: разъём вверх, замки бугорками`);
-      emit();
-      sceneAPI.frameView();
-    };
-  });
-  box.querySelectorAll('[data-tier-stl]').forEach(b2 => {
-    b2.onclick = () => saveTiers(+b2.dataset.tierStl);
-  });
-  const stop = $('castStop');
-  if (stop) stop.onclick = () => { preview = false; sceneAPI.setPreviewMesh(null); emit(); sceneAPI.frameView(); };
+/* ---------- форма прилепа: пара половин с канавкой ---------- */
+function renderPartMould(cur) {
+  const prof = userProfileMM(state);
+  const p = cur.part;
+  if (partSelfOverlap(prof, p))
+    return `<p class="warn-inline">Форма не строится: деталь пересекает сама себя, и канавкой
+      она не отпечатается. Уменьшите сечение или разведите прилепы на чертеже.</p>`;
+
+  const m = partMouldBlock(prof, p, MOULD_WALL);
+  const f = partMouldFeatures(prof, p, MOULD_WALL);
+  // бугорки замков на одной половине и лунки на другой взаимно гасятся,
+  // а облойная канавка убавляет гипс на каждой
+  const halfL = Math.max(m.boxL - partMetrics(prof, p).volMl / 2000 - f.flashL, 0);
+  const mix = plasterMix(halfL, plasterNow().wr);
+  return `
+    <p class="hint">Прилеп формуется отдельно от корпуса: две половины, разъём по плоскости
+      детали, вокруг канавки — облойная. Отлитую ручку прилепляют по кожетвёрдому.</p>
+    <dl class="spec">
+      <dt>Частей</dt><dd><b>2</b> = две половины, замков ${f.keys}</dd>
+      <dt>Блок</dt><dd>${m.blockMM.map(v => Math.round(v)).join('×')} мм на половину</dd>
+      <dt>Гипса</dt><dd><b>${num(mix.plasterKg, 1)} кг</b> отвесить на половину ·
+        ${num(mix.plasterKg * 2, 1)} кг на пару
+        <span class="dim">(${num(halfL, 2)} л тела, облой ${num(f.flashL * 1000, 0)} см³)</span></dd>
+    </dl>
+    <div class="btn-row">
+      <button class="btn small" data-pm-show>Показать половину</button>
+      <button class="btn small" data-pm-stl>STL обеих</button>
+      ${preview ? '<button class="btn small" id="castStop">Вернуть изделие</button>' : ''}
+    </div>
+    <p class="note">Замки и облойная канавка построены; штифтов и воздушных каналов нет —
+      их сверлят по месту. Ресурс таких форм не подтверждён: их меняют по состоянию,
+      а не по числу циклов.</p>`;
+}
+
+/* ---------- гипс: марка и замес, общие на все формы ---------- */
+function renderPlaster(cur) {
+  const box = $('castPlasterBody');
+  if (!box) return;
+  const ps = plasterNow();
+  const p = plasterById(ps.id) || PLASTERS[0];
+  const litres = cur.kind === 'lathe'
+    ? castMouldNumbers(state, cur.subject).plasterL * 2
+    : (() => {
+        const prof = userProfileMM(state);
+        if (partSelfOverlap(prof, cur.part)) return 0;
+        const m = partMouldBlock(prof, cur.part, MOULD_WALL);
+        const f = partMouldFeatures(prof, cur.part, MOULD_WALL);
+        return 2 * Math.max(m.boxL - partMetrics(prof, cur.part).volMl / 2000 - f.flashL, 0);
+      })();
+  const mix = plasterMix(Math.max(litres, 0.001), ps.wr);
+  const cost = p.priceRub && p.packKg ? mix.plasterKg * (p.priceRub / p.packKg) : null;
+
+  box.innerHTML = `
+    <label class="field-row"><span>Марка</span>
+      <select id="castPlasterSel" aria-label="Марка гипса">
+        ${PLASTERS.map(x => `<option value="${x.id}"${x.id === ps.id ? ' selected' : ''}>
+          ${esc(x.name)} · ${esc(x.vendor)}</option>`).join('')}
+      </select></label>
+    <p class="hint">${esc(p.grade)} · прочность <b>${p.strengthMPa} МПа</b> ·
+      схватывание ${p.setMin.map(dec).join('–')} мин<br>
+      <span class="dim">${esc(p.note)}</span></p>
+    <label class="field-row"><span>Воды на 100 частей гипса</span>
+      <input type="number" id="castPlasterWR" min="40" max="120" step="1" value="${ps.wr}"
+             inputmode="numeric"><i class="unit">%</i></label>
+    ${p.waterRatio == null
+      ? '<p class="dim">В/Г поставщик не публикует — подберите под свою мастерскую и впишите.</p>'
+      : ''}
+    <dl class="spec">
+      <dt>На «${esc(cur.name.toLowerCase())}»</dt>
+      <dd><b>${num(mix.plasterKg, 1)} кг</b> гипса и <b>${num(mix.waterL, 1)} л</b> воды
+        <span class="dim">(${num(litres, 2)} л тела формы)</span></dd>
+      ${cost ? `<dt>Материал</dt><dd>≈ ${rub(cost)} по цене
+        ${Math.round(p.priceRub / p.packKg)} ₽/кг</dd>` : ''}
+    </dl>
+    <p class="note">Замешать и разлить надо за ${dec(p.setMin[0])}–${dec(p.setMin[1])} минут:
+      после конца схватывания раствор уже не течёт. Марка и замес общие на всю оснастку —
+      те же числа стоят в «Оснастке».</p>`;
+
+  $('castPlasterSel').onchange = e => {
+    const np = plasterById(e.target.value);
+    state.plaster = {...ps, id: e.target.value, ...(np && np.waterRatio != null ? {wr: np.waterRatio} : {})};
+    emit();
+  };
+  $('castPlasterWR').oninput = e => {
+    const v = parseFloat(e.target.value);
+    if (!isFinite(v) || v < 20 || v > 200) return;
+    state.plaster = {...plasterNow(), wr: v};
+    emit();
+  };
 }
 
 /* Сохранить STL: один ярус или все части комплекта. */
-function saveTiers(only) {
-  const cm = castMouldNumbers(state);
+function saveTiers(cur, only) {
+  const cm = castMouldNumbers(state, cur.subject);
+  const tag = cur.id === 'ware' ? 'форма' : `форма-${cur.name.toLowerCase()}`;
   let n = 0;
   for (let i = 0; i < cm.tiers; i++) {
     if (only !== null && only !== undefined && i !== only) continue;
     for (const [half, suffix] of [['bump', 'бугорки'], ['socket', 'лунки']]) {
-      const m = castMouldGeometry(state, {half, tier: i});
-      const name = cm.tiers > 1 ? `форма-литьё-ярус${i + 1}-${suffix}` : `форма-литьё-${suffix}`;
+      const m = castMouldGeometry(state, {half, tier: i, subject: cur.subject});
+      const name = cm.tiers > 1 ? `${tag}-ярус${i + 1}-${suffix}` : `${tag}-${suffix}`;
       exportGeoSTL(state, m.geometry, name);
       m.geometry.dispose();
       n++;
@@ -107,12 +241,60 @@ function saveTiers(only) {
   toast(`Сохранено частей: ${n}`);
 }
 
+function bindMould(cur) {
+  const box = $('castFormBody');
+  const stop = $('castStop');
+  if (stop) stop.onclick = stopPreview;
+
+  if (cur.kind === 'lathe') {
+    box.querySelectorAll('[data-tier-show]').forEach(b => {
+      b.onclick = () => showMesh(
+        castMouldGeometry(state, {half: 'bump', tier: +b.dataset.tierShow, subject: cur.subject}).geometry,
+        `${cur.name}, половина формы${castMouldNumbers(state, cur.subject).tiers > 1
+          ? `, ярус ${+b.dataset.tierShow + 1}` : ''}: разъём вверх, замки бугорками`);
+    });
+    box.querySelectorAll('[data-tier-stl]').forEach(b => {
+      b.onclick = () => saveTiers(cur, +b.dataset.tierStl);
+    });
+    const all = $('castStl');
+    if (all) all.onclick = () => saveTiers(cur, null);
+    return;
+  }
+
+  const prof = userProfileMM(state);
+  const show = box.querySelector('[data-pm-show]');
+  if (show) show.onclick = () => showMesh(
+    partMouldGeometry(prof, cur.part, MOULD_WALL, {half: 'bump'}).geometry,
+    `Половина формы под «${cur.name.toLowerCase()}»: разъём вверх, замки бугорками, вокруг детали облойная канавка`);
+  const stl = box.querySelector('[data-pm-stl]');
+  if (stl) stl.onclick = () => {
+    for (const [half, suffix] of [['bump', '1-бугорки'], ['socket', '2-лунки']]) {
+      const m = partMouldGeometry(prof, cur.part, MOULD_WALL, {half});
+      exportGeoSTL(state, m.geometry, `форма-${cur.name.toLowerCase()}-${suffix}`);
+      m.geometry.dispose();
+    }
+    toast('Обе половины формы сохранены: замки бугорками и лунками');
+  };
+}
+
+/**
+ * @param a {dryG, cavityL, plasterKg, parts} — приходят из общего расчёта панели
+ */
 export function renderCasting(a) {
+  const {list, cur} = subjects();
+  renderPick(list, cur);
+
+  const form = $('castFormBody');
+  if (form) {
+    form.innerHTML = cur.kind === 'lathe' ? renderLatheMould(cur) : renderPartMould(cur);
+    bindMould(cur);
+  }
+  renderPlaster(cur);
+
   const box = $('castBody');
   if (!box) return;
   const o = opts();
   const plan = castingPlan({...a, wallMM: state.wall, perDay: o.perDay}, o);
-  const cm = castMouldNumbers(state);
 
   const fields = F.map(f => `
     <label class="field-row"><span>${f.n}</span>
@@ -144,11 +326,6 @@ export function renderCasting(a) {
       замедляется раньше: вторая и третья отливки идут дольше первой. Замерьте на второй —
       расчёт пойдёт от неё. Расход шликера учитывает ${o.wastePct} % потерь на плёнку
       в воронке и ведре; вода в свежем черепке принята за ${o.greenMoisturePct} % сухой массы.</p>`;
-
-  renderCastForm();
-
-  const stl = $('castStl');
-  if (stl) stl.onclick = () => saveTiers(null);
 
   box.querySelectorAll('[data-cast]').forEach(inp => {
     inp.oninput = () => {

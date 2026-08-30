@@ -39,6 +39,10 @@ export const state = {
   kiln: {id: 'studio-60', kwh: 6},
   // литьё: замер набора стенки и свойства шликера — калибровка мастерской
   cast: {},
+  /* Гипс формовщика: марка и водогипсовое отношение. Выбор один на все формы —
+     и на матрицу под штамповку, и на форму под отливку, — поэтому живёт
+     в состоянии, а не в модуле одной вкладки. */
+  plaster: {id: 'gvvs-16', wr: 70},
   // свои пороги вместо умолчаний инструмента (js/config/tuning.js)
   tune: {},
 };
@@ -48,7 +52,8 @@ export function encodeDNA(){
   const d = {v:6, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
-    pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune, ld:state.lid};
+    pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune, ld:state.lid,
+    ps:state.plaster};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -91,6 +96,8 @@ export function applyDNA(code){
     state.tune = sanitizeTune(d.tn);
     state.lid = sanitizeLid(d.ld);
     if(d.ct&&typeof d.ct==='object') state.cast={...d.ct};
+    if(d.ps&&typeof d.ps==='object')
+      state.plaster={id:String(d.ps.id||'gvvs-16'), wr:clamp(+d.ps.wr||70,20,200)};
     if(d.kl&&typeof d.kl==='object')
       state.kiln={id:String(d.kl.id||'studio-60'), kwh:clamp(+d.kl.kwh||6,0,100),
                   ...(d.kl.own?{own:d.kl.own}:{})};

@@ -8,6 +8,7 @@
 // минус половина воронки.
 import { state } from '../js/core/state.js';
 import { castMouldGeometry, castMouldBlock, castMouldNumbers, castPlan } from '../js/three/castMould.js';
+import { castSubjects } from '../js/core/mould.js';
 import { tune, setTune, resetTune } from '../js/core/tuning.js';
 import { PRESETS } from '../js/config/data.js';
 
@@ -83,6 +84,46 @@ if (Math.abs((bump.plasterL - sock.plasterL) - 2 * bump.keysL) > 1e-6)
 if (bump.tiers !== sock.tiers) P('у половин разное число ярусов');
 bump.geometry.dispose(); sock.geometry.dispose();
 
+/* ---------- форма под крышку строится тем же кодом ---------- */
+let lidLine = '';
+/* Крышка — такое же тело вращения, и форма под неё обязана быть такой же
+   замкнутой. Проверяем именно меш: контур крышки начинается почти на оси
+   (купол внизу), а вырожденное дно полости — классический источник дыр. */
+state.points = PRESETS[0].pts.map(p => ({...p}));
+state.lid = {on: true};
+{
+  const subj = castSubjects(state).find(x => x.id === 'lid');
+  if (!subj) P('крышка включена, а формовать её нечего');
+  else {
+    const plan = castPlan(state, subj.subject);
+    for (const half of ['bump', 'socket'])
+      for (let tier = 0; tier < plan.tiers.length; tier++) {
+        const m = castMouldGeometry(state, {half, tier, subject: subj.subject});
+        const a = edgeAudit(m.geometry);
+        const L = `форма крышки · ${half} · ярус ${tier + 1}`;
+        if (a.open) P(`${L}: ${a.open} рёбер без пары`);
+        if (a.flipped) P(`${L}: ${a.flipped} рёбер повторяются`);
+        const v = volume(m.geometry);
+        if (!(v > 0)) P(`${L}: нормали внутрь`);
+        if (Math.abs(v - m.plasterL) > Math.abs(m.plasterL) * 0.06 + 0.02)
+          P(`${L}: объём ${v.toFixed(2)} против расчётных ${m.plasterL.toFixed(2)} л`);
+        m.geometry.dispose();
+      }
+    const ware = castMouldNumbers(state);
+    const lid = castMouldNumbers(state, subj.subject);
+    if (!(lid.plasterL < ware.plasterL)) P('форма под крышку вышла не меньше формы корпуса');
+    if (!(lid.parts >= 2)) P('форма под крышку не разъёмная');
+    /* Крышку формуют куполом вниз: залив со стороны посадки. Если бы контур
+       не перевернули, самое широкое место оказалось бы наверху и форма
+       не снялась бы с отливки. */
+    const o = subj.subject.outer;
+    if (!(o[0].r < o[o.length - 1].r)) P('крышка стоит в форме куполом вверх — снять отливку нельзя');
+    lidLine = `  форма крышки: блок ${lid.blockMM.map(v => Math.round(v)).join('×')} мм · ` +
+      `гипса ${lid.plasterL.toFixed(2)} л на половину · замков ${lid.perTier[0].keys}`;
+  }
+}
+state.lid = {on: false};
+
 /* ---------- числа без меша совпадают с мешем ---------- */
 const n = castMouldNumbers(state);
 const g = castMouldGeometry(state, {half: 'socket'});
@@ -118,6 +159,7 @@ const show = castMouldNumbers(state);
 console.log(`  блок ${show.blockMM.map(v => Math.round(v)).join('×')} мм · ярусов ${show.tiers} · ` +
   `частей ${show.parts} · гипса ${show.plasterL.toFixed(2)} л на половину · ` +
   `замков ${show.perTier[0].keys} · литник ⌀${show.funnelR * 2}×${show.funnelH} мм`);
+if (lidLine) console.log(lidLine);
 
 /* ---------- крупное изделие: форма обязана разрезаться поперёк ---------- */
 state.H = 400; state.D = 320;

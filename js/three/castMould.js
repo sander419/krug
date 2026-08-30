@@ -64,9 +64,16 @@ function clipProfile(line, y0, y1) {
   return out;
 }
 
-/** Габарит блока и опорные размеры — без построения меша. */
-export function castMouldBlock(state) {
-  const {outer, maxR, H} = wareProfiles(state);
+/**
+ * Габарит блока и опорные размеры — без построения меша.
+ *
+ * `subject` — что именно формуем: по умолчанию корпус изделия, но той же
+ * математикой строится форма под крышку и под любое другое тело вращения.
+ * Форма не знает, что внутри: ей нужен наружный контур, и только.
+ * @param subject {outer:[{r,y}], maxR, H}
+ */
+export function castMouldBlock(state, subject) {
+  const {outer, maxR, H} = subject || wareProfiles(state);
   const wall = WALL(), base = BASE();
   const Rw = Math.max(maxR, R()) + wall;
   const yBot = -base, yTop = H + FH();
@@ -96,8 +103,8 @@ function cavityL(line, y0, y1) {
  * План формы: сколько ярусов и почему. Ярус — те же две половины, разрезанные
  * поперёк: часть тяжелее порога одному не поднять и дольше сушить.
  */
-export function castPlan(state) {
-  const b = castMouldBlock(state);
+export function castPlan(state, subject) {
+  const b = castMouldBlock(state, subject);
   const fullKg = (b.boxL - cavityL(b.line, b.yBot, b.yTop)) * PLASTER_KG_PER_L;
   const MAX = MAX_KG();
 
@@ -165,7 +172,7 @@ function jointKeys(b, y) {
  */
 export function castMouldGeometry(state, opt = {}) {
   const socket = opt.half === 'socket';
-  const plan = castPlan(state);
+  const plan = castPlan(state, opt.subject);
   const b = plan.block;
   const t = plan.tiers[Math.max(0, Math.min(plan.tiers.length - 1, opt.tier | 0))];
   const {halfW, Rw, line} = b;
@@ -188,7 +195,13 @@ export function castMouldGeometry(state, opt = {}) {
     return new THREE.Vector2(kx + Math.cos(a) * KEY_R(), ky + Math.sin(a) * KEY_R());
   }));
 
-  const seg = clipProfile(line, t.y0, t.y1);
+  const segRaw = clipProfile(line, t.y0, t.y1);
+  /* Остриё: у крышки, поставленной куполом вниз, полость начинается точкой,
+     а не донышком. Кольцо радиусом в сотку и веер по нему дают полсотни
+     треугольников нулевой площади — в сетке это рваные рёбра, в STL дыра.
+     Поэтому низ такой полости сводим в одну вершину на оси. */
+  const apex = !t.first ? false : segRaw[0].r < 0.5;
+  const seg = apex ? [{r: 0, y: segRaw[0].y}, ...segRaw.slice(1)] : segRaw;
   const rLow = seg[0].r, rHigh = seg[seg.length - 1].r;
   const openBottom = !t.first;                     // снизу полость открыта у верхних ярусов
   const keysP = partingKeys(b, t);
@@ -219,8 +232,9 @@ export function castMouldGeometry(state, opt = {}) {
       new THREE.Vector2(-halfW, t.y0), new THREE.Vector2(halfW, t.y0),
       new THREE.Vector2(halfW, t.y1), new THREE.Vector2(rHigh, t.y1),
       ...[...seg].reverse().map(p => new THREE.Vector2(p.r, p.y)),
-      new THREE.Vector2(0, seg[0].y),
-      ...seg.map(p => new THREE.Vector2(-p.r, p.y)),
+      // у острия центр уже стоит в контуре — второй раз его добавлять нельзя
+      ...(apex ? [] : [new THREE.Vector2(0, seg[0].y)]),
+      ...seg.slice(apex ? 1 : 0).map(p => new THREE.Vector2(-p.r, p.y)),
       new THREE.Vector2(-rHigh, t.y1), new THREE.Vector2(-halfW, t.y1),
     ]);
     keysP.forEach(k => face.holes.push(keyPath(k.x, k.y)));
@@ -233,11 +247,16 @@ export function castMouldGeometry(state, opt = {}) {
     return [r * Math.cos(a), y, -r * Math.sin(a)];
   };
   for (let i = 0; i < seg.length - 1; i++)
-    for (let j = 0; j < SEG; j++)
+    for (let j = 0; j < SEG; j++) {
+      if (i === 0 && apex) {                       // остриё: веер из одной вершины
+        tri([0, seg[0].y, 0], ring(seg[1].r, seg[1].y, j), ring(seg[1].r, seg[1].y, j + 1));
+        continue;
+      }
       quad(ring(seg[i].r, seg[i].y, j), ring(seg[i + 1].r, seg[i + 1].y, j),
            ring(seg[i + 1].r, seg[i + 1].y, j + 1), ring(seg[i].r, seg[i].y, j + 1));
+    }
 
-  if (!openBottom) {
+  if (!openBottom && !apex) {
     const c = [0, seg[0].y, 0];
     for (let j = 0; j < SEG; j++)
       tri(c, ring(rLow, seg[0].y, j), ring(rLow, seg[0].y, j + 1));
@@ -331,8 +350,8 @@ export function castMouldGeometry(state, opt = {}) {
 }
 
 /** Числа для панели без построения меша. */
-export function castMouldNumbers(state) {
-  const plan = castPlan(state);
+export function castMouldNumbers(state, subject) {
+  const plan = castPlan(state, subject);
   const b = plan.block;
   return {
     blockMM: b.blockMM, tiers: plan.tiers.length, parts: plan.parts,

@@ -1,5 +1,6 @@
 // Проверка базы знаний: node tools/check-kb.mjs
 import { ARTICLES, SECTIONS, CONTEXT_HELP, search } from '../js/config/kb/index.js';
+import { readFileSync } from 'node:fs';
 
 const problems = [];
 const warn = [];
@@ -40,6 +41,18 @@ for (const s of SECTIONS)
 // поиск должен что-то находить по ключевым словам
 for (const q of ['цек', 'усадка', 'шамот', 'конус', 'осадка', 'пыль'])
   if (!search(q).length) problems.push(`поиск не находит ничего по запросу "${q}"`);
+
+/* Кнопки «?» на панели и «почему» у замечаний ведут в статью по её id.
+   Несуществующий id — молчащая кнопка: нажатие ничего не открывает, и заметить
+   это можно только руками. Поэтому разметку сверяем с реестром. */
+{
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf-8');
+  const ids = new Set(ARTICLES.map(a => a.id));
+  const used = [...new Set([...html.matchAll(/data-kb="([^"]+)"/g)].map(m => m[1]))];
+  for (const id of used)
+    if (!ids.has(id)) problems.push(`кнопка справки ведёт в несуществующую статью "${id}"`);
+  if (used.length < 5) problems.push('на панели почти нет кнопок справки — разметку не разобрали');
+}
 
 console.log(`База знаний: ${ARTICLES.length} статей в ${SECTIONS.length} разделах`);
 for (const s of SECTIONS) {
