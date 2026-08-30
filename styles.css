@@ -25,7 +25,7 @@
 
   /* цвет раздела: по нему блоки панели видно, не читая заголовков */
   --sect-form:#e0693a; --sect-mat:#d79a45; --sect-print:#5fa8dc;
-  --sect-glaze:#4dbfa0; --sect-tool:#a48bea;
+  --sect-glaze:#4dbfa0; --sect-tool:#a48bea; --sect-cast:#6fb7d8;
   --sect:var(--accent);
 
   /* шкала размеров, --ui — масштаб интерфейса (кнопки Аа в шапке) */
@@ -52,7 +52,7 @@
   --view1:#efe7db; --view2:#e2d8c9; --view3:#d3c7b5; --vignette:rgba(90,64,42,.16);
   --shade:rgba(40,32,26,.16); --glow:rgba(184,78,27,.22);
   --sect-form:#b84e1b; --sect-mat:#8d5f26; --sect-print:#2f6d95;
-  --sect-glaze:#2b7a63; --sect-tool:#6553a0;
+  --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
 /* Полосы прокрутки в цвет темы: системные светлые полосы на тёмной панели
@@ -200,6 +200,7 @@ body.draft-off main{grid-template-columns:var(--panelW) var(--splitW) 0 var(--sp
 .tab[data-tab="print"]{--sect:var(--sect-print);}
 .tab[data-tab="glaze"]{--sect:var(--sect-glaze);}
 .tab[data-tab="tool"]{--sect:var(--sect-tool);}
+.tab[data-tab="cast"]{--sect:var(--sect-cast);}
 .tab::after{
   content:"";position:absolute;left:10px;right:10px;top:4px;height:2px;border-radius:2px;
   background:var(--sect);opacity:.35;
@@ -940,6 +941,19 @@ body.learning main,body.learning #metrics{display:none;}
 .part-drawn span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
 
 /* ---------- литьё ---------- */
+/* Части формы списком: у каждой свой габарит, вес и кнопки — так и заказывают
+   гипс, по частям, а не «всего столько-то». */
+.tier-list{display:flex;flex-direction:column;gap:6px;margin:8px 0;}
+.tier-row{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:8px 10px;border-radius:var(--radius);
+  background:var(--panel2);border:1px solid var(--line);font-size:var(--fs-xs);
+}
+.tier-n{font-weight:700;color:var(--sect);min-width:72px;}
+.tier-mm,.tier-keys{color:var(--muted);}
+.tier-kg{color:var(--text);}
+.tier-row .btn{margin-left:auto;}
+.tier-row .btn + .btn{margin-left:0;}
 .cast-ticks{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px;}
 .cast-tick{
   font-size:var(--fs-micro);color:var(--muted);background:var(--sunken);

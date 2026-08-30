@@ -95,6 +95,15 @@ const PROBES = {
   land: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
   flashW: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
   flashD: () => partMouldFeatures(prof(), state.parts[0], 20).flashL,
+  partMaxKg: () => {
+    /* На маленькой чашке форма и так лёгкая; порог виден на крупной вазе. */
+    const was = {H: state.H, D: state.D, points: state.points};
+    state.H = 400; state.D = 320;
+    state.points = [{t: 0, r: 0.55}, {t: 0.35, r: 1}, {t: 0.7, r: 0.8}, {t: 1, r: 0.62}];
+    const n = castMouldNumbers(state).tiers;
+    Object.assign(state, was);
+    return n;
+  },
   castWall: () => castMouldNumbers(state).plasterL,
   castBase: () => castMouldNumbers(state).plasterL,
   funnelR: () => castMouldNumbers(state).funnelL,

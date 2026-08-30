@@ -93,6 +93,7 @@
       <button class="tab" data-tab="print"><i>3</i>Печать</button>
       <button class="tab" data-tab="glaze"><i>4</i>Глазурь</button>
       <button class="tab" data-tab="tool"><i>5</i>Оснастка</button>
+      <button class="tab" data-tab="cast"><i>6</i>Литьё</button>
     </nav>
 
     <div class="panel-scroll">
@@ -390,14 +391,6 @@
           </div>
         </details>
 
-        <details class="block" data-block="casting">
-          <summary class="block-title">Литьё: выдержка, шликер, формы
-            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
-                    title="Про литьё в гипсовые формы" aria-label="Справка о литье"></button>
-          </summary>
-          <div class="block-body" id="castBody"></div>
-        </details>
-
         <details class="block" data-block="economy">
           <summary class="block-title">Тираж и экономика</summary>
           <div class="block-body">
@@ -428,6 +421,28 @@
             <p class="note src-list" id="toolSrc"></p>
           </div>
         </details>
+      </section>
+
+      <!-- ---------- Литьё ---------- -->
+      <section class="tabpane" data-pane="cast">
+        <p class="pane-intro">Форма под отливку и сам процесс: из скольких частей она собирается, сколько держать шликер и сколько форм нужно на дневной план.</p>
+
+        <details class="block" data-block="castform" open>
+          <summary class="block-title">Форма для литья
+            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
+                    title="Как устроена литьевая форма" aria-label="Справка о литьевой форме"></button>
+          </summary>
+          <div class="block-body" id="castFormBody"></div>
+        </details>
+
+        <details class="block" data-block="casting">
+          <summary class="block-title">Литьё: выдержка, шликер, формы
+            <button class="help-dot" data-kb="slip-casting" data-icon="circle-help" data-icon-size="15"
+                    title="Про литьё в гипсовые формы" aria-label="Справка о литье"></button>
+          </summary>
+          <div class="block-body" id="castBody"></div>
+        </details>
+
       </section>
     </div>
 

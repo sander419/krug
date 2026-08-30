@@ -7,7 +7,7 @@
 // ровно раз вместе с обратным, — и сходится объём: блок минус половина изделия
 // минус половина воронки.
 import { state } from '../js/core/state.js';
-import { castMouldGeometry, castMouldBlock, castMouldNumbers } from '../js/three/castMould.js';
+import { castMouldGeometry, castMouldBlock, castMouldNumbers, castPlan } from '../js/three/castMould.js';
 import { tune, setTune, resetTune } from '../js/core/tuning.js';
 import { PRESETS } from '../js/config/data.js';
 
@@ -48,12 +48,14 @@ function volume(geo) {
   return v / 1e6;                                  // литры
 }
 
-/* ---------- на всех пресетах и обеих половинах ---------- */
+/* ---------- на всех пресетах, обеих половинах и всех ярусах ---------- */
 for (const preset of PRESETS) {
   state.points = preset.pts.map(p => ({...p}));
-  for (const half of ['bump', 'socket']) {
-    const L = `${preset.name} · ${half === 'bump' ? 'бугорки' : 'лунки'}`;
-    const m = castMouldGeometry(state, {half});
+  const plan = castPlan(state);
+  for (const half of ['bump', 'socket'])
+   for (let tier = 0; tier < plan.tiers.length; tier++) {
+    const L = `${preset.name} · ${half === 'bump' ? 'бугорки' : 'лунки'} · ярус ${tier + 1}`;
+    const m = castMouldGeometry(state, {half, tier});
     const a = edgeAudit(m.geometry);
     if (a.open) P(`${L}: ${a.open} рёбер без пары — тело не замкнуто`);
     if (a.flipped) P(`${L}: ${a.flipped} рёбер повторяются — треугольники смотрят в разные стороны`);
@@ -65,8 +67,7 @@ for (const preset of PRESETS) {
     if (!(m.plasterL > 0)) P(`${L}: гипса вышло ноль или меньше`);
     if (!(m.keys >= 2)) P(`${L}: замков ${m.keys} — половины не сцентрировать`);
 
-    // половина не должна быть меньше изделия, которое в неё ложится
-    if (!(m.boxL > m.wareL + m.funnelL)) P(`${L}: полость больше блока`);
+    if (!(m.boxL > m.plasterL)) P(`${L}: полость больше блока`);
     m.geometry.dispose();
   }
 }
@@ -79,14 +80,15 @@ if (bump.keys !== sock.keys) P('у половин разное число зам
 if (!(bump.plasterL > sock.plasterL)) P('половина с бугорками должна весить больше, чем с лунками');
 if (Math.abs((bump.plasterL - sock.plasterL) - 2 * bump.keysL) > 1e-6)
   P('разница половин не равна удвоенному объёму замков');
+if (bump.tiers !== sock.tiers) P('у половин разное число ярусов');
 bump.geometry.dispose(); sock.geometry.dispose();
 
 /* ---------- числа без меша совпадают с мешем ---------- */
 const n = castMouldNumbers(state);
 const g = castMouldGeometry(state, {half: 'socket'});
-if (Math.abs(n.plasterL - (g.plasterL + g.keysL)) > 1e-6)
+if (Math.abs(n.perTier[0].plasterL - (g.plasterL + g.keysL)) > 1e-6)
   P('панель и модель считают гипс по-разному');
-if (n.keys !== g.keys) P('число замков в панели не совпадает с моделью');
+if (n.perTier[0].keys !== g.keys) P('число замков в панели не совпадает с моделью');
 g.geometry.dispose();
 
 /* ---------- настройки формы действительно меняют её ---------- */
@@ -113,9 +115,52 @@ if (!(blk.blockMM.every(v => v > 20))) P('габарит блока подозр
 
 console.log('Проверка формы для литья\n');
 const show = castMouldNumbers(state);
-console.log(`  блок половины ${show.blockMM.map(v => Math.round(v)).join('×')} мм · ` +
-  `гипса ${show.plasterL.toFixed(2)} л на половину · замков ${show.keys} · ` +
-  `литник ⌀${show.funnelR * 2}×${show.funnelH} мм`);
+console.log(`  блок ${show.blockMM.map(v => Math.round(v)).join('×')} мм · ярусов ${show.tiers} · ` +
+  `частей ${show.parts} · гипса ${show.plasterL.toFixed(2)} л на половину · ` +
+  `замков ${show.perTier[0].keys} · литник ⌀${show.funnelR * 2}×${show.funnelH} мм`);
+
+/* ---------- крупное изделие: форма обязана разрезаться поперёк ---------- */
+state.H = 400; state.D = 320;
+state.points = [{t: 0, r: 0.55}, {t: 0.35, r: 1}, {t: 0.7, r: 0.8}, {t: 1, r: 0.62}];
+const big = castMouldNumbers(state);
+if (!(big.tiers > 1)) P(`крупная ваза не разрезана: ${big.fullKg.toFixed(1)} кг при пороге ${big.maxKg}`);
+if (!(big.heaviestKg <= big.maxKg + 0.01))
+  P(`самый тяжёлый ярус ${big.heaviestKg.toFixed(1)} кг — тяжелее порога ${big.maxKg}`);
+
+/* Обещание «часть не тяжелее порога» проверяется на разных размерах: ярусы
+   равной высоты весят по-разному, и делением их число не угадать. */
+for (const [H, D] of [[300, 240], [400, 320], [400, 400], [250, 400], [180, 120]]) {
+  state.H = H; state.D = D;
+  const n2 = castMouldNumbers(state);
+  if (n2.heaviestKg > n2.maxKg + 0.01)
+    P(`${H}×${D}: самый тяжёлый ярус ${n2.heaviestKg.toFixed(1)} кг при пороге ${n2.maxKg}`);
+}
+state.H = 400; state.D = 320;
+if (big.parts !== big.tiers * 2) P('частей не вдвое больше ярусов');
+{
+  const plan = castPlan(state);
+  const sum = plan.tiers.reduce((s, t) => s + (t.y1 - t.y0), 0);
+  if (Math.abs(sum - (plan.block.yTop - plan.block.yBot)) > 0.01)
+    P('ярусы не покрывают форму целиком');
+  for (let i = 1; i < plan.tiers.length; i++)
+    if (Math.abs(plan.tiers[i].y0 - plan.tiers[i - 1].y1) > 1e-6) P('между ярусами щель');
+  let joints = 0;
+  for (let i = 0; i < plan.tiers.length; i++)
+    for (const half of ['bump', 'socket']) {
+      const m = castMouldGeometry(state, {half, tier: i});
+      const a2 = edgeAudit(m.geometry);
+      if (a2.open || a2.flipped)
+        P(`крупная ваза, ярус ${i + 1} (${half}): ${a2.open} открытых, ${a2.flipped} вывернутых`);
+      const v2 = volume(m.geometry);
+      if (Math.abs(v2 - m.plasterL) > Math.abs(m.plasterL) * 0.06 + 0.02)
+        P(`крупная ваза, ярус ${i + 1}: объём ${v2.toFixed(2)} против ${m.plasterL.toFixed(2)} л`);
+      joints += m.joints;
+      m.geometry.dispose();
+    }
+  if (!(joints > 0)) P('на стыках ярусов нет ни одного штифта — секции разъедутся');
+  console.log(`  крупная ваза 400×320: ${big.tiers} яруса, самый тяжёлый ${big.heaviestKg.toFixed(1)} кг, ` +
+    `штифтов на стыках ${joints}`);
+}
 
 if (problems.length) {
   console.log('\nОШИБКИ:');

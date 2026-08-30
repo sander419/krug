@@ -23,11 +23,13 @@ export const TABS = {
           txt: 'Подберите глазурь: КРУГ сверит её обжиг с массой и покажет плёнку на модели.'},
   tool:  {name: 'Оснастка', ico: 'factory',
           txt: 'Тираж: годится ли форма под штамповку или литьё, какая нужна оснастка и что это стоит.'},
+  cast:  {name: 'Литьё',    ico: 'droplet',
+          txt: 'Форма под отливку и сам процесс: части, литник, выдержка, расход шликера и сколько форм нужно.'},
 };
 
 /* Порядок вкладок в панели всегда этот, какие бы из них ни были включены:
    человек привыкает к месту, а не к номеру. */
-export const TAB_ORDER = ['form', 'mat', 'print', 'glaze', 'tool'];
+export const TAB_ORDER = ['form', 'mat', 'print', 'glaze', 'tool', 'cast'];
 
 export const ROUTES = [
   {id: 'wheel', name: 'На круге, руками', ico: 'circle-dot',
@@ -41,14 +43,14 @@ export const ROUTES = [
    tabs: ['form', 'mat', 'print', 'glaze']},
 
   {id: 'mould', name: 'Тираж в гипсе', ico: 'factory',
-   lead: 'Повторить изделие много раз: способ производства, полуформы, гипс и деньги.',
+   lead: 'Повторить изделие много раз: способ производства, форма под отливку, гипс и деньги.',
    hides: 'Слайсер и G-code убраны.',
-   tabs: ['form', 'mat', 'glaze', 'tool']},
+   tabs: ['form', 'mat', 'glaze', 'tool', 'cast']},
 
   {id: 'all', name: 'Всё сразу', ico: 'sliders-horizontal',
-   lead: 'Ничего не прятать: все пять вкладок и все замечания.',
-   hides: 'Так КРУГ выглядел раньше.',
-   tabs: ['form', 'mat', 'print', 'glaze', 'tool']},
+   lead: 'Ничего не прятать: все шесть вкладок и все замечания.',
+   hides: 'Ничего не спрятано.',
+   tabs: ['form', 'mat', 'print', 'glaze', 'tool', 'cast']},
 ];
 
 export const DEFAULT_ROUTE = 'all';
