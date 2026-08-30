@@ -23,6 +23,7 @@ const CHECKS = [
   ['Печи',         'check-kilns.mjs'],
   ['Литьё',        'check-casting.mjs'],
   ['Схема',        'check-sheet.mjs'],
+  ['Настройки',    'check-tuning.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
 ];
 

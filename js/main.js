@@ -16,6 +16,7 @@ import { initPhoto } from './ui/photo.js';
 import { initTips } from './ui/tips.js';
 import { popover } from './ui/pop.js';
 import { initFinder } from './ui/finder.js';
+import { initTuning } from './ui/tuning.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent } from './ui/works.js';
 import { paintIcons } from './ui/icons.js';
@@ -161,6 +162,7 @@ step('тема',()=>initTheme());   // подписка раньше вызов�
 step('иконки',()=>paintIcons());
 step('подсказки',()=>initTips());
 step('поиск',()=>initFinder());
+step('настройки расчёта',()=>initTuning());
 step('меню шапки',()=>{
   popover($('viewBtn'),$('viewPop'));
   popover($('exportMoreBtn'),$('exportPop'));

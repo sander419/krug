@@ -956,6 +956,48 @@ body.learning main,body.learning #metrics{display:none;}
 .kiln-nums{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;}
 .tool-note.bad{color:var(--bad);}
 
+/* ---------- настройки расчёта ---------- */
+#tuneScreen{
+  position:fixed;inset:0;z-index:90;display:none;padding:24px;overflow-y:auto;
+  background:color-mix(in oklab, var(--bg) 82%, transparent);backdrop-filter:blur(5px);
+}
+#tuneScreen.open{display:block;}
+.tune-card{
+  width:min(760px,100%);margin:0 auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:22px 24px 20px;
+  box-shadow:0 26px 70px var(--shade);
+}
+.tune-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;margin-bottom:14px;border-radius:var(--radius);
+  background:var(--panel2);border:1px solid var(--line);font-size:var(--fs-sm);color:var(--muted);
+}
+.tune-group{margin-bottom:16px;}
+.tune-group h3{
+  font-family:'Manrope',system-ui,sans-serif;
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:8px;
+}
+.tune-row{
+  display:flex;gap:14px;align-items:flex-start;justify-content:space-between;
+  padding:9px 11px;border-radius:var(--radius);border:1px solid transparent;
+}
+.tune-row:nth-child(odd){background:var(--panel2);}
+.tune-row.own{border-color:var(--accent);background:color-mix(in oklab, var(--accent) 10%, var(--panel2));}
+.tune-main{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.tune-main b{font-size:var(--fs-sm);}
+.tune-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;text-wrap:pretty;}
+.tune-set{display:flex;align-items:center;gap:6px;flex:none;}
+.tune-set input{width:86px;text-align:right;}
+.tune-set .unit{font-style:normal;font-size:var(--fs-micro);color:var(--muted2);min-width:56px;}
+@media (max-width:640px){
+  #tuneScreen{padding:0;}
+  .tune-card{border-radius:0;border:none;min-height:100%;}
+  .tune-row{flex-direction:column;gap:8px;}
+  .tune-set{align-self:stretch;}
+  .tune-set input{flex:1;width:auto;}
+}
+
 /* ---------- поиск по инструменту (Ctrl+K) ---------- */
 #finderScreen{
   position:fixed;inset:0;z-index:100;display:none;padding:12vh 20px 20px;

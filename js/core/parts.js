@@ -11,10 +11,13 @@ import { radiusAt } from './math.js';
 import { PART_KINDS, PART_LIMITS, kindOf, limitOf } from '../config/parts.js';
 import { strainerWarnings } from './strainer.js';
 import { clamp, round } from './util.js';
+import { tune } from './tuning.js';
 
-const GRIP_MIN = 25;        // мм: меньше — рука не проходит
-const JOIN_SPAN_MIN = 40;   // мм: ближе прилепы — держаться не за что
-const AZ_MIN = 25;          // °: ближе друг к другу — прилепы сливаются
+/* Пороги замечаний переехали в реестр настроек: у каждой мастерской своя
+   практика, и чужая цифра в коде спорила с ней молча. */
+const GRIP_MIN = () => tune('gripMM');
+const JOIN_SPAN_MIN = () => tune('joinSpanMM');
+const AZ_MIN = () => tune('azMinDeg');
 
 /** Угол между азимутами, 0…180. */
 export const azGap = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
@@ -345,10 +348,10 @@ export function partsWarnings(state, prof) {
       else if (p.thick > state.wall * 2.2)
         w.push({lvl: 'warn', help: 'handle', txt:
           `${label}: лента вдвое толще стенки — сохнет медленнее корпуса, шов тянет. Сушите под плёнкой.`});
-      if (m.grip < GRIP_MIN)
+      if (m.grip < GRIP_MIN())
         w.push({lvl: 'warn', help: 'handle', txt:
-          `${label}: просвет под пальцы ${m.grip.toFixed(0)} мм — рука не пройдёт. Порог инструмента ${GRIP_MIN} мм.`});
-      if (span < JOIN_SPAN_MIN)
+          `${label}: просвет под пальцы ${m.grip.toFixed(0)} мм — рука не пройдёт. Порог инструмента ${GRIP_MIN()} мм.`});
+      if (span < JOIN_SPAN_MIN())
         w.push({lvl: 'warn', help: 'handle', txt:
           `${label}: прилепы в ${span.toFixed(0)} мм друг от друга — держаться не за что.`});
     } else if (p.kind === 'lip') {
@@ -386,9 +389,9 @@ export function partsWarnings(state, prof) {
   for (let i = 0; i < parts.length; i++)
     for (let j = i + 1; j < parts.length; j++) {
       const d = azGap(parts[i].az, parts[j].az);
-      if (d < AZ_MIN)
+      if (d < AZ_MIN())
         w.push({lvl: 'warn', help: 'handle', txt:
-          `${kindOf(parts[i]).name} ${i + 1} и ${kindOf(parts[j]).name} ${j + 1} стоят в ${d.toFixed(0)}° друг от друга — прилепы сольются. Разведите хотя бы на ${AZ_MIN}°.`});
+          `${kindOf(parts[i]).name} ${i + 1} и ${kindOf(parts[j]).name} ${j + 1} стоят в ${d.toFixed(0)}° друг от друга — прилепы сольются. Разведите хотя бы на ${AZ_MIN()}°.`});
     }
 
   return w;

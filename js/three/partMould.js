@@ -15,21 +15,25 @@
 // Чего здесь нет: воздушных каналов. Их сверлят по месту под конкретный пресс.
 import * as THREE from 'three';
 import { partStations, partOutline } from '../core/parts.js';
+import { tune } from '../core/tuning.js';
 
 const STATIONS = 64;      // шагов вдоль детали
 const ARC = 18;           // шагов по половине сечения
-const KEY_R = 7;          // радиус замка, мм
-const KEY_H = 4;          // высота бугорка (и глубина лунки)
 const KEY_SEG = 20;       // шагов по окружности замка
-const KEY_CLEAR = 3;      // мм от замка до облойной канавки
 const KEY_EDGE = 6;       // гипс между замком и краем блока, мм
-const LAND = 2;           // площадка между деталью и облойной канавкой, мм
-const FLASH_W = 4;        // ширина облойной канавки, мм
-const FLASH_D = 1.5;      // её глубина, мм
+/* Размеры замков и облойной канавки задаются в настройках расчёта: у каждой
+   мастерской свой гипс и свой пресс. Читаются на каждом построении, а не один
+   раз при загрузке модуля, — иначе правка порога ничего бы не меняла. */
+const KEY_R = () => tune('keyR');
+const KEY_H = () => tune('keyH');
+const KEY_CLEAR = () => tune('keyClear');
+const LAND = () => tune('land');
+const FLASH_W = () => tune('flashW');
+const FLASH_D = () => tune('flashD');
 /* Стенка блока обязана вместить всё, что живёт на разъёме: площадку, канавку,
    зазор и сам замок с гипсом до края. Иначе замки некуда ставить — на крайних
    ручках их выходило ноль, и половины было нечем сцентрировать. */
-const WALL_MIN = LAND + FLASH_W + KEY_CLEAR + 2 * KEY_R + KEY_EDGE;
+const WALL_MIN = () => LAND() + FLASH_W() + KEY_CLEAR() + 2 * KEY_R() + KEY_EDGE;
 
 /* Расстояние от точки до ломаной: замок не должен садиться на канавку. */
 function distToPath(path, x, y) {
@@ -58,9 +62,9 @@ function signedArea(path) {
 /* Замки по углам блока. Место под них гарантировано шириной стенки, но проверку
    на канавку оставляем: она поймает разъезд, если размеры поменяют. */
 function keyPositions(guard, X0, X1, Y0, Y1) {
-  const d = KEY_EDGE + KEY_R;
+  const d = KEY_EDGE + KEY_R();
   return [[X0 + d, Y0 + d], [X1 - d, Y0 + d], [X1 - d, Y1 - d], [X0 + d, Y1 - d]]
-    .filter(([x, y]) => distToPath(guard, x, y) > KEY_R + KEY_CLEAR)
+    .filter(([x, y]) => distToPath(guard, x, y) > KEY_R() + KEY_CLEAR())
     .map(([x, y]) => ({x, y}));
 }
 
@@ -126,12 +130,12 @@ export function flashPaths(st) {
     // всегда обходит дырку против внешнего контура
     return signedArea(p) > 0 ? p.reverse() : p;
   };
-  return {inner: trim(LAND), outer: trim(LAND + FLASH_W), band};
+  return {inner: trim(LAND()), outer: trim(LAND() + FLASH_W()), band};
 }
 
 /** Габарит блока без построения меша: для чисел в панели и в техкарте. */
 export function partMouldBlock(prof, part, wall = 20) {
-  wall = Math.max(wall, WALL_MIN);
+  wall = Math.max(wall, WALL_MIN());
   const st = partStations(prof, part, STATIONS);
   let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, rzMax = 0;
   for (const s of st) {
@@ -155,9 +159,9 @@ export function partMouldFeatures(prof, part, wall = 20) {
   const keys = keyPositions(outer, X0, X1, Y0, Y1).length;
   return {
     keys,
-    keysL: keys * (2 / 3) * Math.PI * KEY_R * KEY_R * KEY_H / 1e6,
-    flashL: (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D / 1e6,
-    flashW: FLASH_W, flashD: FLASH_D, keyH: KEY_H,
+    keysL: keys * (2 / 3) * Math.PI * KEY_R() * KEY_R() * KEY_H() / 1e6,
+    flashL: (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D() / 1e6,
+    flashW: FLASH_W(), flashD: FLASH_D(), keyH: KEY_H(),
   };
 }
 
@@ -197,7 +201,7 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
     new THREE.Path(outer.map(V2)),
     ...keys.map(kp => new THREE.Path(Array.from({length: KEY_SEG}, (_, j) => {
       const a = j / KEY_SEG * Math.PI * 2;
-      return new THREE.Vector2(kp.x + Math.cos(a) * KEY_R, kp.y + Math.sin(a) * KEY_R);
+      return new THREE.Vector2(kp.x + Math.cos(a) * KEY_R(), kp.y + Math.sin(a) * KEY_R());
     }))),
   ];
   faceTris(face);
@@ -217,11 +221,11 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
       quad(at(path[i], zA), at(path[j], zA), at(path[j], zB), at(path[i], zB));
     }
   };
-  wallStrip(inner, 0, -FLASH_D);
+  wallStrip(inner, 0, -FLASH_D());
   const floor = new THREE.Shape(outer.map(V2));
   floor.holes = [new THREE.Path(inner.map(V2))];
-  faceTris(floor, -FLASH_D);
-  wallStrip(outer, -FLASH_D, 0);
+  faceTris(floor, -FLASH_D());
+  wallStrip(outer, -FLASH_D(), 0);
 
   /* канавка под деталь: половина сечения, уходящая вниз от разъёма */
   const ring = (s, k) => {
@@ -247,10 +251,10 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
   const sign = socket ? -1 : 1;
   for (const kp of keys) {
     const dome = (j, ring) => {
-      if (ring === 3) return [kp.x, kp.y, sign * KEY_H];
+      if (ring === 3) return [kp.x, kp.y, sign * KEY_H()];
       const t = ring / 3;
-      const rr = KEY_R * Math.cos(t * Math.PI / 2);
-      const zz = sign * KEY_H * Math.sin(t * Math.PI / 2);
+      const rr = KEY_R() * Math.cos(t * Math.PI / 2);
+      const zz = sign * KEY_H() * Math.sin(t * Math.PI / 2);
       const a = j / KEY_SEG * Math.PI * 2;
       return [kp.x + Math.cos(a) * rr, kp.y + Math.sin(a) * rr, zz];
     };
@@ -284,8 +288,8 @@ export function partMouldGeometry(prof, part, wall = 20, opts = {}) {
 
   const boxL = (X1 - X0) * (Y1 - Y0) * depth / 1e6;
   // бугорки добавляют гипс, лунки убавляют: половина эллипсоида R×R×H
-  const keysL = keys.length * (2 / 3) * Math.PI * KEY_R * KEY_R * KEY_H / 1e6;
-  const flashL = (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D / 1e6;
+  const keysL = keys.length * (2 / 3) * Math.PI * KEY_R() * KEY_R() * KEY_H() / 1e6;
+  const flashL = (Math.abs(signedArea(outer)) - Math.abs(signedArea(inner))) * FLASH_D() / 1e6;
   return {geometry: geo, blockMM: [X1 - X0, Y1 - Y0, depth], boxL, depth,
-          keys: keys.length, keysL, keyH: KEY_H, flashL, flashW: FLASH_W, flashD: FLASH_D, socket};
+          keys: keys.length, keysL, keyH: KEY_H(), flashL, flashW: FLASH_W(), flashD: FLASH_D(), socket};
 }

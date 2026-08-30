@@ -4,6 +4,7 @@
 // вводит пользователь: это его производство, а не наша выдумка.
 import { byId as materialById, density } from '../config/materials.js';
 import { byId as processById, LIMITS } from '../config/processes.js';
+import { tune } from './tuning.js';
 
 export const ECON_DEFAULTS = {
   batch: 500,             // штук в партии
@@ -35,7 +36,7 @@ export function economics(state, prod, procId, opt = {}) {
   const mat = materialById(state.mat);
   const perKg = pricePerKg(mat);
 
-  const blankKg = prod.massF * (1 + LIMITS.flashPct / 100) / 1000;   // прессование: изделие + облой
+  const blankKg = prod.massF * (1 + tune('flashPct') / 100) / 1000;   // прессование: изделие + облой
   const manualKg = prod.massN / 1000;                                 // круг: изделие + припуск на подрезку
 
   const matMachine = perKg == null ? null : blankKg * perKg;

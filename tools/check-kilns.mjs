@@ -5,7 +5,10 @@
 // обжига делится на то, что влезло. Ошибка здесь не видна на экране (кружки
 // нарисуются любые), поэтому проверяется геометрией: не вылезло ли за камеру,
 // не наехало ли друг на друга, сходится ли итог с рядами.
-import { KILNS, KILNS_SCHEMA, GAPS, byKilnId, DUTY, BISQUE_C } from '../js/config/kilns.js';
+import { KILNS, KILNS_SCHEMA, byKilnId } from '../js/config/kilns.js';
+import { tune } from '../js/core/tuning.js';
+const GAPS = {item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')};
+const DUTY = tune('duty'), BISQUE_C = tune('bisqueC');
 import { kilnLoad, firingCost, kilnEconomy, firedSize } from '../js/core/kiln.js';
 import { checkContract } from './registry-contract.mjs';
 

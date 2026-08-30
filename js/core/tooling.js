@@ -9,6 +9,7 @@ import { strainerHoles } from './strainer.js';
 import { kindOf as partKind } from '../config/parts.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById, LIMITS } from '../config/processes.js';
+import { tune } from './tuning.js';
 import { economics } from './economics.js';
 import { cavityStock } from './mould.js';
 import { byId as plasterById, plasterMix } from '../config/plasters.js';
@@ -40,7 +41,7 @@ export const firedFromRaw = (rawMM, mat) => rawMM / shrinkFactor(mat).k;
    не поднутрение: считаем перегибом только тот, где радиус реально проваливается
    больше чем на `minDepth` миллиметров. Каждый оставшийся перегиб — это ещё одна
    часть жёсткой формы: изделие не вынуть цельной оснасткой через сужение. */
-function significantExtrema(prof, minDepth = LIMITS.minUndercutMM) {
+function significantExtrema(prof, minDepth = tune('minUndercutMM')) {
   // сырые экстремумы вместе с концами профиля
   let pts = [{r: prof[0].r, y: prof[0].y}];
   for (let i = 1; i < prof.length - 1; i++) {
@@ -73,7 +74,7 @@ function significantExtrema(prof, minDepth = LIMITS.minUndercutMM) {
    радиус нигде не убывает кверху: любое сужение выше широкого места запирает деталь.
    Поэтому считаем все внутренние экстремумы профиля — и пузо, и горло. Глубина
    перегиба = меньший из двух перепадов до соседних экстремумов. */
-export function undercutList(prof, minDepth = LIMITS.minUndercutMM) {
+export function undercutList(prof, minDepth = tune('minUndercutMM')) {
   const ext = significantExtrema(prof, minDepth);
   const out = [];
   for (let i = 1; i < ext.length - 1; i++) {
@@ -179,7 +180,7 @@ export function recommendProcess(state, an) {
     id = 'casting';
     why.push(`Глубокая узкая форма (H/D = ${an.hd.toFixed(2)}) — пласт в такую оснастку не додавится.`);
   }
-  if (id !== 'casting' && an.minDraftDeg < LIMITS.minDraftDeg)
+  if (id !== 'casting' && an.minDraftDeg < tune('draftDeg'))
     why.push(`Уклон стенки ${an.minDraftDeg.toFixed(1)}° на высоте ${Math.round(an.minDraftAtMM)} мм — изделие будет липнуть к форме.`);
   return {id, alt: id === 'ram' ? 'roller' : 'ram', why};
 }
@@ -200,19 +201,19 @@ export function checks(state, an, procId) {
   else if (rigid) add('bad', `Поднутрение ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм — ${an.deepest.kind} (всего перегибов ${an.undercuts}). Для «${proc.short}» нужна форма из ${an.parts} частей — процесс не подходит. Уберите завал профиля, и форма станет пригодной.`, 'tooling-basics');
   else add('warn', `Перегибов профиля ${an.undercuts}, самый глубокий ${an.deepest.depthMM.toFixed(1)} мм на высоте ${Math.round(an.deepest.y)} мм (${an.deepest.kind}) — форма разъёмная, из ${an.parts} частей. Линия разъёма на высоте ${Math.round(an.partingY)} мм.`, 'casting');
 
-  if (an.minDraftDeg >= LIMITS.minDraftDeg)
+  if (an.minDraftDeg >= tune('draftDeg'))
     add('ok', `Минимальный уклон ${an.minDraftDeg.toFixed(1)}° — изделие сходит с формы.`, 'tooling-basics');
   else
-    add(rigid ? 'bad' : 'warn', `Минимальный уклон ${an.minDraftDeg.toFixed(1)}° на высоте ${Math.round(an.minDraftAtMM)} мм: стенка почти вдоль оси, изделие липнет. Порог инструмента — ${LIMITS.minDraftDeg}°.`, 'tooling-basics');
+    add(rigid ? 'bad' : 'warn', `Минимальный уклон ${an.minDraftDeg.toFixed(1)}° на высоте ${Math.round(an.minDraftAtMM)} мм: стенка почти вдоль оси, изделие липнет. Порог инструмента — ${tune('draftDeg')}°.`, 'tooling-basics');
 
   const ratio = an.minWallMM / an.nominalWallMM;
-  if (ratio >= LIMITS.thinWallRatio && (!rigid || an.minWallMM >= LIMITS.minWallRamMM))
+  if (ratio >= tune('thinWallRatio') && (!rigid || an.minWallMM >= tune('minWallRamMM')))
     add('ok', `Толщина пласта ровная: минимум ${an.minWallMM.toFixed(1)} мм при заданных ${an.nominalWallMM} мм.`, 'ram-press');
   else
-    add(rigid && an.minWallMM < LIMITS.minWallRamMM ? 'bad' : 'warn',
+    add(rigid && an.minWallMM < tune('minWallRamMM') ? 'bad' : 'warn',
         `Реальная толщина падает до ${an.minWallMM.toFixed(1)} мм на высоте ${Math.round(an.minWallAtMM)} мм (задано ${an.nominalWallMM} мм): стенка отложена по горизонтали, а на пологом участке пласт тоньше.`, 'ram-press');
 
-  if (an.minFilletMM != null && an.minFilletMM < LIMITS.minFilletMM)
+  if (an.minFilletMM != null && an.minFilletMM < tune('minFilletMM'))
     add('warn', `Радиус перехода ${an.minFilletMM.toFixed(1)} мм на высоте ${Math.round(an.minFilletAtMM)} мм — острые углы в гипсовой форме выкрашиваются.`, 'plaster-tooling');
 
   if (an.hasFoot)
@@ -236,14 +237,14 @@ export function toolingNumbers(state, prod, an, procId) {
     ? proc.pressureMPa.map(p => p * projAreaMM2 / 1000)      // МПа·мм² → кН
     : null;
 
-  const blankG = prod.massF * (1 + LIMITS.flashPct / 100);
+  const blankG = prod.massF * (1 + tune('flashPct') / 100);
 
   return {
     proc, mat, shrink: sh, model, fired,
     projAreaMM2,
     forceKN: force,
     forceTons: force ? force.map(f => f / 9.80665) : null,
-    blankG, flashPct: LIMITS.flashPct,
+    blankG, flashPct: tune('flashPct'),
     pieceG: prod.massF,
     partingY: an.partingY,
     parts: an.parts,

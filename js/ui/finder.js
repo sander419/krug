@@ -40,6 +40,8 @@ const ACTIONS = [
   {name: 'Экспорт GLB', ico: 'download', btn: 'glbBtn', keys: 'выгрузка витрина'},
   {name: 'Отменить', ico: 'undo-2', btn: 'undoBtn', keys: 'назад ctrl+z'},
   {name: 'Повторить', ico: 'redo-2', btn: 'redoBtn', keys: 'вперёд'},
+  {name: 'Настройки расчёта', ico: 'sliders-horizontal', btn: 'tuneBtn',
+   keys: 'пороги зазоры уклон облой замки допуски свои значения'},
   {name: 'Сбросить раскладку', ico: 'rotate-ccw', btn: 'resetLayoutBtn', keys: 'колонки блоки порядок'},
   {name: 'Крупнее интерфейс', ico: 'zoom-in', btn: 'uiUpBtn', keys: 'масштаб шрифт больше'},
   {name: 'Мельче интерфейс', ico: 'zoom-out', btn: 'uiDownBtn', keys: 'масштаб шрифт меньше'},

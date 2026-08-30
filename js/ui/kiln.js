@@ -11,6 +11,7 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { KILNS, byKilnId } from '../config/kilns.js';
 import { kilnEconomy, firedSize } from '../core/kiln.js';
+import { tune } from '../core/tuning.js';
 import { userProfileMM } from '../core/math.js';
 import { partMetrics } from '../core/parts.js';
 import { byId } from '../config/materials.js';
@@ -112,7 +113,8 @@ export function syncKiln() {
         <p class="tool-note">${load}</p>
         ${money}
         <p class="hint">Изделие после обжига ⌀${Math.round(item.d)}×${Math.round(item.h)} мм,
-          с зазорами по 15 мм между соседями и 25 мм до стенки.</p>
+          с зазорами по ${tune('gapItem')} мм между соседями и ${tune('gapWall')} мм до стенки
+          <span class="dim">(меняются в настройках расчёта)</span>.</p>
       </div>
     </div>
     ${tooHot ? `<p class="tool-note bad">Масса просит ${topC} °C, печь держит ${k.maxC} °C —

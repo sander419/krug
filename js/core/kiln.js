@@ -9,7 +9,11 @@
 // Раскладка считается рядами, как ставят руками: квадратной сеткой и сеткой
 // со сдвигом через ряд, берётся та, где помещается больше. Это не оптимальная
 // упаковка кругов — оптимальную никто и не выкладывает у горячей печи.
-import { GAPS, DUTY, BISQUE_C } from '../config/kilns.js';
+
+import { tune } from './tuning.js';
+
+/* Зазоры и режим печи — из настроек расчёта; умолчания те же, что в реестре. */
+const gap = () => ({item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')});
 
 /** Габарит изделия после обжига: диаметр с прилепами и высота, мм. */
 export function firedSize(prof, parts, shrinkPct) {
@@ -67,17 +71,18 @@ function inBox(W, H, d) {
  * @returns {{perShelf:number, tiers:number, total:number, pts:Array, shelf:{form:string,w:number,h:number}, why:string}}
  */
 export function kilnLoad(kiln, item) {
-  const step = item.d + GAPS.item;                       // пятно изделия с зазором
-  const tierH = item.h + kiln.shelfMM + GAPS.tier;
+  const g = gap();
+  const step = item.d + g.item;                          // пятно изделия с зазором
+  const tierH = item.h + kiln.shelfMM + g.tier;
   const [a, b, c] = kiln.innerMM;
 
   let fit, shelf;
   if (kiln.form === 'round') {
-    const D = a - 2 * GAPS.wall;
+    const D = a - 2 * g.wall;
     fit = inCircle(D, step);
     shelf = {form: 'round', w: D, h: D};
   } else {
-    const W = a - 2 * GAPS.wall, Dp = b - 2 * GAPS.wall;
+    const W = a - 2 * g.wall, Dp = b - 2 * g.wall;
     fit = inBox(W, Dp, step);
     shelf = {form: 'box', w: W, h: Dp};
   }
@@ -99,13 +104,13 @@ export function kilnLoad(kiln, item) {
 export function firingCost(kiln, {topC, glaze, rampCH = 150, soakMin = 20, priceKWh = 6}) {
   const cycle = t => (t / Math.max(rampCH, 20)) + soakMin / 60;   // ч: подъём и выдержка
   const runs = glaze
-    ? [{name: 'утильный', c: BISQUE_C}, {name: 'политой', c: topC}]
+    ? [{name: 'утильный', c: tune('bisqueC')}, {name: 'политой', c: topC}]
     : [{name: 'единственный', c: topC}];
   let hours = 0, kWh = 0;
   for (const r of runs) {
     const h = cycle(r.c);
     hours += h;
-    kWh += kiln.powerKW * h * DUTY;
+    kWh += kiln.powerKW * h * tune('duty');
   }
   return {runs: runs.length, hours, kWh, rub: kWh * priceKWh, names: runs.map(r => r.name)};
 }

@@ -3,6 +3,7 @@ import { PRESETS } from '../config/data.js';
 import { MATERIALS, LEGACY_CLAY_INDEX } from '../config/materials.js';
 import { GLAZES } from '../config/glazes.js';
 import { sanitizePart } from './parts.js';
+import { sanitizeTune } from './tuning.js';
 import { clamp } from './util.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
@@ -31,6 +32,8 @@ export const state = {
   kiln: {id: 'studio-60', kwh: 6},
   // литьё: замер набора стенки и свойства шликера — калибровка мастерской
   cast: {},
+  // свои пороги вместо умолчаний инструмента (js/config/tuning.js)
+  tune: {},
 };
 
 
@@ -38,7 +41,7 @@ export function encodeDNA(){
   const d = {v:6, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
-    pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast};
+    pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -78,6 +81,7 @@ export function applyDNA(code){
     // v3 и старше глазури не знали — остаётся прозрачная по умолчанию
     if(d.gid && GLAZES.some(g=>g.id===d.gid)) state.glazeId=d.gid;
     // v6 — список прилепов; в v5 была одна ручка с выключателем
+    state.tune = sanitizeTune(d.tn);
     if(d.ct&&typeof d.ct==='object') state.cast={...d.ct};
     if(d.kl&&typeof d.kl==='object')
       state.kiln={id:String(d.kl.id||'studio-60'), kwh:clamp(+d.kl.kwh||6,0,100),
