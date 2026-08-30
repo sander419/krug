@@ -26,6 +26,8 @@ const CHECKS = [
   ['Схема',        'check-sheet.mjs'],
   ['Настройки',    'check-tuning.mjs'],
   ['Крышка',       'check-lid.mjs'],
+  ['Деньги',       'check-cost.mjs'],
+  ['Путь',         'check-next.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
 ];
 

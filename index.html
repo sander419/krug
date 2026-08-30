@@ -22,6 +22,8 @@
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
   <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
+  <button class="btn adv-chip" id="advBtn" aria-pressed="false" hidden
+          title="Показать инженерные блоки"></button>
   <button class="btn icon head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)" aria-label="Поиск по инструменту"></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
@@ -75,6 +77,7 @@
           <button class="pop-item" id="objBtn" data-icon="box">OBJ — для 3D-редакторов</button>
           <button class="pop-item" id="glbBtn" data-icon="package">GLB — вид как на экране</button>
           <button class="pop-item" id="snapBtn" data-icon="camera">Снимок вида в PNG</button>
+          <button class="pop-item" id="sheetBtn" data-icon="file-text">Схема изделия — лист A3 в SVG</button>
           <button class="pop-item" id="dnaBtn" data-icon="dna">ДНК формы — ссылкой</button>
           <button class="pop-item" id="embedBtn" data-icon="code">Код встраивания витрины</button>
         </div>
@@ -87,17 +90,29 @@
   <!-- ================= панель управления ================= -->
   <aside id="panel">
     <button class="sheet-grip" id="sheetGrip" aria-label="Развернуть или свернуть панель настроек"><i></i></button>
+    <div class="next-bar" id="nextBar" aria-label="Что делать дальше"></div>
     <nav class="tabs" aria-label="Разделы настроек">
+      <button class="tab" data-tab="prod"><i>1</i>Производство</button>
       <button class="tab active" data-tab="form"><i>1</i>Форма</button>
       <button class="tab" data-tab="mat"><i>2</i>Масса</button>
       <button class="tab" data-tab="print"><i>3</i>Печать</button>
       <button class="tab" data-tab="glaze"><i>4</i>Глазурь</button>
+      <button class="tab" data-tab="money"><i>5</i>Деньги</button>
       <button class="tab" data-tab="tool"><i>5</i>Оснастка</button>
       <button class="tab" data-tab="cast"><i>6</i>Отливка</button>
     </nav>
 
     <div class="panel-scroll">
     <div class="panes">
+      <!-- ---------- Производство ---------- -->
+      <section class="tabpane" data-pane="prod">
+        <p class="pane-intro">Работы в производстве: сколько штук нужно, сколько форм и обжигов это значит, во что обходится штука и какая с неё маржа. Работы берутся из сохранённых — «Работы» в шапке.</p>
+        <details class="block" data-block="projects" open>
+          <summary class="block-title">Активные работы</summary>
+          <div class="block-body" id="prodBody"></div>
+        </details>
+      </section>
+
       <!-- ---------- Форма ---------- -->
       <section class="tabpane active" data-pane="form">
         <p class="pane-intro">Силуэт, размеры и прилепы. Тяните точки на чертеже или возьмите пресет; ручки и носики добавляются здесь же — всё остальное считается от этой формы.</p>
@@ -304,7 +319,7 @@
           <div class="block-body" id="glzCoat"></div>
         </details>
 
-        <details class="block" data-block="seger">
+        <details class="block" data-block="seger" data-adv>
           <summary class="block-title">Формула Зегера
             <button class="help-dot" data-kb="umf" data-icon="circle-help" data-icon-size="15" title="Как читать UMF" aria-label="Справка о формуле Зегера"></button>
           </summary>
@@ -336,6 +351,44 @@
             </div>
             <p class="note">Сумма флюсов = 1,0. Диаграмма Сталла — зоны поверхности при конусе 6. ΔCTE — прогноз цека или отскока относительно черепка выбранной массы.</p>
           </div>
+        </details>
+      </section>
+
+      <!-- ---------- Деньги ---------- -->
+      <section class="tabpane" data-pane="money">
+        <p class="pane-intro">Во сколько обходится изделие и почём его продавать. Ниже — тираж: те же числа на партию.</p>
+
+        <details class="block" data-block="piececost" open>
+          <summary class="block-title">Во сколько обойдётся изделие
+            <button class="help-dot" data-kb="choose-mass" data-icon="circle-help" data-icon-size="15"
+                    title="Откуда берутся цифры" aria-label="Справка о себестоимости"></button>
+          </summary>
+          <div class="block-body" id="costBody"></div>
+        </details>
+
+        <details class="block" data-block="batch">
+          <summary class="block-title">Тираж: сколько и почём</summary>
+          <div class="block-body" id="batchBody"></div>
+        </details>
+
+        <details class="block" data-block="economy" data-adv>
+        <summary class="block-title">Тираж и экономика</summary>
+        <div class="block-body">
+        <label class="field-row"><span>Партия</span>
+        <input type="number" id="toolBatch" min="1" max="1000000" step="10" inputmode="numeric"><i class="unit">шт</i></label>
+        <p class="tool-note" id="toolBatchOut"></p>
+        <label class="field-row"><span>Цикл на изделие</span>
+        <input type="number" id="econCycle" min="5" max="600" step="5" inputmode="numeric"><i class="unit">с</i></label>
+        <label class="field-row"><span>Комплект оснастки</span>
+        <input type="number" id="econTool" min="0" max="10000000" step="5000" inputmode="numeric"><i class="unit">₽</i></label>
+        <p class="hint">Гипсовая форма для литья и пресс-форма для штамповки стоят разного порядка — подставьте цену своего изготовителя.</p>
+        <label class="field-row"><span>Ставка с накладными</span>
+        <input type="number" id="econRate" min="0" max="100000" step="50" inputmode="numeric"><i class="unit">₽/ч</i></label>
+        <label class="field-row"><span>Вручную на круге</span>
+        <input type="number" id="econManual" min="1" max="200" step="1" inputmode="numeric"><i class="unit">шт/ч</i></label>
+        <div id="econOut"></div>
+        <p class="note">Цикл, стоимость оснастки и ставка — ваши цифры, инструмент их не знает. Цена массы берётся из фасовки в паспорте и считается ориентиром.</p>
+        </div>
         </details>
       </section>
 
@@ -408,32 +461,12 @@
           </div>
         </details>
 
-        <details class="block" data-block="economy">
-          <summary class="block-title">Тираж и экономика</summary>
-          <div class="block-body">
-            <label class="field-row"><span>Партия</span>
-              <input type="number" id="toolBatch" min="1" max="1000000" step="10" inputmode="numeric"><i class="unit">шт</i></label>
-            <p class="tool-note" id="toolBatchOut"></p>
-            <label class="field-row"><span>Цикл на изделие</span>
-              <input type="number" id="econCycle" min="5" max="600" step="5" inputmode="numeric"><i class="unit">с</i></label>
-            <label class="field-row"><span>Комплект оснастки</span>
-              <input type="number" id="econTool" min="0" max="10000000" step="5000" inputmode="numeric"><i class="unit">₽</i></label>
-            <p class="hint">Гипсовая форма для литья и пресс-форма для штамповки стоят разного порядка — подставьте цену своего изготовителя.</p>
-            <label class="field-row"><span>Ставка с накладными</span>
-              <input type="number" id="econRate" min="0" max="100000" step="50" inputmode="numeric"><i class="unit">₽/ч</i></label>
-            <label class="field-row"><span>Вручную на круге</span>
-              <input type="number" id="econManual" min="1" max="200" step="1" inputmode="numeric"><i class="unit">шт/ч</i></label>
-            <div id="econOut"></div>
-            <p class="note">Цикл, стоимость оснастки и ставка — ваши цифры, инструмент их не знает. Цена массы берётся из фасовки в паспорте и считается ориентиром.</p>
-          </div>
-        </details>
-
         <details class="block" data-block="export" open>
           <summary class="block-title">Выгрузка</summary>
           <div class="block-body">
             <button class="btn primary wide" id="toolCard">Техкарта оснастки</button>
-            <button class="btn wide" id="toolSheet" data-icon="file-text"
-                    title="Лист с тремя видами, размерами и таблицей данных — для передачи на производство">Схема изделия (SVG)</button>
+            <p class="hint">Схема изделия (лист A3 с тремя видами) уехала в меню «Экспорт» в шапке:
+              она нужна из любой задачи, а не только отсюда.</p>
             <p class="note">Расчёт для тел вращения: ручки, носики и несимметричные элементы не учитываются. Пороги уклона и толщины — умолчания инструмента, а не отраслевой норматив. Расширение гипса при схватывании в коэффициент усадки не заложено.</p>
             <p class="note src-list" id="toolSrc"></p>
           </div>

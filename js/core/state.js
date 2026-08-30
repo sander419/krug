@@ -5,6 +5,7 @@ import { GLAZES } from '../config/glazes.js';
 import { sanitizePart } from './parts.js';
 import { sanitizeTune } from './tuning.js';
 import { sanitizeLid } from './lid.js';
+import { sanitizeCost } from './cost.js';
 import { clamp } from './util.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
@@ -39,6 +40,9 @@ export const state = {
   kiln: {id: 'studio-60', kwh: 6},
   // литьё: замер набора стенки и свойства шликера — калибровка мастерской
   cast: {},
+  /* Деньги мастерской: ставка, минуты на изделие, цена глазури, брак, наценка
+     и размер тиража. Это числа конкретной мастерской, а не паспорт материала. */
+  cost: {},
   /* Гипс формовщика: марка и водогипсовое отношение. Выбор один на все формы —
      и на матрицу под штамповку, и на форму под отливку, — поэтому живёт
      в состоянии, а не в модуле одной вкладки. */
@@ -53,7 +57,7 @@ export function encodeDNA(){
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune, ld:state.lid,
-    ps:state.plaster};
+    ps:state.plaster, cs:state.cost};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -96,6 +100,7 @@ export function applyDNA(code){
     state.tune = sanitizeTune(d.tn);
     state.lid = sanitizeLid(d.ld);
     if(d.ct&&typeof d.ct==='object') state.cast={...d.ct};
+    if(d.cs&&typeof d.cs==='object') state.cost=sanitizeCost(d.cs);
     if(d.ps&&typeof d.ps==='object')
       state.plaster={id:String(d.ps.id||'gvvs-16'), wr:clamp(+d.ps.wr||70,20,200)};
     if(d.kl&&typeof d.kl==='object')
@@ -108,4 +113,21 @@ export function applyDNA(code){
       al: clamp(+d.gz.al||.35,.1,.6), si: clamp(+d.gz.si||4.2,1.5,7), ca: clamp(+d.gz.ca||.7,0,1)});
     return true;
   }catch(e){ return false; }
+}
+
+/**
+ * Посчитать что-нибудь по чужой ДНК, не трогая текущую работу.
+ * «Производство» показывает числа по каждой сохранённой работе, а считают их
+ * те же функции, что и для открытой: они читают глобальное состояние. Поэтому
+ * состояние подменяется на время расчёта и возвращается назад — иначе список
+ * работ переписывал бы то, что человек сейчас держит на экране.
+ */
+export function withDNA(code, fn){
+  const snap = JSON.parse(JSON.stringify(state));
+  try{
+    if(!applyDNA(code)) return null;
+    return fn(state);
+  }finally{
+    Object.assign(state, snap);
+  }
 }

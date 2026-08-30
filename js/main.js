@@ -30,6 +30,9 @@ import { coatWarnings } from './core/glazeCoat.js';
 import { byGlazeId } from './config/glazes.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKiln, syncKiln } from './ui/kiln.js';
+import { initMoney, syncMoney } from './ui/money.js';
+import { initNext, syncNext, markExported } from './ui/next.js';
+import { initProduction, syncProduction } from './ui/production.js';
 import { initLid, syncLid } from './ui/lid.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
@@ -56,6 +59,9 @@ function refreshNow(){
   updateWarnings(warn.filter(w=>!w.area||tabs.includes(w.area)));
   updateCoatPanel();
   syncKiln();          // садка зависит от габарита после усадки
+  syncMoney();         // себестоимость зависит от массы, садки и глазури
+  syncNext({prod, warnings: warn});   // шаг «дальше» — от замечаний, печи и сметы
+  syncProduction();    // список работ считается тем же ядром
   syncLid();           // зазор посадки зависит от массы и стенки
   updateMechanics();
   drawEditor();
@@ -149,6 +155,9 @@ step('картинка',()=>initPhoto(info=>{
 step('обучение',()=>initKB());
 step('библиотека масс',()=>initLibrary());
 step('печь',()=>initKiln());
+step('деньги',()=>initMoney());
+step('дальше',()=>initNext());
+step('производство',()=>initProduction());
 step('крышка',()=>initLid());
 step('оснастка',()=>initTooling());
 step('глазурь',()=>{initGlazeLab();syncGlaze();});
@@ -188,8 +197,8 @@ $('embedBtn').onclick=()=>{
   toast('Код встраивания 3D-витрины скопирован (headless-плеер для e-commerce)');
 };
 const shrinkNow=()=>byId(state.mat).shrinkPct;
-$('stlBtn').onclick=()=>{exportSTL(state);toast('STL сохранён · сырой размер в мм, как печатать · после обжига −'+shrinkNow()+'%');};
-$('objBtn').onclick=()=>{exportOBJ(state);toast('OBJ сохранён · сырой размер в мм');};
+$('stlBtn').onclick=()=>{exportSTL(state);markExported();toast('STL сохранён · сырой размер в мм, как печатать · после обжига −'+shrinkNow()+'%');};
+$('objBtn').onclick=()=>{exportOBJ(state);markExported();toast('OBJ сохранён · сырой размер в мм');};
 $('glbBtn').onclick=()=>exportGLB(state,()=>toast('GLB сохранён · вид как на экране, с учётом усадки'),()=>toast('Ошибка экспорта GLB'));
 $('snapBtn').onclick=()=>snapshot(state,()=>toast('Снимок сохранён'));
 

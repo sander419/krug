@@ -172,13 +172,16 @@ function bind() {
   });
 }
 
-/** Цена обжига одного изделия — для себестоимости в «Оснастке». null, если не влезает. */
-export function kilnPerItem() {
+/** Садка и цена обжига текущего изделия: {load, cost, perItem}. */
+export function kilnNumbers() {
   const k = kilnNow(), mat = byId(state.mat), fire = mat.firing || {};
   const topC = (fire.glazeC && fire.glazeC[1]) || (fire.bisqueC && fire.bisqueC[1]) || 1050;
   return kilnEconomy(k, itemNow(), {
     topC, glaze: state.firing === 'glaze', priceKWh: (state.kiln || {}).kwh || 6,
-  }).perItem;
+  });
 }
+
+/** Цена обжига одного изделия — для себестоимости. null, если не влезает. */
+export function kilnPerItem() { return kilnNumbers().perItem; }
 
 export function initKiln() { syncKiln(); }

@@ -16,6 +16,7 @@ import { partMouldFeatures, partMouldBlock } from '../js/three/partMould.js';
 import { kilnLoad, firingCost } from '../js/core/kiln.js';
 import { castMouldNumbers } from '../js/three/castMould.js';
 import { byKilnId } from '../js/config/kilns.js';
+import { pieceCost } from '../js/core/cost.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -113,6 +114,10 @@ const PROBES = {
   gapTier: () => kilnLoad(kiln, {d: 120, h: 200}).tiers,
   duty: () => firingCost(kiln, {topC: 1050, glaze: false, priceKWh: 6}).kWh,
   bisqueC: () => firingCost(kiln, {topC: 1050, glaze: true, priceKWh: 6}).kWh,
+  /* Расход глазури входит в себестоимость изделия: больше грамм на квадрат —
+     дороже штука. Смотрим на итог сметы, а не на промежуточную массу. */
+  glazeGperCm2: () => pieceCost(state, computeProduction(state), userProfileMM(state),
+    {glazeRubPerKg: 1200}).total.toFixed(4),
 };
 
 for (const t of TUNING) {

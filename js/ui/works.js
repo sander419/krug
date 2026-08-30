@@ -9,6 +9,7 @@ import { $, esc } from './dom.js';
 import { anchorPop } from './pop.js';
 import { icon } from './icons.js';
 import { state, encodeDNA, applyDNA } from '../core/state.js';
+import { emit } from '../core/bus.js';
 
 const KEY = 'krug.works';
 const LIMIT = 40;
@@ -17,6 +18,9 @@ let onOpen = null;
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (_) { return []; }
 }
+
+/** Список работ для «Производства»: [{id, name, dna, ts}]. */
+export const savedWorks = () => load();
 function save(list) {
   try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, LIMIT))); } catch (_) {}
 }
@@ -54,7 +58,8 @@ function render() {
     <p class="note">Список живёт в этом браузере: у КРУГа нет сервера. Чтобы работа
       пережила смену устройства, скопируйте ДНК — она лежит в ссылке.</p>`;
 
-  $('workSave').onclick = () => { saveCurrent(); render(); };
+  // список работ читает «Производство» — после правки списка его надо пересобрать
+  $('workSave').onclick = () => { saveCurrent(); render(); emit(); };
   $('worksPop').querySelectorAll('[data-open]').forEach(b => {
     b.onclick = () => {
       const w = load().find(x => x.id === b.dataset.open);
@@ -62,7 +67,7 @@ function render() {
     };
   });
   $('worksPop').querySelectorAll('[data-del]').forEach(b => {
-    b.onclick = () => { save(load().filter(x => x.id !== b.dataset.del)); render(); };
+    b.onclick = () => { save(load().filter(x => x.id !== b.dataset.del)); render(); emit(); };
   });
 }
 

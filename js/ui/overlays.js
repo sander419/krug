@@ -31,13 +31,14 @@ export function updateStats(prod,str,tris){
       <b>${state.hollow?Math.round(prod.cutBySpout?prod.fillMl:prod.capMl)+' мл':'— сплошная'}</b>
       ${prod.cutBySpout?`<span class="k">до ${prod.fillBy==='lip'?'слива':'носика'} · ${Math.round(prod.capMl)} до кромки</span>`:''}
     </div>
+    <div class="chip"><span class="k">Стенка</span><b>${state.wall} мм</b><span class="k">усадка −${sh} %</span></div>
     <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b>${prod.lidMl?`<span class="k">из них крышка ${Math.round(prod.lidMl)}</span>`:''}</div>
     <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>
     <div class="chip"><span class="k">Масса изделия</span><b>${fmtG(prod.massF)}</b></div>
-    <div class="chip"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
+    <div class="chip" data-adv><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
     <div class="chip"><span class="k">Устойчивость</span><b>${prod.angle.toFixed(0)}°</b></div>
     <div class="chip"><span class="k">Прочность стенки</span><b class="${sfCls}">${str.minSF.toFixed(1)}× · ${atLevel(str.minY)}</b></div>
-    <div class="chip"><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
+    <div class="chip" data-adv><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
 }
 export function updateWarnings(list){
   $('warnList').innerHTML=list.map(w=>

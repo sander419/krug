@@ -77,6 +77,26 @@ export function initTabs(){
   show(tabs.some(t=>t.dataset.tab===saved)?saved:'form');
 }
 
+/** Открыть блок по имени и подсветить: задача ведёт человека к делу,
+    а не к первой вкладке. Тем же приёмом ходит поиск (js/ui/finder.js). */
+export function openBlock(name){
+  const d=document.querySelector(`[data-block="${name}"]`);
+  if(!d) return false;
+  const pane=d.closest('.tabpane');
+  if(pane){
+    // вкладка спрятана задачей — вести туда нельзя: человек окажется на пустом
+    // экране и не поймёт, куда делась панель
+    const tab=document.querySelector(`.tab[data-tab="${pane.dataset.pane}"]`);
+    if(tab && tab.hidden) return false;
+    showTab(pane.dataset.pane);
+  }
+  d.open=true;
+  d.scrollIntoView({block:'nearest'});
+  d.classList.add('found');
+  setTimeout(()=>d.classList.remove('found'),1400);
+  return true;
+}
+
 /* Свёрнутые блоки запоминаются: человек настраивает панель под себя один раз.
    «Контроль мастера» — такой же блок: свёрнутым он отдаёт треть высоты панели,
    а сколько там замечаний, видно по счётчику в заголовке. */

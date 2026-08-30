@@ -20,6 +20,7 @@ import { sceneAPI } from '../three/scene.js';
 import { exportPathSTL, exportGeoSTL } from '../three/exporters.js';
 import { kilnPerItem } from './kiln.js';
 import { renderCasting } from './casting.js';
+import { markExported } from './next.js';
 import { partCurve } from '../core/parts.js';
 import { encodeDNA } from '../core/state.js';
 import { castingPlan } from '../core/casting.js';
@@ -410,10 +411,16 @@ export function initTooling() {
       {...econ, firePerPiece: kilnPerItem() || 0},
       {mould, plasterId: plasterState().id, waterRatio: plasterState().wr});
     download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
+    markExported();
     toast('Техкарта сохранена');
   };
-  $('toolSheet').onclick = () => {
+  /* Кнопка листа живёт в меню «Экспорт» в шапке: лист нужен из любой задачи,
+     а вкладка «Оснастка» есть не у всех. Обработчик остался здесь — рядом
+     с расчётом, который лист и собирает. */
+  const sheetBtn = $('sheetBtn');
+  if (sheetBtn) sheetBtn.onclick = () => {
     download(new Blob([sheetSVG()], {type: 'image/svg+xml'}), fileName(state, 'схема.svg'));
+    markExported();
     toast('Схема сохранена: три вида, размеры и таблица данных');
   };
   onChange(render);      // рецепт изменился — пересчитать оснастку
