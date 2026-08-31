@@ -1,118 +1,121 @@
 // file: js/ui/works.js
-// Сохранённые работы. Автосохранение возвращает последнюю форму, ссылка передаёт
-// её другому человеку — но обе не дают держать несколько работ рядом и вернуться
-// к позавчерашней. Здесь именованный список: та же ДНК плюс имя и дата.
+// Мост между открытым рецептом и списком изделий.
 //
-// Всё лежит в localStorage этого браузера: сервера у КРУГа нет и не будет,
-// и человеку об этом сказано прямо — иначе «сохранено» читается как «в облаке».
-import { $, esc } from './dom.js';
-import { anchorPop } from './pop.js';
-import { icon } from './icons.js';
+// Сохранённая работа — это ДНК плюс производственный контекст (этап, факт,
+// заметка); хранилище и схема живут в js/core/works.js, экран со списком —
+// в js/ui/worksScreen.js. Здесь только связь с текущим состоянием: что сейчас
+// открыто, как это сохранить и как открыть другое.
+//
+// Раньше список жил во всплывающей панели в шапке. Для версии 1.0 он стал
+// главным экраном: мастер приходит не «строить профиль», а доделать своё
+// изделие, и список — то, с чего он начинает.
+//
+// Всё лежит в localStorage этого браузера: сервера у КРУГа нет, и человеку
+// об этом сказано прямо — иначе «сохранено» читается как «в облаке».
 import { state, encodeDNA, applyDNA } from '../core/state.js';
-import { emit } from '../core/bus.js';
+import { loadWorks, getWork, upsertWork, patchWork, blankWork } from '../core/works.js';
+import { sceneAPI } from '../three/scene.js';
 
-const KEY = 'krug.works';
-const LIMIT = 40;
+const KEY_CUR = 'krug.work.current';
 let onOpen = null;
+let currentId = null;
 
-function load() {
-  try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (_) { return []; }
+try { currentId = localStorage.getItem(KEY_CUR) || null; } catch (_) {}
+
+/** Список изделий: тот же, что показывает экран «Мои изделия». */
+export const savedWorks = () => loadWorks();
+
+/** Какая работа сейчас открыта. null — рецепт ещё не сохраняли. */
+export function currentWork() {
+  if (!currentId) return null;
+  const w = getWork(currentId);
+  if (!w) { currentId = null; remember(); }
+  return w;
+}
+export const currentWorkId = () => currentId;
+
+function remember() {
+  try {
+    if (currentId) localStorage.setItem(KEY_CUR, currentId);
+    else localStorage.removeItem(KEY_CUR);
+  } catch (_) {}
 }
 
-/** Список работ для «Производства»: [{id, name, dna, ts}]. */
-export const savedWorks = () => load();
+/* Миниатюра — кадр сцены, уменьшенный до 320 px по ширине. Список изделий
+   без картинок читается как ведомость: человек узнаёт свою вазу по силуэту
+   быстрее, чем по имени «Ваза 3». */
+function thumbnail() {
+  try {
+    const r = sceneAPI.renderer();
+    if (!r) return '';
+    r.render(sceneAPI.scene(), sceneAPI.camera());
+    const src = r.domElement;
+    const w = 320, h = Math.round(src.height / src.width * w) || 240;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(src, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.72);
+  } catch (_) { return ''; }
+}
 
 /**
- * Открыть сохранённую работу целиком: применить ДНК и пересобрать панель.
- * «Производство» открывает работы тем же путём, что и список в шапке, — иначе
- * половина интерфейса (имя в шапке, ползунки, глазурь) остаётся от прежней.
+ * Сохранить открытый рецепт под новым именем. Возвращает запись.
+ * `opt.thumb === false` — без миниатюры: когда состояние подменено программно,
+ * на сцене всё ещё стоит прежняя модель, и картинка соврёт.
  */
-export function openWork(id) {
-  const w = load().find(x => x.id === id);
+export function saveCurrentAs(name, opt = {}) {
+  const rec = blankWork({
+    name: String(name || state.name || 'Без названия').trim(),
+    dna: encodeDNA(), thumb: opt.thumb === false ? '' : thumbnail(),
+  });
+  upsertWork(rec);
+  currentId = rec.id;
+  remember();
+  state.name = rec.name;
+  return rec;
+}
+
+/**
+ * Сохранить текущую работу: обновить открытую запись или завести новую.
+ * Возвращает имя — для сообщения.
+ */
+export function saveCurrent() {
+  const cur = currentWork();
+  if (cur) {
+    patchWork(cur.id, {name: state.name || cur.name, dna: encodeDNA(), thumb: thumbnail()});
+    return state.name || cur.name;
+  }
+  return saveCurrentAs(state.name || 'Без названия').name;
+}
+
+/** Открыть сохранённую работу целиком: рецепт и вся панель. */
+export function openWorkRecord(id) {
+  const w = getWork(id);
   if (!w || !applyDNA(w.dna)) return null;
+  currentId = w.id;
+  remember();
   if (onOpen) onOpen(w.name);
   return w.name;
 }
 
-/** Переписать ДНК сохранённой работы: «Производство» правит тираж прямо в списке. */
+/** Совместимость с прежним вызовом из «Производства». */
+export const openWork = openWorkRecord;
+
+/** Переписать ДНК сохранённой работы (правка тиража прямо в списке). */
 export function updateWorkDNA(id, dna) {
-  const list = load();
-  const w = list.find(x => x.id === id);
-  if (!w) return false;
-  w.dna = dna;
-  save(list);
-  return true;
-}
-function save(list) {
-  try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, LIMIT))); } catch (_) {}
+  return !!patchWork(id, {dna});
 }
 
-const when = ts => {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
-
-/** Сохранить текущую работу под её именем. Возвращает имя — для сообщения. */
-export function saveCurrent() {
-  const list = load();
-  const name = (state.name || 'Без названия').trim();
-  const same = list.findIndex(w => w.name === name);
-  if (same >= 0) list.splice(same, 1);        // одно имя — одна запись, а не десять «Ваза»
-  list.unshift({id: String(Date.now()), name, dna: encodeDNA(), ts: Date.now()});
-  save(list);
-  return name;
-}
-
-function render() {
-  const list = load();
-  const rows = list.length ? list.map(w => `
-    <div class="work-row">
-      <button class="work-open" data-open="${w.id}" title="Открыть эту работу">
-        <b>${esc(w.name)}</b><span>${when(w.ts)}</span>
-      </button>
-      <button class="work-del" data-del="${w.id}" title="Удалить из списка" aria-label="Удалить">${icon('trash-2', 14)}</button>
-    </div>`).join('')
-    : '<div class="empty">Пока пусто. Сохраните текущую работу — она останется в этом браузере.</div>';
-  $('worksPop').innerHTML = `
-    <button class="btn primary wide" id="workSave">${icon('save')}Сохранить текущую</button>
-    <div class="work-list">${rows}</div>
-    <p class="note">Список живёт в этом браузере: у КРУГа нет сервера. Чтобы работа
-      пережила смену устройства, скопируйте ДНК — она лежит в ссылке.</p>`;
-
-  // список работ читает «Производство» — после правки списка его надо пересобрать
-  $('workSave').onclick = () => { saveCurrent(); render(); emit(); };
-  $('worksPop').querySelectorAll('[data-open]').forEach(b => {
-    b.onclick = () => {
-      const w = load().find(x => x.id === b.dataset.open);
-      if (w && applyDNA(w.dna)) { close(); onOpen && onOpen(w.name); }
-    };
-  });
-  $('worksPop').querySelectorAll('[data-del]').forEach(b => {
-    b.onclick = () => { save(load().filter(x => x.id !== b.dataset.del)); render(); emit(); };
-  });
-}
-
-let detach = null;
-
-function close() {
-  $('worksPop').classList.remove('open');
-  $('worksBtn').setAttribute('aria-expanded', 'false');
-  if (detach) { detach(); detach = null; }   // иначе слежение висит после закрытия
-}
+/** Оставить работу в списке, но забыть, что она открыта. */
+export function forgetCurrent() { currentId = null; remember(); }
 
 export function initWorks(openedFn) {
   onOpen = openedFn;
-  render();
-  $('worksBtn').onclick = e => {
-    e.stopPropagation();
-    const pop = $('worksPop');
-    if (pop.classList.contains('open')) { close(); return; }
-    render();
-    pop.classList.add('open');
-    $('worksBtn').setAttribute('aria-expanded', 'true');
-    detach = anchorPop($('worksBtn'), pop);
-  };
-  document.addEventListener('click', e => { if (!e.target.closest('#worksPop,#worksBtn')) close(); });
-  addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  /* Ctrl+S — сохранить: единственная горячая клавиша, которую тут ждут. */
+  addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveCurrent();
+    }
+  });
 }

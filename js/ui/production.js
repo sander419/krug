@@ -22,7 +22,7 @@ import { plasterMix } from '../config/plasters.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById } from '../config/processes.js';
 import { byGlazeId } from '../config/glazes.js';
-import { savedWorks, updateWorkDNA, saveCurrent, openWork } from './works.js';
+import { savedWorks, updateWorkDNA, saveCurrent, saveCurrentAs, openWork } from './works.js';
 import { PRESETS } from '../config/data.js';
 import { MATERIALS } from '../config/materials.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
@@ -152,7 +152,9 @@ function addDemo() {
       state.lid = {on: false};
       state.parts = [];
       state.cost = {...sanitizeCost(state.cost), n: d.n};
-      saveCurrent();
+      /* Именно saveCurrentAs: saveCurrent обновил бы одну и ту же запись,
+         и три примера легли бы друг на друга. */
+      saveCurrentAs(d.name, {thumb: false});
     }
   } finally {
     Object.assign(state, snap);

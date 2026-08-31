@@ -19,6 +19,7 @@ import { initFinder } from './ui/finder.js';
 import { initTuning } from './ui/tuning.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent } from './ui/works.js';
+import { openWorksScreen } from './ui/worksScreen.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
@@ -183,7 +184,10 @@ step('раскладка',()=>initLayout());
 step('телефон',()=>initMobile());
 step('кинотеатр',()=>initCinema(refreshNow));
 step('подсказка',()=>initGuide());
-step('работы',()=>initWorks(name=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView(); toast('Открыта работа «'+name+'»'); }));
+step('изделия',()=>{
+  initWorks(name=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView(); toast('Открыто изделие «'+name+'»'); });
+  $('worksBtn').onclick=()=>openWorksScreen();
+});
 step('инструменты вида',()=>initTools(refreshNow));
 
 $('nameInput').addEventListener('input',e=>{state.name=e.target.value;scheduleHash();});

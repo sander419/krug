@@ -1039,28 +1039,99 @@ body.learning main,body.learning #metrics{display:none;}
 /* ---------- выбор окружения ---------- */
 #viewport[data-env="studio"] .vignette,
 #viewport[data-env="tech"] .vignette{display:none;}
-.works-wrap{position:relative;display:flex;}
-/* координаты ставит js/ui/pop.js (Floating UI): панель сама переворачивается
-   и подвигается, когда упирается в край окна */
-.works-pop{
-  display:none;position:fixed;top:0;left:0;z-index:40;
-  width:min(320px,88vw);padding:10px;flex-direction:column;gap:10px;
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:0 18px 40px var(--shade);
+/* ---------- полноэкранный экран ---------- */
+/* Одна оболочка на «Мои изделия», паспорт, процесс, выпуск, материалы,
+   обжиги и сравнение. Экран накрывает мастерскую целиком: это отдельная
+   работа, а не всплывающая панель над чертежом. */
+#screenHost{
+  position:fixed;inset:0;z-index:95;display:none;padding:20px;overflow-y:auto;
+  overscroll-behavior:contain;
+  background:color-mix(in oklab, var(--bg) 84%, transparent);backdrop-filter:blur(6px);
 }
-.works-pop.open{display:flex;}
-.work-list{display:flex;flex-direction:column;gap:5px;max-height:46vh;overflow-y:auto;scrollbar-width:thin;}
-.work-row{display:flex;gap:5px;align-items:stretch;}
-.work-open{
-  flex:1;display:flex;flex-direction:column;gap:1px;text-align:left;cursor:pointer;color:var(--text);
-  background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;
+#screenHost.open{display:block;}
+body.screen-open{overflow:hidden;}
+.screen{
+  width:min(900px,100%);margin:0 auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius-lg);
+  box-shadow:0 26px 70px var(--shade);display:flex;flex-direction:column;
+  max-height:calc(100vh - 40px);
 }
-.work-open:hover{border-color:var(--accent);}
-.work-open b{font-size:var(--fs-sm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.work-open span{font-size:var(--fs-micro);color:var(--muted2);font-variant-numeric:tabular-nums;}
-.work-del{
-  flex:none;width:32px;border:1px solid var(--line);background:var(--panel2);color:var(--muted2);
-  border-radius:8px;cursor:pointer;display:grid;place-items:center;
+.screen.wide{width:min(1240px,100%);}
+.screen-head{
+  display:flex;align-items:flex-start;gap:var(--gap-2);
+  padding:20px 22px 14px;border-bottom:1px solid var(--line);
+}
+.screen-title{flex:1;min-width:0;}
+.screen-title h2{font-size:var(--fs-xl);}
+.screen-title p{font-size:var(--fs-sm);color:var(--muted);margin-top:4px;text-wrap:pretty;}
+.screen-body{padding:18px 22px 22px;overflow-y:auto;overscroll-behavior:contain;}
+.screen-note{font-size:var(--fs-xs);color:var(--muted2);line-height:1.6;margin-bottom:var(--gap-2);}
+.screen-empty{
+  padding:36px 20px;text-align:center;color:var(--muted);font-size:var(--fs-sm);
+  display:grid;gap:14px;justify-items:center;
+}
+@media (max-width:640px){
+  #screenHost{padding:0;}
+  .screen{border-radius:0;border:0;max-height:100vh;min-height:100vh;}
+  .screen-head{padding:14px 14px 10px;}
+  .screen-body{padding:14px;}
+}
+
+/* ---------- мои изделия ---------- */
+/* Список изделий переехал из всплывающей панели в шапке в полноэкранный
+   экран: он стал точкой входа, а не выпадашкой на десять строк. */
+.works-bar{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--gap-2);margin-bottom:var(--gap-2);
+}
+.works-search{
+  display:flex;align-items:center;gap:8px;flex:1;min-width:180px;
+  background:var(--field);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:0 12px;min-height:40px;color:var(--muted2);
+}
+.works-search input{
+  flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);
+  font:inherit;font-size:var(--fs-sm);padding:9px 0;
+}
+.works-sort{gap:8px;}
+.works-sort select{width:auto;min-width:150px;}
+
+.work-grid{display:grid;gap:var(--gap-2);grid-template-columns:repeat(auto-fill,minmax(340px,1fr));}
+.work-card{
+  display:grid;grid-template-columns:auto 1fr auto;gap:var(--gap-2);align-items:start;
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:12px;
+}
+.work-card.fav{border-color:color-mix(in oklab, var(--accent) 40%, var(--line));}
+.work-thumb{
+  width:104px;height:78px;border-radius:var(--radius-sm);overflow:hidden;flex:none;
+  border:1px solid var(--line);background:var(--sunken);cursor:pointer;padding:0;
+  display:grid;place-items:center;
+}
+.work-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.work-noimg{color:var(--muted2);}
+.work-main{display:grid;gap:5px;min-width:0;}
+.work-name{
+  background:none;border:none;padding:0;text-align:left;cursor:pointer;color:var(--text);
+  font:inherit;font-size:var(--fs-md);font-weight:650;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.work-name:hover{color:var(--accent2);}
+.work-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:var(--fs-xs);color:var(--muted);}
+.work-phase{
+  border:1px solid var(--line2);border-radius:999px;padding:1px 8px;color:var(--muted);
+}
+.work-phase[data-phase="done"]{color:var(--ok);border-color:var(--ok);}
+.work-phase[data-phase="draft"]{color:var(--muted2);}
+.work-flag{color:var(--warn);}
+.work-flag.bad{color:var(--bad);}
+.work-nums{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 0;font-size:var(--fs-xs);}
+.work-nums dt{color:var(--muted);display:inline;}
+.work-nums dd{display:inline;margin:0 0 0 5px;color:var(--text);font-variant-numeric:tabular-nums;font-weight:600;}
+.work-when{font-size:var(--fs-micro);color:var(--muted2);}
+.work-acts{display:flex;flex-direction:column;gap:4px;}
+@media (max-width:640px){
+  .work-grid{grid-template-columns:1fr;}
+  .work-card{grid-template-columns:auto 1fr;}
+  .work-acts{grid-column:1/-1;flex-direction:row;}
 }
 .work-del:hover{border-color:var(--bad);color:var(--bad);}
 .env-wrap{position:relative;display:flex;}

@@ -28,7 +28,7 @@ const ACTIONS = [
   {name: 'Как здесь работать', ico: 'circle-help', btn: 'guideBtn', keys: 'подсказка шаги помощь'},
   {name: 'Тема: светлая или тёмная', ico: 'sun', btn: 'themeBtn', keys: 'цвет ночь день'},
   {name: 'Окружение вокруг модели', ico: 'image', btn: 'envBtn', keys: 'фон студия сцена'},
-  {name: 'Сохранённые работы', ico: 'folder-open', btn: 'worksBtn', keys: 'открыть сохранить'},
+  {name: 'Мои изделия', ico: 'folder-open', btn: 'worksBtn', keys: 'работы открыть сохранить список избранное архив'},
   {name: 'Снимок вида в PNG', ico: 'camera', btn: 'snapBtn', keys: 'скриншот картинка'},
   {name: 'ДНК формы: ссылка', ico: 'dna', btn: 'dnaBtn', keys: 'поделиться рецепт ссылка'},
   {name: 'Код встраивания', ico: 'code', btn: 'embedBtn', keys: 'iframe витрина сайт'},
