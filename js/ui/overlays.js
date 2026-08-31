@@ -23,21 +23,31 @@ export function updateStats(prod,str,tris){
   const Hf=(state.H*(1-sh/100)/10).toFixed(1),Df=(state.D*(1-sh/100)/10).toFixed(1);
   const fmtG=g=>g>=1000?(g/1000).toFixed(2)+' кг':Math.round(g)+' г';
   const sfCls=str.minSF<1.5?'bad':str.minSF<2.5?'warn':'ok';
+  /* Одиннадцать плашек говорили о четырёх вещах. «Габариты на круге» и
+     «габариты после обжига» — одно число до и после усадки, и разница между
+     ними и есть смысл: теперь они в одной плашке со стрелкой. То же с глиной:
+     сколько взять и сколько останется. Объём, возврат и полигоны — инженерные,
+     они уходят в расширенный вид. Осталось шесть приборов вместо одиннадцати. */
   $('stats').innerHTML=`
-    <div class="chip"><span class="k">Габариты · круг</span><b>${Hs}×${Ds} см</b></div>
-    <div class="chip"><span class="k">Габариты · обжиг</span><b>${Hf}×${Df} см</b></div>
+    <div class="chip" title="Размеры на круге и после обжига: усадка ${sh} %">
+      <span class="k">Габариты, см</span>
+      <b>${Hs}×${Ds} <span class="to">→</span> ${Hf}×${Df}</b></div>
     <div class="chip" title="${prod.cutBySpout?(prod.fillBy==='lip'?'Слив опускает кромку: выше него не налить':'Носик режет уровень налива: выше него не налить'):'До кромки'}">
-      <span class="k">${prod.cutBySpout?'Наливается':'Вместимость'}</span>
-      <b>${state.hollow?Math.round(prod.cutBySpout?prod.fillMl:prod.capMl)+' мл':'— сплошная'}</b>
-      ${prod.cutBySpout?`<span class="k">до ${prod.fillBy==='lip'?'слива':'носика'} · ${Math.round(prod.capMl)} до кромки</span>`:''}
-    </div>
-    <div class="chip"><span class="k">Стенка</span><b>${state.wall} мм</b><span class="k">усадка −${sh} %</span></div>
-    <div class="chip"><span class="k">Объём глины</span><b>${Math.round(prod.volMl)} см³</b>${prod.lidMl?`<span class="k">из них крышка ${Math.round(prod.lidMl)}</span>`:''}</div>
-    <div class="chip"><span class="k">Глина нужна</span><b>${fmtG(prod.massN)}</b></div>
-    <div class="chip"><span class="k">Масса изделия</span><b>${fmtG(prod.massF)}</b></div>
+      <span class="k">${prod.cutBySpout?'Наливается до '+(prod.fillBy==='lip'?'слива':'носика'):'Вместимость'}</span>
+      <b>${state.hollow?Math.round(prod.cutBySpout?prod.fillMl:prod.capMl)+' мл':'сплошная'}</b></div>
+    <div class="chip" title="Толщина стенки на круге и усадка выбранной массы">
+      <span class="k">Стенка</span><b>${state.wall} мм <span class="to">·</span> −${sh} %</b></div>
+    <div class="chip" title="Сколько глины взять и сколько весит готовое изделие">
+      <span class="k">Глина <span class="to">→</span> изделие</span>
+      <b>${fmtG(prod.massN)} <span class="to">→</span> ${fmtG(prod.massF)}</b></div>
+    <div class="chip" title="Угол, при котором изделие опрокинется">
+      <span class="k">Устойчивость</span><b>${prod.angle.toFixed(0)}°</b></div>
+    <div class="chip" title="Запас прочности стенки при печати и где он самый малый">
+      <span class="k">Прочность стенки</span>
+      <b class="${sfCls}">${str.minSF.toFixed(1)}× <span class="to">·</span> ${atLevel(str.minY)}</b></div>
+    <div class="chip" data-adv><span class="k">Объём глины</span>
+      <b>${Math.round(prod.volMl)} см³${prod.lidMl?` <span class="to">·</span> крышка ${Math.round(prod.lidMl)}`:''}</b></div>
     <div class="chip" data-adv><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
-    <div class="chip"><span class="k">Устойчивость</span><b>${prod.angle.toFixed(0)}°</b></div>
-    <div class="chip"><span class="k">Прочность стенки</span><b class="${sfCls}">${str.minSF.toFixed(1)}× · ${atLevel(str.minY)}</b></div>
     <div class="chip" data-adv><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
 }
 export function updateWarnings(list){

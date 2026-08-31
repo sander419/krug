@@ -21,9 +21,11 @@
     <h1 class="brand-name">КРУГ</h1>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
-  <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
-  <button class="btn adv-chip" id="advBtn" aria-pressed="false" hidden
-          title="Показать инженерные блоки"></button>
+  <div class="head-group head-context">
+    <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
+    <button class="btn adv-chip" id="advBtn" aria-pressed="false" hidden
+            title="Показать инженерные блоки"></button>
+  </div>
   <button class="btn head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)"><span class="btn-label">Поиск</span><kbd class="btn-kbd">Ctrl K</kbd></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
@@ -34,13 +36,15 @@
     <span class="menu-cap">Название изделия</span>
     <input id="nameInput" name="ware-name" value="Ваза" title="Название изделия" spellcheck="false"
            autocomplete="off" enterkeyhint="done" aria-label="Название изделия">
+    <i class="kb-sep" aria-hidden="true"></i>
     <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>
     <div class="works-wrap">
       <button class="btn" id="worksBtn" data-icon="folder-open" aria-haspopup="true" aria-expanded="false" title="Сохранённые работы (Ctrl+S — сохранить)">Работы</button>
       <div class="works-pop" id="worksPop" role="menu" aria-label="Сохранённые работы"></div>
     </div>
     <div class="env-wrap">
-      <button class="btn icon" id="envBtn" data-icon="image" aria-haspopup="true" aria-expanded="false" aria-label="Окружение"></button>
+      <button class="btn icon" id="envBtn" data-icon="image" aria-haspopup="true" aria-expanded="false"
+              title="Окружение вокруг модели" aria-label="Окружение"></button>
       <div class="env-pop" id="envPop" role="menu" aria-label="Окружение вокруг модели"></div>
     </div>
 
@@ -68,6 +72,7 @@
       </div>
     </div>
 
+    <i class="kb-sep" aria-hidden="true"></i>
     <div class="export-group" role="group" aria-label="Экспорт модели">
       <span class="export-label" data-icon="download" data-icon-size="15">Экспорт</span>
       <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
@@ -555,15 +560,24 @@
   <!-- ================= 3D-модель ================= -->
   <section id="viewport" aria-label="Трёхмерный вид">
     <div class="vignette"></div>
+    <!-- Восемь иконок в ряд читались как одна панель без смысла: что показываем,
+         куда смотрим и как устроен экран — три разных дела. Теперь три группы,
+         и у каждой кнопки под курсором своя подпись. -->
     <div class="overlay view-tools" role="group" aria-label="Инструменты вида">
-      <button data-icon="rotate-cw" class="tool active" id="spinBtn" title="Вращение круга" aria-label="Вращение круга"></button>
-      <button data-icon="box" class="tool" id="wireBtn" title="Каркас" aria-label="Каркас"></button>
-      <button data-icon="activity" class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности"></button>
-      <button data-icon="zoom-in" class="tool" id="zoomInBtn" title="Приблизить (+)" aria-label="Приблизить"></button>
-      <button data-icon="zoom-out" class="tool" id="zoomOutBtn" title="Отдалить (−)" aria-label="Отдалить"></button>
-      <button data-icon="maximize" class="tool" id="fitBtn" title="Вписать в кадр (0)" aria-label="Вписать в кадр"></button>
-      <button data-icon="crosshair" class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру"></button>
-      <button data-icon="panel-left-close" class="tool" id="wsBtn" title="Режим мастерской — скрыть панель" aria-label="Режим мастерской"></button>
+      <div class="tool-group" role="group" aria-label="Что показывать">
+        <button data-icon="rotate-cw" class="tool active" id="spinBtn" title="Вращение круга" aria-label="Вращение круга"></button>
+        <button data-icon="box" class="tool" id="wireBtn" title="Каркас" aria-label="Каркас"></button>
+        <button data-icon="activity" class="tool" id="heatBtn" title="Карта прочности: риск осадки и обрушения при печати" aria-label="Карта прочности"></button>
+      </div>
+      <div class="tool-group" role="group" aria-label="Камера">
+        <button data-icon="zoom-in" class="tool" id="zoomInBtn" title="Приблизить (+)" aria-label="Приблизить"></button>
+        <button data-icon="zoom-out" class="tool" id="zoomOutBtn" title="Отдалить (−)" aria-label="Отдалить"></button>
+        <button data-icon="maximize" class="tool" id="fitBtn" title="Вписать в кадр (0)" aria-label="Вписать в кадр"></button>
+        <button data-icon="crosshair" class="tool" id="resetBtn" title="Сбросить камеру" aria-label="Сбросить камеру"></button>
+      </div>
+      <div class="tool-group" role="group" aria-label="Экран">
+        <button data-icon="panel-left-close" class="tool" id="wsBtn" title="Режим мастерской — скрыть панель" aria-label="Режим мастерской"></button>
+      </div>
     </div>
     <div class="overlay cinema">
       <button class="play-btn" id="playBtn" title="Проиграть процесс: комок → центровка → вскрытие → вытяжка → формовка → подрезка → обжиг" aria-label="Проиграть процесс">

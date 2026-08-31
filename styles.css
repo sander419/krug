@@ -148,6 +148,18 @@ header{
 .head-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 /* поиск стоит в самой шапке, а не в сворачиваемом меню: на телефоне это
    единственный способ добраться до вкладки в один тап, Ctrl+K там нет */
+/* Шапка — три группы, а не двенадцать равных кнопок: кто я и что делаю,
+   поиск, действия. Раньше всё стояло с одинаковым зазором, и глазу было
+   не за что зацепиться: каждая кнопка выглядела одинаково важной. */
+.head-group{display:flex;align-items:center;gap:6px;}
+.head-context{
+  padding-right:var(--gap-2);margin-right:2px;
+  border-right:1px solid var(--line);
+}
+.head-right{gap:8px;}
+.head-right .kb-sep{
+  width:1px;align-self:stretch;background:var(--line);margin:4px 2px;flex:none;
+}
 .head-find{flex:none;}
 /* Поиск без подписи — «загадочное мясо»: иконка лупы понятна не всем и не
    говорит, что искать. Подпись и горячая клавиша стоят рядом с ней. */
@@ -579,12 +591,15 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 .foot-count.bad{color:var(--bad);}
 .foot-count.warn{color:var(--warn);}
 .foot-count.ok{color:var(--ok);}
-.warn-list{display:flex;flex-direction:column;gap:8px;}
+.warn-list{display:flex;flex-direction:column;gap:0;}
+/* Замечание — строка списка, а не карточка внутри карточки: подвал панели уже
+   отделён фоном и линией, и вторая рамка внутри уводит взгляд от текста, ради
+   которого замечание и написано. Уровень говорит цвет значка, а не рамка. */
 .warn-item{
-  display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-sm);line-height:1.5;
-  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;
-  text-wrap:pretty;
+  display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-sm);line-height:1.55;
+  padding:9px 0;border-top:1px solid var(--line);text-wrap:pretty;
 }
+.warn-item:first-child{border-top:0;padding-top:2px;}
 
 
 
@@ -621,14 +636,21 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 #viewport canvas{display:block;position:absolute;inset:0;}
 .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 130px var(--vignette);}
 .overlay{position:absolute;z-index:3;}
-.view-tools{top:14px;right:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
-.tool{
-  width:38px;height:38px;border-radius:var(--radius);border:1px solid var(--line);
-  background:var(--chip);backdrop-filter:blur(8px);color:var(--text);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:border-color var(--dur) var(--ease),background .15s;
+/* Инструменты сцены: три группы — что показываем, куда смотрим, как устроен
+   экран. Внутри группы кнопки слиты в одну плашку, между группами — зазор:
+   восемь одинаковых квадратов в ряд не говорили, что с чем связано. */
+.view-tools{top:14px;right:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.tool-group{
+  display:flex;gap:2px;padding:3px;border-radius:var(--radius);
+  border:1px solid var(--line);background:var(--chip);backdrop-filter:blur(8px);
 }
-
-.tool:hover{border-color:var(--accent);}
+.tool{
+  width:36px;height:36px;border-radius:var(--radius-sm);border:1px solid transparent;
+  background:none;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.tool:hover{border-color:var(--line2);background:var(--panel2);}
 .tool.active{background:color-mix(in oklab, var(--accent) 28%, transparent);border-color:var(--accent);}
 
 .cinema{
@@ -678,6 +700,9 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 }
 .chip b.ok{color:var(--ok);} .chip b.warn{color:var(--warn);} .chip b.bad{color:var(--bad);}
 .chip .k{color:var(--muted);font-size:var(--fs-micro);line-height:1.2;letter-spacing:.01em;}
+/* Стрелка «до → после» и точка-разделитель внутри числа: они связывают два
+   значения в одно утверждение, но сами значением не являются. */
+.chip .to{color:var(--muted2);font-weight:400;}
 #verdictBadge{
   display:none;gap:9px;align-items:center;text-align:left;cursor:pointer;flex:none;max-width:38%;
   min-height:34px;background:var(--chip);border:1px solid color-mix(in oklab, var(--accent) 25%, transparent);
@@ -1633,6 +1658,7 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
   /* инструменты вида — строкой сверху справа, чтобы не съедать высоту сцены */
   .view-tools{top:10px;right:10px;flex-direction:row;gap:6px;flex-wrap:nowrap;}
   .tool{width:40px;height:40px;}
+  .tool-group{padding:2px;}
   /* на телефоне в строку помещается четыре кнопки: масштаб делается щипком,
      каркас и режим мастерской — вещи для большого экрана */
   #wsBtn,#zoomInBtn,#zoomOutBtn,#wireBtn{display:none;}
