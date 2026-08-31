@@ -391,15 +391,8 @@ header{
   box-shadow:0 18px 40px var(--shade);flex-direction:column;gap:2px;
 }
 .head-pop.open{display:flex;}
-.pop-row{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:6px 8px;font-size:var(--fs-sm);color:var(--muted);
-}
-.pop-row .seg{padding:3px;}
-.pop-row .seg button{min-width:36px;}
 /* Цветовая схема выбирается не названием, а самим цветом: кружок показывает
    фон, панель и акцент схемы разом — так видно, что получишь, до нажатия. */
-.pop-row-col{flex-direction:column;align-items:stretch;gap:8px;}
 .skin-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
 .skin-dot{
   display:flex;align-items:center;gap:8px;cursor:pointer;
@@ -1513,29 +1506,6 @@ body.screen-open{overflow:hidden;}
   .work-acts{grid-column:1/-1;flex-direction:row;}
 }
 .work-del:hover{border-color:var(--bad);color:var(--bad);}
-.env-wrap{position:relative;display:flex;}
-.env-pop{
-  display:none;position:fixed;top:0;left:0;
-  z-index:40;width:min(330px,88vw);padding:6px;
-  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:0 18px 40px var(--shade);
-}
-.env-pop.open{display:flex;flex-direction:column;gap:3px;}
-.env-item{
-  display:flex;gap:11px;align-items:center;text-align:left;cursor:pointer;color:var(--text);
-  background:none;border:1px solid transparent;border-radius:8px;padding:8px 10px;
-  transition:border-color var(--dur) var(--ease),background .15s;
-}
-.env-item:hover{background:var(--panel2);border-color:var(--line);}
-.env-item.active{background:color-mix(in oklab, var(--accent) 18%, transparent);border-color:var(--accent);}
-.env-ico{
-  flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
-  background:var(--sunken);border:1px solid var(--line);color:var(--accent2);
-}
-.env-item.active .env-ico{color:var(--accent);border-color:var(--accent);}
-.env-main{display:flex;flex-direction:column;gap:1px;min-width:0;}
-.env-main b{font-size:var(--fs-sm);}
-.env-main span{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;text-wrap:pretty;}
 /* Палец толще курсора. 44 px — не рекомендация, а размер подушечки: всё,
    во что целятся, обязано быть не мельче. Правило дублируется по ширине
    и по типу указателя: телефон узнаётся и так, и так, а проверка ширины
@@ -1550,9 +1520,6 @@ body.screen-open{overflow:hidden;}
   .prod-batch input{min-height:40px;}
 }
 
-@media (max-width:940px){
-  .env-pop{width:min(300px,80vw);}
-}
 
 /* нарисованная кривая прилепа: ползунков формы нет, их место занимает сводка */
 .part-drawn{
