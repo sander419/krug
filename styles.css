@@ -130,7 +130,7 @@ button,input,select{font-family:inherit;}
 
 /* ===================== шапка ===================== */
 header{
-  display:flex;align-items:center;gap:var(--gap-2);flex-wrap:wrap;
+  display:flex;align-items:center;gap:var(--gap-2);flex-wrap:nowrap;
   padding:10px 18px;border-bottom:1px solid var(--line);
   /* z-index выше строки метрик: та идёт следующей в потоке и накрывала собой
      выпадающее меню шапки на телефоне — нижние пункты становились недоступны */
@@ -142,9 +142,14 @@ header{
   box-shadow:0 0 0 3px #35271e, 0 0 0 4px var(--line2), 0 4px 14px color-mix(in oklab, var(--accent) 35%, transparent);
 }
 .logo::after{content:"";position:absolute;inset:9px;border-radius:50%;border:2px solid rgba(255,235,215,.35);}
-.brand{display:flex;flex-direction:column;gap:1px;}
+.brand{display:flex;flex-direction:column;gap:1px;min-width:0;}
 .brand-name{font-size:var(--fs-lg);font-weight:700;letter-spacing:.14em;}
-.brand-sub{font-size:var(--fs-xs);color:var(--muted);letter-spacing:.02em;}
+/* Путь задачи в подзаголовке — одна строка. У задачи «всё сразу» это восемь
+   вкладок: во вторую строку они удваивали высоту шапки и отбирали её у сцены. */
+.brand-sub{
+  font-size:var(--fs-xs);color:var(--muted);letter-spacing:.02em;
+  max-width:min(46ch,30vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 .head-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 /* поиск стоит в самой шапке, а не в сворачиваемом меню: на телефоне это
    единственный способ добраться до вкладки в один тап, Ctrl+K там нет */
@@ -156,7 +161,10 @@ header{
   padding-right:var(--gap-2);margin-right:2px;
   border-right:1px solid var(--line);
 }
-.head-right{gap:8px;}
+/* Правая группа не переносится: перенос делает шапку двухэтажной и съедает
+   высоту сцены. Вместо переноса поле имени сжимается, а подписи у редких
+   кнопок исчезают — остаётся иконка с подсказкой. */
+.head-right{gap:8px;min-width:0;flex-wrap:nowrap;}
 .head-right .kb-sep{
   width:1px;align-self:stretch;background:var(--line);margin:4px 2px;flex:none;
 }
@@ -168,11 +176,19 @@ header{
   border:1px solid var(--line);border-radius:5px;padding:1px 5px;letter-spacing:.02em;
 }
 .head-find:hover .btn-kbd{color:var(--muted);border-color:var(--line2);}
+@media (max-width:1400px){
+  /* «Обучение» и «Работы» — редкие адреса: на среднем экране от них остаётся
+     иконка с подсказкой, чтобы не отбирать место у выгрузки и поиска. */
+  #kbBtn .btn-label,#worksBtn .btn-label{display:none;}
+  #kbBtn,#worksBtn{min-width:38px;justify-content:center;}
+}
+
 @media (max-width:1180px){ .head-find .btn-kbd{display:none;} }
 #nameInput{
   background:var(--field);border:1px solid var(--line);color:var(--text);
-  padding:8px 12px;border-radius:var(--radius);font-size:var(--fs-sm);font-weight:600;
-  width:150px;outline:none;transition:border-color var(--dur) var(--ease);
+  padding:8px 12px;border-radius:var(--radius-sm);font-size:var(--fs-sm);font-weight:600;
+  width:clamp(96px,11vw,170px);min-width:0;outline:none;
+  transition:border-color var(--dur) var(--ease);
 }
 #nameInput:focus{border-color:var(--accent);}
 .btn{
@@ -432,7 +448,7 @@ input[type=range]::-moz-range-thumb{
 }
 .field-row.big input{width:132px;font-size:var(--fs-md);}
 .field-row input::placeholder{color:var(--muted2);}
-.field-row:has(input[placeholder]) input{width:118px;}
+
 .field-row.big{font-weight:600;color:var(--text);}
 
 /* сегменты */
@@ -1274,8 +1290,13 @@ details.block.found{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in
 /* ---------- задача: «что вы делаете» ---------- */
 /* Кнопка в шапке всегда показывает выбранную задачу: иначе человек не понимает,
    почему у него три вкладки, а на скриншоте в справке пять. */
+/* Длинное имя задачи не должно ломать шапку на две строки: контейнер режет
+   текст многоточием, полное имя остаётся в подсказке и на экране выбора. */
+.route-chip .btn-label{
+  max-width:min(22ch,26vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
 .route-chip{
-  display:inline-flex;align-items:center;gap:7px;font-weight:600;
+  display:inline-flex;align-items:center;gap:7px;font-weight:600;min-width:0;
   border-color:color-mix(in oklab, var(--accent) 45%, var(--line));
   background:color-mix(in oklab, var(--accent) 12%, transparent);
 }
@@ -1575,6 +1596,11 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
 @media (max-width:1180px){
   :root{--panelW:322px;--draftW:clamp(180px, 22vw, 260px);}
   .kb-body{grid-template-columns:252px 1fr;}
+  /* На узком ноутбуке шапке нечем платить за путь задачи и подпись поиска:
+     путь виден на вкладках, поиск узнаётся по лупе и по Ctrl+K. */
+  .brand-sub{display:none;}
+  .head-find .btn-label{display:none;}
+  .head-find{min-width:38px;justify-content:center;}
 }
 @media (max-width:940px){
   /* Телефон: страница не прокручивается. Сверху сцена (модель или чертёж —

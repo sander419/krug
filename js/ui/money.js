@@ -25,7 +25,7 @@ const costNow = () => sanitizeCost(state.cost);
 const F = [
   {k: 'minPerPiece',  n: 'Работы на изделие', u: 'мин', step: 1,  est: true},
   {k: 'hourRate',     n: 'Ставка мастера',    u: '₽/ч', step: 50, est: true},
-  {k: 'glazeRubPerKg', n: 'Глазурь, своя цена', u: '₽/кг', step: 50, empty: true},
+  {k: 'glazeRubPerKg', n: 'Глазурь', u: '₽/кг', step: 50, empty: true},
   {k: 'lossPct',      n: 'Брак',              u: '%',   step: 1,  est: true},
   {k: 'otherPct',     n: 'Прочие расходы',    u: '%',   step: 1,  est: true},
   {k: 'marginPct',    n: 'Наценка',           u: '%',   step: 10},
@@ -58,14 +58,18 @@ function mouldLife() {
 
 const estTag = '<span class="est-tag" title="Ориентир, а не паспортное число">оценка</span>';
 
-function fields(o) {
+function fields(o, effGlaze) {
   return F.map(f => {
     const [lo, hi] = COST_LIMITS[f.k];
     const v = o[f.k] == null ? '' : o[f.k];
+    /* Пустое поле цены глазури значит «берём из паспорта». Показывать в нём
+       слово «паспорт» бесполезно: человеку нужно число, которое сейчас
+       считается. Ставим его призраком — видно, что применено, и видно,
+       что это можно перебить своим. */
+    const ghost = f.k === 'glazeRubPerKg' && effGlaze ? ` placeholder="${Math.round(effGlaze)}"` : '';
     return `<label class="field-row"><span>${f.n}${f.est ? ' ' + estTag : ''}</span>
       <input type="number" data-cost="${f.k}" min="${lo}" max="${hi}" step="${f.step}"
-             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="из паспорта"' : ''}
-             ><i class="unit">${f.u}</i></label>`;
+             value="${v}" inputmode="numeric"${ghost}><i class="unit">${f.u}</i></label>`;
   }).join('');
 }
 
@@ -124,7 +128,7 @@ function renderPiece(m) {
       ${row('Брак', `<b>${rub(per.lossRub)}</b> ${estTag}`,
         `${opt.lossPct} %: разбитое оплачивают уцелевшие`)}
     </dl>
-    ${fields(opt)}
+    ${fields(opt, per.glazePrice.rubPerKg)}
     <p class="note">Из паспорта берётся только цена массы (${esc(mat.name)}${per.clayPerKg
       ? `, ${num(per.clayPerKg, 0)} ₽/кг` : ' — цена не опубликована'}) и киловатт-часы печи.
       Остальное — ваши числа: ставка, минуты, цена глазури, брак. Помеченное «оценка» —
