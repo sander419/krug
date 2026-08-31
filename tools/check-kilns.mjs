@@ -9,7 +9,7 @@ import { KILNS, KILNS_SCHEMA, byKilnId } from '../js/config/kilns.js';
 import { tune } from '../js/core/tuning.js';
 const GAPS = {item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')};
 const DUTY = tune('duty'), BISQUE_C = tune('bisqueC');
-import { kilnLoad, firingCost, kilnEconomy, firedSize, mixedFirings } from '../js/core/kiln.js';
+import { kilnLoad, firingCost, kilnEconomy, firedSize, mixedFirings, firingBill } from '../js/core/kiln.js';
 import { checkContract } from './registry-contract.mjs';
 
 const problems = [];
@@ -154,7 +154,32 @@ if (problems.length) {
     if (f < prev) P(`${n} штук дали меньше обжигов, чем ${prev}`);
     prev = f;
   }
-  console.log(`  общая садка: три партии по 5 шт → ${three.firings} обжиг вместо ${three.apart} порознь`);
+  /* Разные температуры в одну садку не идут: фаянс на 1050 и каменная масса
+     на 1250 вместе не обжигаются. */
+  const mixT = mixedFirings(k, [{...small, n: 3, topC: 1050}, {...small, n: 3, topC: 1250}]);
+  const sameT = mixedFirings(k, [{...small, n: 3, topC: 1050}, {...small, n: 3, topC: 1050}]);
+  if (!(mixT.firings > sameT.firings))
+    P('работы с разной температурой обжигаются вместе — так спекается только одна из них');
+  if (mixT.groups.length !== 2) P('группы по температуре не разделились');
+  if (sameT.groups.length !== 1) P('одинаковая температура разошлась на две группы');
+
+  /* Счёт за электричество: платят за загрузки, а не за изделия. */
+  const bill = firingBill(k, [{...small, n: 3, topC: 1050}], {priceKWh: 6, glaze: false});
+  const one3 = firingCost(k, {topC: 1050, glaze: false, priceKWh: 6});
+  if (Math.abs(bill.rub - one3.rub * bill.firings) > 1e-6)
+    P('счёт за обжиг не равен цене загрузки на число загрузок');
+  if (Math.abs(bill.perPiece - bill.rub / 3) > 1e-9) P('цена на изделие по факту считается не делением счёта');
+  /* Неполная садка обязана выходить дороже полной: за пустое место платят тоже. */
+  const full = kilnEconomy(k, small, {topC: 1050, glaze: false, priceKWh: 6});
+  if (!(bill.perPiece > full.perItem))
+    P(`три штуки в пустой печи должны обойтись дороже, чем при полной садке: ${bill.perPiece.toFixed(0)} против ${full.perItem.toFixed(0)}`);
+  const packed = firingBill(k, [{...small, n: alone.total, topC: 1050}], {priceKWh: 6, glaze: false});
+  if (Math.abs(packed.perPiece - full.perItem) > 0.01)
+    P('на полной садке цена по факту обязана сойтись с ценой при полной садке');
+  if (firingBill(k, [{d: 2000, h: 95, n: 5}], {}).rub !== null) P('изделие вне камеры дало счёт за обжиг');
+
+  console.log(`  общая садка: три партии по 5 шт → ${three.firings} обжиг вместо ${three.apart} порознь · ` +
+    `счёт на 3 шт ${bill.rub.toFixed(0)} ₽ (${bill.perPiece.toFixed(0)} ₽/шт против ${full.perItem.toFixed(0)} ₽ при полной садке)`);
 }
 
 console.log('\nСадка сходится: ничего не вылезает за камеру и не наезжает на соседа.');

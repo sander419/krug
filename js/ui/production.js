@@ -21,10 +21,17 @@ import { castMouldNumbers } from '../three/castMould.js';
 import { byId as materialById } from '../config/materials.js';
 import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
-import { mixedFirings } from '../core/kiln.js';
+import { firingBill } from '../core/kiln.js';
 import { $, esc, num, rub, plural } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { toast } from './overlays.js';
+
+/* До какой температуры греем эту работу: из паспорта её массы. Работы
+   с разной температурой в одну садку не идут — это учитывает firingBill. */
+function topOf() {
+  const f = materialById(state.mat).firing || {};
+  return (f.glazeC && f.glazeC[1]) || (f.bisqueC && f.bisqueC[1]) || 1050;
+}
 
 /** Числа одной работы. Считается тем же ядром, что и открытая. */
 function workNumbers() {
@@ -48,6 +55,9 @@ function workNumbers() {
     mouldParts: mould ? mould.parts : null,
     mouldKg: mould ? mould.plasterL * 2 * 1.42 : null,
     item: kilnItem(),                       // габарит после обжига — для общей садки
+    topC: topOf(),                          // до скольки греем: разные температуры не мешают
+    glaze: state.firing === 'glaze',
+    kwh: (state.kiln || {}).kwh || 6,
   };
 }
 
@@ -104,19 +114,21 @@ export function syncProduction() {
 
   const rows = [];
   let clay = 0, cost = 0, margin = 0, firings = 0, pieces = 0, revenue = 0;
+  let glaze = false, kwh = 6;
   const items = [];
   for (const w of list) {
     const n = withDNA(w.dna, () => workNumbers());
     if (!n) continue;
     clay += n.plan.clayKg; cost += n.plan.total; margin += n.plan.margin;
     firings += n.plan.firings || 0; pieces += n.plan.n; revenue += n.plan.revenue;
-    items.push({...n.item, n: n.plan.n});
+    items.push({...n.item, n: n.plan.n, topC: n.topC});
+    glaze = glaze || n.glaze; kwh = n.kwh;
     rows.push(rowHTML(w, n));
   }
 
   /* Обжиги считаются на все работы разом: греть печь ради неполной полки
      мастерская не станет, она соберёт садку из разных наименований. */
-  const mix = mixedFirings(kilnCurrent(), items);
+  const mix = firingBill(kilnCurrent(), items, {priceKWh: kwh, glaze});
 
   box.innerHTML = `
     <dl class="spec prod-total">
@@ -125,10 +137,16 @@ export function syncProduction() {
       <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b> <span class="dim">(${num(clay / 20, 1)} валюшек по 20 кг)</span></dd>
       <dt>Обжигов</dt><dd>${mix.firings
         ? `<b>${mix.firings}</b> ${plural(mix.firings, 'загрузка', 'загрузки', 'загрузок')}
-           <span class="dim">${mix.apart > mix.firings
-             ? `общей садкой вместо ${mix.apart} порознь — полки заняты разными работами`
-             : 'плотнее не собрать: высокие работы съедают высоту камеры'}</span>`
+           <span class="dim">${mix.groups.length > 1
+             ? `в ${mix.groups.length} температуры (${mix.groups.map(g => g.topC + ' °C').join(', ')}) —
+                вместе их обжигать нельзя`
+             : mix.apart > mix.firings
+               ? `общей садкой вместо ${mix.apart} порознь — полки заняты разными работами`
+               : 'плотнее не собрать: высокие работы съедают высоту камеры'}</span>`
         : `<span class="dim">${esc(mix.why || 'изделия не входят в выбранную печь')}</span>`}</dd>
+      ${mix.rub ? `<dt>Электричество</dt><dd><b>${rub(mix.rub)}</b> ·
+        ${num(mix.kWh, 0)} кВт·ч <span class="dim">по вашему плану выходит
+        ${rub(mix.perPiece)} на изделие; в смете стоит цена при полной садке</span></dd>` : ''}
       <dt>Себестоимость</dt><dd><b>${rub(cost)}</b> на всё</dd>
       <dt>Выручка</dt><dd>${rub(revenue)} по минимальной цене · маржа <b>${rub(margin)}</b></dd>
     </dl>

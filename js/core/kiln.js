@@ -118,44 +118,82 @@ export function kilnLoad(kiln, item) {
  * они влезли бы. Это осознанный запас в большую сторону — обещать садку плотнее
  * той, что человек соберёт руками, нечестно.
  *
- * @param items [{d, h, n}] — габарит после обжига и сколько штук
- * @returns {{firings, shelves, perFiringShelves, spare, why, apart}}
+ * И последнее, чего нельзя обойти: **вместе обжигают только то, что горит
+ * на одну температуру**. Фаянс на 1050 и каменная масса на 1250 в одну садку
+ * не идут — первый расплывётся или второй не спечётся. Поэтому работы сначала
+ * разбиваются по температуре, и полки складываются внутри каждой группы.
+ *
+ * @param items [{d, h, n, topC}] — габарит после обжига, сколько штук, до скольки греем
+ * @returns {{firings, shelves, spare, why, apart, groups}}
  */
 export function mixedFirings(kiln, items) {
   const g = gap();
   const height = kiln.form === 'round' ? kiln.innerMM[1] : kiln.innerMM[2];
   const maxShelves = kiln.shelves + 1;
 
-  /* Каждой работе — свои полки: сколько штук на полку и сколько таких полок. */
-  const shelves = [];
-  let apart = 0;                        // сколько обжигов вышло бы порознь
+  /* Группы по температуре: смешивать их нельзя, считаем каждую отдельно. */
+  const byTemp = new Map();
+  let apart = 0;
   for (const it of items) {
     if (!(it.n > 0)) continue;
     const load = kilnLoad(kiln, it);
-    if (!load.perShelf || !load.tiers) return {firings: null, why: load.why || 'изделие не входит в печь', apart: null};
+    if (!load.perShelf || !load.tiers)
+      return {firings: null, why: load.why || 'изделие не входит в печь', apart: null, groups: []};
+    const key = Math.round(+it.topC || 0);
+    if (!byTemp.has(key)) byTemp.set(key, []);
     const need = Math.ceil(it.n / load.perShelf);
-    for (let i = 0; i < need; i++) shelves.push({h: it.h + kiln.shelfMM + g.tier});
+    const list = byTemp.get(key);
+    for (let i = 0; i < need; i++) list.push({h: it.h + kiln.shelfMM + g.tier});
     apart += Math.ceil(it.n / load.total);
   }
-  if (!shelves.length) return {firings: 0, shelves: 0, perFiringShelves: 0, spare: 0, why: '', apart: 0};
+  if (!byTemp.size) return {firings: 0, shelves: 0, spare: 0, why: '', apart: 0, groups: []};
 
-  /* Полки повыше ставим первыми: так остаток обжига заполняется низкими,
-     а не наоборот. Это же делает и человек, собирая садку. */
-  shelves.sort((a, b) => b.h - a.h);
-
-  let firings = 1, used = 0, count = 0, spare = 0;
-  for (const sh of shelves) {
-    if (count >= maxShelves || used + sh.h > height) {
-      spare += height - used;
-      firings++; used = 0; count = 0;
+  const groups = [];
+  let firingsAll = 0, shelvesAll = 0, spareAll = 0;
+  for (const [topC, shelves] of byTemp) {
+    /* Полки повыше ставим первыми: так остаток обжига заполняется низкими,
+       а не наоборот. Это же делает и человек, собирая садку. */
+    shelves.sort((a, b) => b.h - a.h);
+    let firings = 1, used = 0, count = 0, spare = 0;
+    for (const sh of shelves) {
+      if (count >= maxShelves || used + sh.h > height) {
+        spare += height - used;
+        firings++; used = 0; count = 0;
+      }
+      used += sh.h; count++;
     }
-    used += sh.h; count++;
+    spare += height - used;
+    groups.push({topC, firings, shelves: shelves.length, spare});
+    firingsAll += firings; shelvesAll += shelves.length; spareAll += spare;
   }
-  return {
-    firings, shelves: shelves.length,
-    perFiringShelves: Math.min(maxShelves, Math.floor(height / shelves[shelves.length - 1].h)),
-    spare, why: '', apart,
-  };
+  groups.sort((a, b) => b.topC - a.topC);
+  return {firings: firingsAll, shelves: shelvesAll, spare: spareAll, why: '', apart, groups};
+}
+
+/**
+ * Счёт за обжиг всей партии: сколько энергии и сколько это стоит на самом деле.
+ *
+ * Цена обжига на изделие (`kilnEconomy`) считается при полной садке: столько
+ * стоит штука, когда печь набита этим изделием. Мастерская же топит печь целиком
+ * даже ради половины полки, и по её плану цена штуки другая. Оба числа честные —
+ * они отвечают на разные вопросы, и панель показывает оба, а не подменяет одно
+ * другим.
+ *
+ * @param items [{d, h, n, topC}]
+ * @param opts  {priceKWh, glaze} — цена киловатт-часа и нужен ли утильный обжиг
+ */
+export function firingBill(kiln, items, opts = {}) {
+  const mix = mixedFirings(kiln, items);
+  if (!mix.firings) return {...mix, rub: null, kWh: null, perPiece: null, pieces: 0};
+  const pieces = items.reduce((s, it) => s + (+it.n > 0 ? it.n : 0), 0);
+  let rub = 0, kWh = 0;
+  for (const gr of mix.groups) {
+    const c = firingCost(kiln, {topC: gr.topC || 1050, glaze: !!opts.glaze,
+                                priceKWh: opts.priceKWh || 6});
+    rub += c.rub * gr.firings;
+    kWh += c.kWh * gr.firings;
+  }
+  return {...mix, rub, kWh, pieces, perPiece: pieces ? rub / pieces : null};
 }
 
 /**
