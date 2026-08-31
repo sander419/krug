@@ -23,6 +23,7 @@ import { byId as materialById } from '../config/materials.js';
 import { byId as processById } from '../config/processes.js';
 import { byGlazeId } from '../config/glazes.js';
 import { savedWorks, updateWorkDNA, saveCurrent, saveCurrentAs, openWork } from './works.js';
+import { PHASES, patchWork } from '../core/works.js';
 import { PRESETS } from '../config/data.js';
 import { MATERIALS } from '../config/materials.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
@@ -96,6 +97,8 @@ function workNumbers() {
   };
 }
 
+const phaseName = w => (PHASES.find(p => p.id === w.phase) || PHASES[0]).name;
+
 function rowHTML(w, n) {
   const status = n.bad
     ? `<span class="prod-flag bad">${n.bad} ${plural(n.bad, 'замечание', 'замечания', 'замечаний')} «нельзя»</span>`
@@ -103,7 +106,7 @@ function rowHTML(w, n) {
   return `<div class="prod-row">
     <div class="prod-head">
       <b>${esc(w.name)}</b>
-      <span class="prod-sub">${n.mm} мм · ${esc(n.mat)}${n.parts ? ` · прилепов ${n.parts}` : ''}${n.lid ? ' · с крышкой' : ''}</span>
+      <span class="prod-sub">${esc(phaseName(w))} · ${n.mm} мм · ${esc(n.mat)}${n.parts ? ` · прилепов ${n.parts}` : ''}${n.lid ? ' · с крышкой' : ''}</span>
       ${status}
     </div>
     <dl class="prod-nums">
@@ -123,8 +126,12 @@ function rowHTML(w, n) {
       <div><dt>Партия</dt><dd>${rub(n.plan.total)}</dd></div>
       <div><dt>Маржа</dt><dd class="prod-margin"><b>${rub(n.plan.margin)}</b></dd></div>
     </dl>
-    <div class="btn-row">
+    <div class="btn-row prod-foot">
       <button class="btn small" data-open-work="${w.id}">Открыть</button>
+      <label class="field-row prod-phase"><span>Этап</span>
+        <select data-phase="${w.id}" aria-label="Этап производства «${esc(w.name)}»">
+          ${PHASES.map(p => `<option value="${p.id}"${p.id === w.phase ? ' selected' : ''}>${p.name}</option>`).join('')}
+        </select></label>
       <span class="dim">${n.per.complete ? '' : 'в смете есть пустые места'}</span>
     </div>
   </div>`;
@@ -264,6 +271,12 @@ export function syncProduction() {
     toast(`Работа «${name}» в списке производства`);
   };
   paintIcons(box);
+
+  /* Этап правится прямо в списке: мастерская ведёт им учёт, а открывать
+     ради одного слова каждую работу незачем. */
+  box.querySelectorAll('[data-phase]').forEach(sel => {
+    sel.onchange = () => { patchWork(sel.dataset.phase, {phase: sel.value}); emit(); };
+  });
 
   box.querySelectorAll('[data-open-work]').forEach(b => {
     // открываем той же дверью, что и список в шапке: там пересобирается вся

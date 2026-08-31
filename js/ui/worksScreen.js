@@ -122,6 +122,8 @@ function bodyHTML() {
           <option value="name"${view.sort === 'name' ? ' selected' : ''}>по названию</option>
         </select></label>
       <button class="btn" id="wsMat">${icon('layers', 15)}Материалы</button>
+      <button class="btn" id="wsFire">${icon('flame', 15)}Обжиги</button>
+      <button class="btn" id="wsCmp">${icon('activity', 15)}Сравнить</button>
       <button class="btn primary" id="wsNew2">${icon('plus', 15)}Создать</button>
     </div>
     <p class="screen-note">Изделий ${all.length}, показано ${list.length}. Всё лежит в этом
@@ -150,11 +152,13 @@ function mount(box) {
       rerender();
     };
   });
-  const mat = $('wsMat');
-  if (mat) mat.onclick = async () => {
-    const {openMaterials} = await import('./materials.js');
-    openMaterials();
+  const lazy = (id, mod, fn) => {
+    const b = $(id);
+    if (b) b.onclick = async () => { (await import(mod))[fn](); };
   };
+  lazy('wsMat', './materials.js', 'openMaterials');
+  lazy('wsFire', './firings.js', 'openFirings');
+  lazy('wsCmp', './compare.js', 'openCompare');
   for (const id of ['wsNew', 'wsNew2']) {
     const b = $(id);
     if (b) b.onclick = () => newWork();
