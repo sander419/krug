@@ -16,12 +16,12 @@
 import { state, withDNA, encodeDNA, applyDNA } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../core/math.js';
-import { sanitizeCost, pieceCost, batchPlan } from '../core/cost.js';
+import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js';
 import { castMouldNumbers } from '../three/castMould.js';
 import { byId as materialById } from '../config/materials.js';
-import { savedWorks } from './works.js';
+import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
 import { kilnNumbers } from './kiln.js';
-import { $, esc, num, rub } from './dom.js';
+import { $, esc, num, rub, plural } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { toast } from './overlays.js';
 
@@ -51,7 +51,7 @@ function workNumbers() {
 
 function rowHTML(w, n) {
   const status = n.bad
-    ? `<span class="prod-flag bad">${n.bad} замечани${n.bad === 1 ? 'е' : 'я'} «нельзя»</span>`
+    ? `<span class="prod-flag bad">${n.bad} ${plural(n.bad, 'замечание', 'замечания', 'замечаний')} «нельзя»</span>`
     : `<span class="prod-flag ok">форма готова</span>`;
   return `<div class="prod-row">
     <div class="prod-head">
@@ -60,7 +60,10 @@ function rowHTML(w, n) {
       ${status}
     </div>
     <dl class="prod-nums">
-      <div><dt>Тираж</dt><dd><b>${n.plan.n}</b> шт</dd></div>
+      <div><dt>Тираж</dt><dd><label class="prod-batch">
+        <input type="number" data-batch="${w.id}" min="${COST_LIMITS.n[0]}" max="${COST_LIMITS.n[1]}"
+               step="1" value="${n.plan.n}" inputmode="numeric"
+               aria-label="Тираж работы «${esc(w.name)}»"><i>шт</i></label></dd></div>
       <div><dt>Глина</dt><dd><b>${num(n.plan.clayKg, 1)}</b> кг</dd></div>
       <div><dt>Обжигов</dt><dd>${n.plan.firings
         ? `<b>${n.plan.firings}</b> × ${n.plan.perFiring} шт`
@@ -98,26 +101,58 @@ export function syncProduction() {
   }
 
   const rows = [];
-  let clay = 0, cost = 0, margin = 0, firings = 0;
+  let clay = 0, cost = 0, margin = 0, firings = 0, pieces = 0, revenue = 0;
   for (const w of list) {
     const n = withDNA(w.dna, () => workNumbers());
     if (!n) continue;
     clay += n.plan.clayKg; cost += n.plan.total; margin += n.plan.margin;
-    firings += n.plan.firings || 0;
+    firings += n.plan.firings || 0; pieces += n.plan.n; revenue += n.plan.revenue;
     rows.push(rowHTML(w, n));
   }
 
   box.innerHTML = `
     <dl class="spec prod-total">
-      <dt>Всего в работе</dt><dd><b>${rows.length}</b> ${rows.length === 1 ? 'работа' : 'работ'}</dd>
+      <dt>Всего в работе</dt><dd><b>${rows.length}</b> ${plural(rows.length, 'работа', 'работы', 'работ')} ·
+        ${pieces} ${plural(pieces, 'изделие', 'изделия', 'изделий')}</dd>
       <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b> <span class="dim">(${num(clay / 20, 1)} валюшек по 20 кг)</span></dd>
-      <dt>Обжигов</dt><dd><b>${firings || '—'}</b></dd>
-      <dt>Себестоимость</dt><dd><b>${rub(cost)}</b> · маржа ${rub(margin)}</dd>
+      <dt>Обжигов</dt><dd><b>${firings || '—'}</b> <span class="dim">${firings
+        ? 'считая, что в садку идёт одно наименование' : 'изделия не входят в выбранную печь'}</span></dd>
+      <dt>Себестоимость</dt><dd><b>${rub(cost)}</b> на всё</dd>
+      <dt>Выручка</dt><dd>${rub(revenue)} по минимальной цене · маржа <b>${rub(margin)}</b></dd>
     </dl>
     <div class="prod-list">${rows.join('')}</div>
-    <p class="note">Числа считаются тем же ядром, что и для открытой работы: тираж берётся
-      из её собственной ДНК («Деньги» → «Тираж»), обжиги — из садки печи, формы — из ресурса
-      гипсовой формы. Работы лежат в этом браузере: сервера у КРУГа нет.</p>`;
+    <button class="btn wide" id="prodSaveMore">${icon('save', 15)}Добавить открытую работу в список</button>
+    <p class="note">Тираж правится прямо здесь и остаётся в самой работе; остальное считается
+      тем же ядром, что и для открытой: обжиги — из садки печи, формы — из ресурса гипсовой
+      формы, деньги — из сметы. Правка тиража меняет сохранённую работу, а не открытую:
+      чтобы работать с изделием, нажмите «Открыть». Работы лежат в этом браузере:
+      сервера у КРУГа нет.</p>`;
+
+  /* Тираж правится прямо в карточке: мастерская думает списком — «этой
+     пятьдесят, той двадцать», — и ради каждой цифры открывать работу незачем.
+     Число живёт в ДНК самой работы, поэтому её ДНК и переписывается. */
+  box.querySelectorAll('[data-batch]').forEach(inp => {
+    inp.onchange = () => {
+      const id = inp.dataset.batch;
+      const [lo, hi] = COST_LIMITS.n;
+      const n = Math.min(hi, Math.max(lo, Math.round(+inp.value) || lo));
+      const w = savedWorks().find(x => x.id === id);
+      if (!w) return;
+      const dna = withDNA(w.dna, () => {
+        state.cost = {...sanitizeCost(state.cost), n};
+        return encodeDNA();
+      });
+      if (dna && updateWorkDNA(id, dna)) emit();
+    };
+  });
+
+  const more = $('prodSaveMore');
+  if (more) more.onclick = () => {
+    const name = saveCurrent();
+    emit();
+    toast(`Работа «${name}» в списке производства`);
+  };
+  paintIcons(box);
 
   box.querySelectorAll('[data-open-work]').forEach(b => {
     b.onclick = () => {

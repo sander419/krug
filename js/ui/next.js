@@ -14,7 +14,7 @@ import { moneyNumbers } from './money.js';
 import { $ } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { showTab, openBlock } from './panels.js';
-import { activeRoute } from './route.js';
+import { activeRoute, onRoute } from './route.js';
 import { routeTabs } from '../config/routes.js';
 
 let open = false;
@@ -88,7 +88,11 @@ export function syncNext(ctx = {}) {
 }
 
 export function initNext() {
-  // задача «подготовить производство» открывает весь путь сразу
-  if (document.body.dataset.checklist === 'open') open = true;
+  /* Задача «подготовить производство» разворачивает весь путь: её и выбирают,
+     чтобы увидеть, что осталось. Подписка, а не разовая проверка при запуске:
+     задачу меняют на ходу. */
+  onRoute(r => {
+    if (r.focus && r.focus.checklist) { open = true; syncNext(); }
+  });
   syncNext();
 }

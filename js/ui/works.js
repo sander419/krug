@@ -21,6 +21,16 @@ function load() {
 
 /** Список работ для «Производства»: [{id, name, dna, ts}]. */
 export const savedWorks = () => load();
+
+/** Переписать ДНК сохранённой работы: «Производство» правит тираж прямо в списке. */
+export function updateWorkDNA(id, dna) {
+  const list = load();
+  const w = list.find(x => x.id === id);
+  if (!w) return false;
+  w.dna = dna;
+  save(list);
+  return true;
+}
 function save(list) {
   try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, LIMIT))); } catch (_) {}
 }

@@ -16,7 +16,7 @@ import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById } from '../config/processes.js';
 import { tune } from '../core/tuning.js';
-import { $, num, rub, esc } from './dom.js';
+import { $, num, rub, esc, plural } from './dom.js';
 import { kilnNumbers } from './kiln.js';
 
 const costNow = () => sanitizeCost(state.cost);
@@ -142,11 +142,11 @@ function renderBatch(m) {
       <dt>Глазурь</dt><dd><b>${num(plan.glazeKg, 2)} кг</b> сухой смеси
         <span class="dim">оценка по площади поверхности</span></dd>
       <dt>Обжиги</dt><dd>${plan.firings
-        ? `<b>${plan.firings}</b> ${plan.firings === 1 ? 'загрузка' : 'загрузок'}
+        ? `<b>${plan.firings}</b> ${plural(plan.firings, 'загрузка', 'загрузки', 'загрузок')}
            <span class="dim">(в печь входит ${plan.perFiring} шт за раз)</span>`
         : '<span class="dim">изделие не входит в выбранную печь — см. «Печь и садка»</span>'}</dd>
       <dt>Форм под литьё</dt><dd>${plan.moulds
-        ? `<b>${plan.moulds}</b> ${plan.moulds === 1 ? 'форма' : 'форм'}
+        ? `<b>${plan.moulds}</b> ${plural(plan.moulds, 'форма', 'формы', 'форм')}
            <span class="dim">(гипсовая форма живёт ${plan.mouldLifePieces} отливок)</span>`
         : '<span class="dim">ресурс формы не подтверждён</span>'}</dd>
       <dt>Себестоимость</dt><dd><b>${rub(plan.total)}</b> за партию ·
