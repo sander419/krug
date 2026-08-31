@@ -17,6 +17,8 @@ import { byId as materialById } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { byId as processById } from '../config/processes.js';
 import { tune } from '../core/tuning.js';
+import { economics } from '../core/economics.js';
+import { analyzeFormability, recommendProcess } from '../core/tooling.js';
 import { $, num, rub, esc, plural } from './dom.js';
 import { kilnNumbers } from './kiln.js';
 
@@ -137,6 +139,28 @@ function renderPiece(m) {
   bindFields(box);
 }
 
+/* Руками или оснасткой — вопрос тиража, а не изделия. Считает та же
+   js/core/economics.js, что и инженерный блок; здесь короткий ответ:
+   что дешевле на этом тираже и с какого он меняется. */
+function handVsTool(plan, per) {
+  const prod = computeProduction(state);
+  const proc = recommendProcess(state, analyzeFormability(state));
+  const ec = economics(state, prod, proc.id, {batch: plan.n, firePerPiece: per.fireRub || 0});
+  const cheaper = ec.cheaper === 'machine' ? 'с оснасткой' : 'руками';
+  const diff = Math.abs(ec.manualTotal - ec.machineTotal);
+  return `<dl class="spec">
+    <dt>Руками</dt><dd><b>${rub(ec.manualPerPiece)}</b> за штуку ·
+      ${rub(ec.manualTotal)} за партию <span class="dim">${num(ec.manualHours, 0)} ч работы</span></dd>
+    <dt>С оснасткой</dt><dd><b>${rub(ec.machinePerPiece)}</b> за штуку ·
+      ${rub(ec.machineTotal)} за партию
+      <span class="dim">комплектов ${ec.sets.known ? ec.sets.lo + '–' + ec.sets.hi : '1'},
+        ${rub(ec.toolingTotal)} стартовых</span></dd>
+    <dt>Итог</dt><dd>на ${plan.n} шт дешевле <b>${cheaper}</b> на ${rub(diff)}${
+      ec.breakEven ? `; оснастка начинает окупаться с <b>${num(ec.breakEven, 0)} шт</b>`
+        : ec.cheaper === 'manual' ? '; на этих цифрах оснастка не окупается ни при каком тираже' : ''}</dd>
+  </dl>`;
+}
+
 /* ---------- тираж ---------- */
 function renderBatch(m) {
   const box = $('batchBody');
@@ -166,6 +190,7 @@ function renderBatch(m) {
       <dt>Выручка</dt><dd>${rub(plan.revenue)} по минимальной цене ·
         маржа <b>${rub(plan.margin)}</b></dd>
     </dl>
+    ${handVsTool(plan, per)}
     <p class="note">Тираж не меняет цену штуки сам по себе: дешевле становится там, где
       появляется оснастка и машинный цикл — это считает блок «Тираж и экономика»
       (задача «Тираж в гипсе»). Здесь партия — это умноженная штука плюс обжиги и формы,

@@ -18,7 +18,7 @@ import { popover } from './ui/pop.js';
 import { initFinder } from './ui/finder.js';
 import { initTuning } from './ui/tuning.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
-import { initWorks, saveCurrent } from './ui/works.js';
+import { initWorks, saveCurrent, savedWorks } from './ui/works.js';
 import { openWorksScreen } from './ui/worksScreen.js';
 import { openPassport } from './ui/passport.js';
 import { openRelease } from './ui/release.js';
@@ -147,7 +147,8 @@ step('чертёж',()=>initEditor($('profileCanvas'),(info,target)=>{
     + (info.squeezed?' · рисунок ужат под пределы 5…40 см':''));
 }));
 step('панель',()=>{initTabs();initBlocks();initPanels();initParts();panelsAPI.sync();});
-step('задача',()=>initRoute());   // после вкладок: задача их и прячет
+let firstRun=false;
+step('задача',()=>{ firstRun=initRoute(); });   // после вкладок: задача их и прячет
 step('картинка',()=>initPhoto(info=>{
   if(!info){ toast('Файл не открылся как картинка'); return; }
   panelsAPI.sync();
@@ -244,6 +245,15 @@ refreshNow();
 sceneAPI.frameView();
 if(broken.length) toast('Не загрузилось: '+broken.join(', ')+'. Остальное работает.');
 else if(restoredFrom==='автосохранение') toast('Вернулись к последней работе — «'+state.name+'»');
+
+/* Возвращаясь, человек видит свои изделия, а не ползунки: у мастера в голове
+   не «профиль сплайна», а «доделать ту вазу». Открываем список только тому,
+   у кого он есть, и только если он не пришёл по ссылке-ДНК на конкретную вещь.
+   Проверять сам адрес нельзя: к этой строке ДНК текущей работы уже записана
+   в хэш. Честный признак — откуда взялся рецепт: restoreWork() вернул 'ссылка'. */
+if(!firstRun && restoredFrom!=='ссылка' && savedWorks().length){
+  setTimeout(()=>openWorksScreen(), 60);
+}
 
 /* Ошибка в обработчике не должна оставлять человека наедине с замершим экраном. */
 let told=false;
