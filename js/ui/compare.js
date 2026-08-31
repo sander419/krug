@@ -159,7 +159,7 @@ export function openCompare() {
     id: 'compare', wide: true,
     title: 'Сравнение изделий',
     lead: 'Две версии рядом: чем отличаются и какую выгоднее производить.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

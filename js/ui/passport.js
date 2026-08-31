@@ -257,7 +257,7 @@ export function openPassport() {
     id: 'passport', wide: true,
     title: 'Паспорт изделия',
     lead: 'Всё об этой вещи на одном экране: размеры, масса, материал, печь, деньги и факт.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

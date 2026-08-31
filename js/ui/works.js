@@ -64,14 +64,20 @@ function thumbnail() {
  * на сцене всё ещё стоит прежняя модель, и картинка соврёт.
  */
 export function saveCurrentAs(name, opt = {}) {
+  /* Имя ставится в состояние до кодирования: иначе в ДНК уедет прежнее,
+     и при следующем открытии записи название в шапке разойдётся со списком. */
+  state.name = String(name || state.name || 'Без названия').trim();
   const rec = blankWork({
-    name: String(name || state.name || 'Без названия').trim(),
+    name: state.name,
     dna: encodeDNA(), thumb: opt.thumb === false ? '' : thumbnail(),
   });
   upsertWork(rec);
   currentId = rec.id;
   remember();
-  state.name = rec.name;
+  /* Тем же путём, что и открытие записи: поле имени в шапке должно показать
+     новое название сразу, а не после следующей перерисовки. Признак 'new'
+     нужен, чтобы не сказать «открыто изделие» там, где оно только что создано. */
+  if (onOpen) onOpen(rec.name, 'new');
   return rec;
 }
 
@@ -92,6 +98,9 @@ export function saveCurrent() {
 export function openWorkRecord(id) {
   const w = getWork(id);
   if (!w || !applyDNA(w.dna)) return null;
+  /* Имя записи главнее имени внутри ДНК: в списке человек видит своё название,
+     и в шапке должно стоять оно же, даже если рецепт пришёл со старым. */
+  if (w.name) state.name = w.name;
   currentId = w.id;
   remember();
   if (onOpen) onOpen(w.name);

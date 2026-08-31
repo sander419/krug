@@ -1057,6 +1057,8 @@ body.screen-open{overflow:hidden;}
   max-height:calc(100vh - 40px);
 }
 .screen.wide{width:min(1240px,100%);}
+/* Диалог получает фокус при открытии — рамки вокруг всего слоя быть не должно. */
+.screen:focus{outline:none;}
 .screen-head{
   display:flex;align-items:flex-start;gap:var(--gap-2);
   padding:20px 22px 14px;border-bottom:1px solid var(--line);

@@ -178,7 +178,7 @@ export function openMaterials(kind) {
     id: 'materials', wide: true,
     title: 'Материалы',
     lead: 'Массы, глазури и гипсы: паспорта поставщиков и ваши собственные замеры.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

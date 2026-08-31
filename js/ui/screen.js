@@ -24,29 +24,26 @@ function host() {
   return el;
 }
 
-/**
- * Открыть экран.
- * @param opt {id, title, lead, html, wide, onMount(root), onClose()}
- */
-export function openScreen(opt) {
+/* Отрисовка одного экрана в оболочку. Вынесена отдельно, потому что экран
+   рисуется дважды: когда его открыли и когда к нему вернулись, закрыв верхний.
+   `redraw` даёт свежую разметку — список изделий после отметки в процессе
+   обязан показать новый этап, а не тот, что был при открытии. */
+function render(rec) {
   const box = host();
-  const prev = document.activeElement;
-  const rec = {...opt, prev};
-  stack.push(rec);
-
   box.innerHTML = `
-    <div class="screen${opt.wide ? ' wide' : ''}" role="dialog" aria-modal="true"
-         aria-label="${opt.title}">
+    <div class="screen${rec.wide ? ' wide' : ''}" role="dialog" aria-modal="true"
+         aria-label="${rec.title}" tabindex="-1">
       <div class="screen-head">
         <div class="screen-title">
-          <h2>${opt.title}</h2>
-          ${opt.lead ? `<p>${opt.lead}</p>` : ''}
+          <h2>${rec.title}</h2>
+          ${rec.lead ? `<p>${rec.lead}</p>` : ''}
         </div>
-        ${opt.tools || ''}
+        ${rec.tools || ''}
         <button class="btn icon screen-close" title="Закрыть (Esc)" aria-label="Закрыть">
           ${icon('x')}</button>
       </div>
-      <div class="screen-body" id="screenBody">${opt.html || ''}</div>
+      <div class="screen-body" id="screenBody">${
+        (rec.redraw ? rec.redraw() : rec.html) || ''}</div>
     </div>`;
   box.classList.add('open');
   box.setAttribute('aria-hidden', 'false');
@@ -55,11 +52,23 @@ export function openScreen(opt) {
   box.querySelector('.screen-close').onclick = () => closeScreen();
   box.onclick = e => { if (e.target === box) closeScreen(); };
   paintIcons(box);
-  if (opt.onMount) opt.onMount(box);
-  /* Фокус уводим внутрь: иначе Tab уходит под слой, к кнопкам мастерской. */
-  const first = box.querySelector('input,button,select,[tabindex]');
-  if (first) first.focus({preventScroll: true});
+  if (rec.onMount) rec.onMount(box);
+  /* Фокус уводим внутрь, но на сам диалог, а не на первую кнопку: Tab тогда
+     остаётся в слое, а подсказка над кнопкой закрытия не выскакивает первым,
+     что человек видит на новом экране. */
+  const dlg = box.querySelector('.screen');
+  if (dlg) dlg.focus({preventScroll: true});
   return box;
+}
+
+/**
+ * Открыть экран.
+ * @param opt {id, title, lead, html, redraw, wide, onMount(root), onClose()}
+ */
+export function openScreen(opt) {
+  const rec = {...opt, prev: document.activeElement};
+  stack.push(rec);
+  return render(rec);
 }
 
 /** Перерисовать содержимое открытого экрана, не теряя прокрутку. */
@@ -79,14 +88,16 @@ export function closeScreen() {
   const box = $('screenHost');
   const rec = stack.pop();
   if (!box) return;
+  if (rec && rec.onClose) rec.onClose();
+  /* Экран, открытый поверх другого (материалы из списка изделий, процесс
+     из паспорта), закрывается **к нему**, а не в пустоту: иначе человек
+     теряет место, откуда пришёл, и заходит заново. */
+  if (stack.length) { render(stack[stack.length - 1]); return; }
   box.classList.remove('open');
   box.setAttribute('aria-hidden', 'true');
   box.innerHTML = '';
   document.body.classList.remove('screen-open');
-  if (rec) {
-    if (rec.onClose) rec.onClose();
-    if (rec.prev && rec.prev.focus) rec.prev.focus({preventScroll: true});
-  }
+  if (rec && rec.prev && rec.prev.focus) rec.prev.focus({preventScroll: true});
 }
 
 export const screenOpen = () => stack.length > 0;

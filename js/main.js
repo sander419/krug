@@ -188,7 +188,8 @@ step('телефон',()=>initMobile());
 step('кинотеатр',()=>initCinema(refreshNow));
 step('подсказка',()=>initGuide());
 step('изделия',()=>{
-  initWorks(name=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView(); toast('Открыто изделие «'+name+'»'); });
+  initWorks((name,mode)=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView();
+    if(mode!=='new') toast('Открыто изделие «'+name+'»'); });
   $('worksBtn').onclick=()=>openWorksScreen();
   $('passportBtn').onclick=()=>openPassport();
   $('releaseBtn').onclick=()=>openRelease();

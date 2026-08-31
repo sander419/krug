@@ -132,7 +132,7 @@ export function openFirings() {
     id: 'firings', wide: true,
     title: 'Обжиги',
     lead: 'Что поедет в печь вместе, сколько это загрузок и во что обойдётся.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

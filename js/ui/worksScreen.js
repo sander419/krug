@@ -215,7 +215,7 @@ export function openWorksScreen() {
     id: 'works', wide: true,
     title: 'Мои изделия',
     lead: 'Всё, что вы делали: рецепт, числа и этап производства.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

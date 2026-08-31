@@ -232,7 +232,7 @@ export function openRelease() {
     id: 'release',
     title: 'Выпуск',
     lead: 'Всё, что можно забрать: модель, файлы для мастерской и рецепт.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

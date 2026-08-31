@@ -120,7 +120,7 @@ export function openProcess() {
     id: 'process',
     title: 'Производственный процесс',
     lead: 'Путь этой вещи: что уже сделано, что отметить и где остановиться.',
-    html: bodyHTML(),
+    html: bodyHTML(), redraw: bodyHTML,
     onMount: mount,
   });
 }

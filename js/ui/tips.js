@@ -98,7 +98,12 @@ export function initTips() {
   addEventListener('pointerdown', hideTip, {passive: true});
   addEventListener('focusin', e => {
     const el = targetOf(e.target);
-    if (el) { current = el; show(el); }         // с клавиатуры — сразу, ждать нечего
+    /* Только настоящий приход с клавиатуры: фокус, поставленный кодом
+       (открылся экран — фокус на кнопку закрытия), не должен выбрасывать
+       подсказку, которую никто не просил. */
+    let byKey = true;
+    try { byKey = e.target.matches(':focus-visible'); } catch (_) {}
+    if (el && byKey) { current = el; show(el); }
   });
   addEventListener('focusout', hideTip);
   addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });

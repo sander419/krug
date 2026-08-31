@@ -17,6 +17,7 @@ import { icon } from './icons.js';
 import { showOverview } from './kb.js';
 import { TABS, routeTabs } from '../config/routes.js';
 import { activeProfile, activeRoute, openRouteScreen } from './route.js';
+import { loadWorks } from '../core/works.js';
 
 const KEY = 'krug.guided';
 
@@ -95,7 +96,9 @@ export function initGuide() {
     if (e.key === 'Escape' && $('guide').classList.contains('open')) closeGuide();
   });
   // На самом первом запуске спрашивают задачу — двух окон подряд не бывает.
+  // И у того, чьи изделия уже лежат в списке, обучение не выскакивает поверх
+  // этого списка: он не новичок, а вернувшийся.
   let seen = null, route = null;
   try { seen = localStorage.getItem(KEY); route = localStorage.getItem('krug.route'); } catch (_) {}
-  if (!seen && route) openGuide();
+  if (!seen && route && !loadWorks().length) openGuide();
 }
