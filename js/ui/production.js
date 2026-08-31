@@ -13,7 +13,7 @@
 //
 // Это не ERP: ни сроков, ни людей, ни склада. Панель отвечает на один вопрос —
 // «что у меня в работе и во что это обходится».
-import { state, withDNA, encodeDNA, applyDNA } from '../core/state.js';
+import { state, withDNA, encodeDNA } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../core/math.js';
 import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js';
@@ -22,7 +22,9 @@ import { plasterMix } from '../config/plasters.js';
 import { byId as materialById } from '../config/materials.js';
 import { byId as processById } from '../config/processes.js';
 import { byGlazeId } from '../config/glazes.js';
-import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
+import { savedWorks, updateWorkDNA, saveCurrent, openWork } from './works.js';
+import { PRESETS } from '../config/data.js';
+import { MATERIALS } from '../config/materials.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
 import { firingBill } from '../core/kiln.js';
 import { $, esc, num, rub, plural } from './dom.js';
@@ -128,6 +130,35 @@ function rowHTML(w, n) {
   </div>`;
 }
 
+/* Три работы для примера: без них «Производство» пустое, и попробовать его
+   можно только сочинив себе три изделия. Это обычные работы, а не особая
+   сущность: те же пресеты, массы и тиражи, удаляются как все.
+   Текущее состояние не трогаем — работаем на копии и возвращаем как было. */
+const DEMO = [
+  {name: 'Чашка 120', preset: 'Чашка', H: 95, D: 90, mat: 'snezhny-porcelain', n: 120, wall: 4},
+  {name: 'Ваза 024', preset: 'Ваза', H: 240, D: 170, mat: 'gzhel-red', n: 24, wall: 6},
+  {name: 'Миска 60', preset: 'Миска', H: 80, D: 200, mat: 's-6015', n: 60, wall: 5},
+];
+
+function addDemo() {
+  const snap = JSON.parse(JSON.stringify(state));
+  try {
+    for (const d of DEMO) {
+      const preset = PRESETS.find(p => p.name === d.preset);
+      if (preset) { state.points = preset.pts.map(p => ({...p})); state.activePreset = preset.name; }
+      if (MATERIALS.some(m => m.id === d.mat)) state.mat = d.mat;
+      state.name = d.name;
+      state.H = d.H; state.D = d.D; state.wall = d.wall;
+      state.lid = {on: false};
+      state.parts = [];
+      state.cost = {...sanitizeCost(state.cost), n: d.n};
+      saveCurrent();
+    }
+  } finally {
+    Object.assign(state, snap);
+  }
+}
+
 export function syncProduction() {
   const box = $('prodBody');
   if (!box) return;
@@ -136,11 +167,16 @@ export function syncProduction() {
   if (!list.length) {
     box.innerHTML = `
       <p class="hint">Пока пусто. «Производство» показывает сохранённые работы: сохраните
-        текущую кнопкой «Работы» в шапке — и она появится здесь вместе с тиражом,
-        обжигами, формами и деньгами.</p>
-      <button class="btn primary wide" id="prodSave">${icon('save', 15)}Сохранить текущую работу</button>`;
+        текущую — и она появится здесь вместе с тиражом, обжигами, формами и деньгами.</p>
+      <button class="btn primary wide" id="prodSave">${icon('save', 15)}Сохранить текущую работу</button>
+      <button class="btn wide" id="prodDemo">${icon('layers', 15)}Загрузить три работы для примера</button>
+      <p class="note">Пример — это три обычные работы (чашка, ваза, миска) с разными массами
+        и тиражами: видно, как считаются общая садка и деньги на несколько наименований.
+        Удаляются как любые другие — в списке «Работы» в шапке.</p>`;
     const b = $('prodSave');
-    if (b) b.onclick = () => { document.getElementById('worksBtn').click(); };
+    if (b) b.onclick = () => { saveCurrent(); emit(); toast('Работа сохранена'); };
+    const d = $('prodDemo');
+    if (d) d.onclick = () => { addDemo(); emit(); toast('Три работы для примера добавлены'); };
     paintIcons(box);
     return;
   }
@@ -228,10 +264,9 @@ export function syncProduction() {
   paintIcons(box);
 
   box.querySelectorAll('[data-open-work]').forEach(b => {
-    b.onclick = () => {
-      const w = savedWorks().find(x => x.id === b.dataset.openWork);
-      if (w && applyDNA(w.dna)) { emit(); toast(`Открыта работа «${w.name}»`); }
-    };
+    // открываем той же дверью, что и список в шапке: там пересобирается вся
+    // панель, а не только сцена — иначе имя и ползунки остаются от прежней работы
+    b.onclick = () => { openWork(b.dataset.openWork); };
   });
 }
 

@@ -16,7 +16,7 @@ import { $ } from './dom.js';
 import { icon } from './icons.js';
 import { showOverview } from './kb.js';
 import { TABS, routeTabs } from '../config/routes.js';
-import { activeRoute, openRouteScreen } from './route.js';
+import { activeProfile, activeRoute, openRouteScreen } from './route.js';
 
 const KEY = 'krug.guided';
 
@@ -25,6 +25,7 @@ export const steps = () => routeTabs(activeRoute()).map(t => ({tab: t, ...TABS[t
 
 function html() {
   const route = activeRoute();
+  const prof = activeProfile();
   const list = steps();
   const steps_ = list.map((s, i) => `
     <button class="guide-step" data-tab="${s.tab}">
@@ -39,11 +40,13 @@ function html() {
       <h2>Как здесь работать</h2>
       <button class="btn icon" id="guideClose" title="Закрыть (Esc)" aria-label="Закрыть">${icon('x')}</button>
     </div>
-    <p class="guide-lead">Задача — <b>${route.name}</b>. ${route.lead}
-      Шаги ниже это вкладки панели, идти по ним подряд не обязательно.</p>
+    <p class="guide-lead">Профиль — <b>${prof.name}</b>, задача — <b>${route.name}</b>. ${route.lead}
+      Шаги ниже это вкладки панели, идти по ним подряд не обязательно: полоса
+      <b>«Дальше»</b> над вкладками сама показывает, что осталось сделать, и ведёт туда.${prof.simple
+        ? ' Инженерные блоки спрятаны — кнопка «Расширенный режим» в шапке вернёт их.' : ''}</p>
     <div class="guide-steps">${steps_}</div>
     <p class="guide-keys">
-      <span><kbd>1</kbd>…<kbd>5</kbd> вкладки</span>
+      <span><kbd>1</kbd>…<kbd>8</kbd> вкладки</span>
       <span><kbd>Ctrl</kbd>+<kbd>K</kbd> поиск</span>
       <span><kbd>Ctrl</kbd>+<kbd>S</kbd> сохранить</span>
       <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> отменить</span>

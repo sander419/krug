@@ -22,6 +22,18 @@ function load() {
 /** Список работ для «Производства»: [{id, name, dna, ts}]. */
 export const savedWorks = () => load();
 
+/**
+ * Открыть сохранённую работу целиком: применить ДНК и пересобрать панель.
+ * «Производство» открывает работы тем же путём, что и список в шапке, — иначе
+ * половина интерфейса (имя в шапке, ползунки, глазурь) остаётся от прежней.
+ */
+export function openWork(id) {
+  const w = load().find(x => x.id === id);
+  if (!w || !applyDNA(w.dna)) return null;
+  if (onOpen) onOpen(w.name);
+  return w.name;
+}
+
 /** Переписать ДНК сохранённой работы: «Производство» правит тираж прямо в списке. */
 export function updateWorkDNA(id, dna) {
   const list = load();
