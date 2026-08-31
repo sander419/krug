@@ -64,7 +64,7 @@ function fields(o) {
     const v = o[f.k] == null ? '' : o[f.k];
     return `<label class="field-row"><span>${f.n}${f.est ? ' ' + estTag : ''}</span>
       <input type="number" data-cost="${f.k}" min="${lo}" max="${hi}" step="${f.step}"
-             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="паспорт"' : ''}
+             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="из паспорта"' : ''}
              ><i class="unit">${f.u}</i></label>`;
   }).join('');
 }
@@ -95,8 +95,8 @@ function renderPiece(m) {
 
   box.innerHTML = `
     <div class="cost-total">
-      <span class="cost-cap">Себестоимость изделия</span>
       <b class="cost-sum">${rub(per.total)}</b>
+      <span class="cost-cap">себестоимость одного изделия</span>
       <span class="cost-sub">продавать дешевле <b>${rub(per.minPrice)}</b> — работать в минус;
         маржа при этой цене ${rub(per.marginRub)}</span>
     </div>

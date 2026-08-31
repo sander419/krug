@@ -25,6 +25,7 @@ let current = routeById(DEFAULT_ROUTE);
 let profile = profileById(DEFAULT_PROFILE);
 let advanced = false;               // расширенный режим внутри простого профиля
 let picking = null;                 // профиль, чьи задачи показаны на экране выбора
+let stepTwo = false;                // на первом экране: профиль выбран, показываем задачи
 const subs = [];
 
 /** Текущая задача. До инициализации — «всё сразу», чтобы ничего не пропало. */
@@ -111,6 +112,10 @@ function focusRoute(r) {
 }
 
 /* ---------- экран выбора ---------- */
+/* Один экран — один вопрос. Раньше здесь стояли два профиля и одиннадцать
+   одинаковых карточек задач сразу: человек в первую секунду видел тринадцать
+   равновесных прямоугольников и не понимал, с чего начать. Теперь сначала
+   спрашиваем, кто он, и только потом показываем его задачи. */
 function profileHTML() {
   return PROFILES.filter(p => p.id !== 'all').map(p => `
     <button class="profile-card${p.id === picking.id ? ' current' : ''}" data-profile-pick="${p.id}">
@@ -121,35 +126,46 @@ function profileHTML() {
     </button>`).join('');
 }
 
-function cardsHTML(first) {
+function taskHTML() {
   const list = profileRoutes(picking, ROUTES);
-  const cards = list.map(r => {
-    const steps = routeTabs(r).map(t => TABS[t].name).join(' → ');
-    return `<button class="route-card${r.id === current.id && !first ? ' current' : ''}" data-route-pick="${r.id}">
-      <span class="route-ico">${icon(r.ico, 20)}</span>
-      <span class="route-main">
-        <b>${r.name}</b>
-        <span class="route-lead">${r.lead}</span>
-        <span class="route-steps">${steps}</span>
+  return list.map(r => {
+    const home = r.id === picking.home;
+    return `<button class="task-row${r.id === current.id ? ' current' : ''}" data-route-pick="${r.id}">
+      <span class="task-ico">${icon(r.ico, 18)}</span>
+      <span class="task-main">
+        <b>${r.name}${home ? '<i class="task-rec">с этого начинают</i>' : ''}</b>
+        <span class="task-lead">${r.lead}</span>
       </span>
+      <span class="task-steps">${routeTabs(r).map(t => TABS[t].name).join(' · ')}</span>
     </button>`;
   }).join('');
+}
 
+function cardsHTML(first) {
+  /* Первый заход: только вопрос «кто вы». Задачи появляются вторым шагом —
+     это тот самый выбор, ради которого экран и открыт. */
+  if (first && !stepTwo) {
+    return `<div class="route-card-box narrow" role="dialog" aria-label="Кто вы">
+      <h2>Что вы делаете?</h2>
+      <p class="guide-lead">КРУГ считает изделие целиком — от комка глины до цены тиража.
+        Кто вы — решает, какие задачи показать и насколько подробно говорить.
+        Сменить можно в любой момент, кнопкой в шапке.</p>
+      <div class="profile-cards">${profileHTML()}</div>
+      <button class="route-all" data-profile-pick="all">Не уверен — показать всё</button>
+    </div>`;
+  }
   return `<div class="route-card-box" role="dialog" aria-label="Что вы делаете">
     <div class="guide-head">
-      <h2>${first ? 'Что вы делаете?' : 'Задача и профиль'}</h2>
+      <h2>${first ? 'С чего начнём?' : 'Задача и профиль'}</h2>
       ${first ? '' : `<button class="btn icon" id="routeClose" title="Закрыть (Esc)" aria-label="Закрыть">${icon('x')}</button>`}
     </div>
-    <div class="profile-cards">${profileHTML()}</div>
-    <button class="route-all" data-profile-pick="all">${picking.id === 'all'
-      ? 'Показаны все задачи' : 'Не уверен — показать всё'}</button>
-    <p class="guide-lead">КРУГ считает изделие целиком — от комка глины до цены тиража, но сразу
-      всё никому не нужно. Ниже — задачи ${picking.id === 'all' ? 'всех профилей' : `профиля «${picking.name}»`}:
-      инструменты под выбранную останутся, лишние уйдут. Сменить можно в любой момент,
-      кнопкой в шапке — ничего не пропадёт.</p>
-    <div class="route-cards">${cards}</div>
-    <p class="guide-hint">Ни профиль, ни задача не меняют расчёт: осадка, оснастка и деньги
-      считаются всегда, просто не мозолят глаза.</p>
+    <div class="profile-switch" role="group" aria-label="Профиль">
+      ${PROFILES.map(p => `<button data-profile-pick="${p.id}"${p.id === picking.id ? ' class="active"' : ''}>
+        ${icon(p.ico, 15)}${p.id === 'all' ? 'Показать всё' : p.name}</button>`).join('')}
+    </div>
+    <div class="task-list">${taskHTML()}</div>
+    <p class="guide-hint">Задача только прячет лишнее. Осадка, оснастка и деньги считаются
+      всегда — просто не мозолят глаза.</p>
   </div>`;
 }
 
@@ -166,6 +182,7 @@ export function openRouteScreen(first = false) {
            в прежнем профиле и не понимает, почему у него другие вкладки. */
         picking = profileById(b.dataset.profilePick) || picking;
         applyProfile(picking.id);
+        stepTwo = true;
         draw();
       };
     });
@@ -196,7 +213,7 @@ export function closeRouteScreen() {
 
 export function initRoute() {
   const btn = $('routeBtn');
-  if (btn) btn.onclick = () => { picking = profile; openRouteScreen(false); };
+  if (btn) btn.onclick = () => { picking = profile; stepTwo = true; openRouteScreen(false); };
   const adv = $('advBtn');
   if (adv) adv.onclick = () => {
     setAdvanced(!advanced);
@@ -231,6 +248,7 @@ export function initRoute() {
 
   profile = profileById(DEFAULT_PROFILE);
   picking = profile;
+  stepTwo = false;
   applyProfile(profile.id, {remember: false});
   applyRoute(DEFAULT_ROUTE, {remember: false, focus: false});
   openRouteScreen(true);

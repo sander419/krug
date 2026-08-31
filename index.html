@@ -18,13 +18,13 @@
 <header>
   <div class="logo"></div>
   <div class="brand">
-    <div class="brand-name">КРУГ</div>
+    <h1 class="brand-name">КРУГ</h1>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
   <button class="btn route-chip" id="routeBtn" title="Задача: нажмите, чтобы сменить"></button>
   <button class="btn adv-chip" id="advBtn" aria-pressed="false" hidden
           title="Показать инженерные блоки"></button>
-  <button class="btn icon head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)" aria-label="Поиск по инструменту"></button>
+  <button class="btn head-find" id="findBtn" data-icon="search" title="Поиск по инструменту (Ctrl+K)"><span class="btn-label">Поиск</span><kbd class="btn-kbd">Ctrl K</kbd></button>
   <button class="btn head-more" id="moreBtn" aria-expanded="false" aria-controls="headMenu" data-icon="ellipsis" aria-label="Ещё действия"></button>
   <div class="head-right" id="headMenu">
     <div class="undo-group" role="group" aria-label="Отмена">
@@ -32,7 +32,8 @@
       <button class="btn icon" id="redoBtn" data-icon="redo-2" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить" disabled></button>
     </div>
     <span class="menu-cap">Название изделия</span>
-    <input id="nameInput" value="Ваза" title="Название изделия" spellcheck="false" aria-label="Название изделия">
+    <input id="nameInput" name="ware-name" value="Ваза" title="Название изделия" spellcheck="false"
+           autocomplete="off" enterkeyhint="done" aria-label="Название изделия">
     <button class="btn" id="kbBtn" data-icon="book-open" title="Обучение: энциклопедия гончарного дела">Обучение</button>
     <div class="works-wrap">
       <button class="btn" id="worksBtn" data-icon="folder-open" aria-haspopup="true" aria-expanded="false" title="Сохранённые работы (Ctrl+S — сохранить)">Работы</button>

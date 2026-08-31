@@ -29,6 +29,7 @@ const CHECKS = [
   ['Деньги',       'check-cost.mjs'],
   ['Путь',         'check-next.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
+  ['Интерфейс',    'check-ui.mjs'],
 ];
 
 let failed = 0;
