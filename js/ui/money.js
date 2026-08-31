@@ -14,6 +14,7 @@ import { emit } from '../core/bus.js';
 import { computeProduction, userProfileMM } from '../core/math.js';
 import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js';
 import { byId as materialById } from '../config/materials.js';
+import { byGlazeId } from '../config/glazes.js';
 import { byId as processById } from '../config/processes.js';
 import { tune } from '../core/tuning.js';
 import { $, num, rub, esc, plural } from './dom.js';
@@ -24,7 +25,7 @@ const costNow = () => sanitizeCost(state.cost);
 const F = [
   {k: 'minPerPiece',  n: 'Работы на изделие', u: 'мин', step: 1,  est: true},
   {k: 'hourRate',     n: 'Ставка мастера',    u: '₽/ч', step: 50, est: true},
-  {k: 'glazeRubPerKg', n: 'Глазурь',          u: '₽/кг', step: 50, est: true},
+  {k: 'glazeRubPerKg', n: 'Глазурь, своя цена', u: '₽/кг', step: 50, empty: true},
   {k: 'lossPct',      n: 'Брак',              u: '%',   step: 1,  est: true},
   {k: 'otherPct',     n: 'Прочие расходы',    u: '%',   step: 1,  est: true},
   {k: 'marginPct',    n: 'Наценка',           u: '%',   step: 10},
@@ -38,7 +39,8 @@ export function moneyNumbers() {
   const prod = computeProduction(state);
   const prof = userProfileMM(state);
   const kiln = kilnNumbers();
-  const per = pieceCost(state, prod, prof, {...o, firePerPiece: kiln.perItem || 0});
+  const per = pieceCost(state, prod, prof,
+    {...o, firePerPiece: kiln.perItem || 0, glaze: byGlazeId(state.glazeId)});
   const plan = batchPlan(per, {
     n: o.n,
     perFiring: kiln.load ? kiln.load.total : null,
@@ -59,9 +61,11 @@ const estTag = '<span class="est-tag" title="Ориентир, а не пасп�
 function fields(o) {
   return F.map(f => {
     const [lo, hi] = COST_LIMITS[f.k];
+    const v = o[f.k] == null ? '' : o[f.k];
     return `<label class="field-row"><span>${f.n}${f.est ? ' ' + estTag : ''}</span>
       <input type="number" data-cost="${f.k}" min="${lo}" max="${hi}" step="${f.step}"
-             value="${o[f.k]}" inputmode="numeric"><i class="unit">${f.u}</i></label>`;
+             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="из паспорта"' : ''}
+             ><i class="unit">${f.u}</i></label>`;
   }).join('');
 }
 
@@ -70,7 +74,10 @@ function bindFields(box) {
     inp.oninput = () => {
       const k = inp.dataset.cost;
       const [lo, hi] = COST_LIMITS[k];
-      const v = Math.min(hi, Math.max(lo, +inp.value || 0));
+      // пустое поле цены глазури — это «взять из паспорта», а не ноль
+      const raw = inp.value.trim();
+      const v = raw === '' && k === 'glazeRubPerKg'
+        ? null : Math.min(hi, Math.max(lo, +raw || 0));
       state.cost = {...costNow(), [k]: v};
       emit();
     };
@@ -99,9 +106,10 @@ function renderPiece(m) {
         : `<b>${rub(per.clayRub)}</b>`,
         `${num(per.clayKg, 2)} кг сырья${per.clayPerKg ? ` · ${num(per.clayPerKg, 0)} ₽/кг по паспорту` : ''}`)}
       ${row('Глазурь', per.glazeRub == null
-        ? '<span class="dim">цена не задана</span>'
-        : `<b>${rub(per.glazeRub)}</b> ${estTag}`,
-        `${num(per.areaCm2, 0)} см² поверхности · ${num(per.glazeKg * 1000, 0)} г смеси`)}
+        ? '<span class="dim">цена не взята</span>'
+        : `<b>${rub(per.glazeRub)}</b>${per.glazePrice.from === 'passport' ? '' : ' ' + estTag}`,
+        `${num(per.areaCm2, 0)} см² поверхности · ${num(per.glazeKg * 1000, 0)} г смеси
+         <span class="src-note">${esc(per.glazePrice.note)}</span>`)}
       ${row('Обжиг', per.fireRub == null
         ? '<span class="dim">изделие не входит в выбранную печь</span>'
         : `<b>${rub(per.fireRub)}</b>`,

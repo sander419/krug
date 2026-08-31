@@ -38,6 +38,15 @@ const SRC = {
   leaching:  {t: 'Digitalfire — Leaching', u: 'https://digitalfire.com/glossary/leaching'},
   umf:       {t: 'Digitalfire — Unity Molecular Formula', u: 'https://digitalfire.com/glossary/unity+molecular+formula'},
   glazy:     {t: 'Glazy — открытая база рецептов глазурей', u: 'https://glazy.org/'},
+  /* Цены рынка: конкретные товары конкретного продавца на 31.08.2026.
+     Это не «столько стоит такая глазурь вообще», а «вот реальный товар этого
+     типа и его цена» — по ней инструмент и считает, пока мастерская не впишет
+     свою. Фасовка важна не меньше цены: килограмм из банки на 200 г вдвое
+     дороже килограмма из ведра на 4 кг. */
+  lkClear:   {t: 'Портал керамики — Глазурь ЛК Бесцветная прозрачная S-0104 (порошок, 4 кг — 3150 ₽)',
+              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/22/s-0104-detail'},
+  lkMatte:   {t: 'Портал керамики — Глазурь ЛК Белая матовая S-0220 (суспензия, 5 кг — 2472 ₽)',
+              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/21/s-0220-detail'},
 };
 
 export const GLAZE_FAMILIES = {
@@ -71,8 +80,13 @@ export const GLAZES = [
     note: 'Рабочая лошадь: показывает цвет черепка и ангоба, даёт мытьё и посудную пригодность. ' +
           'На красной массе уходит в тёплый тон, на фарфоре остаётся холодной.',
     risk: 'Цек, если КТР черепка и глазури разошлись — проверяется вердиктом ниже.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
-    src: [SRC.clear, SRC.transp],
+    /* Ориентир цены — конкретный товар рынка, а не «такая глазурь стоит».
+       Порошок: килограммы сухой смеси, те же, что считает смета. */
+    vendor: 'Лаборатория керамики / Портал керамики',
+    product: 'ЛК Бесцветная прозрачная, S-0104', form: 'powder',
+    pack: 'ведро 4 кг', packKg: 4, priceRub: 3150,
+    est: ['umf'], unknown: [], na: [],
+    src: [SRC.clear, SRC.transp, SRC.lkClear],
   },
   {
     id: 'clear-crackle',
@@ -170,8 +184,11 @@ export const GLAZES = [
           'а не гасится недожогом. Приятна в руке, не бликует на фото.',
     risk: 'Настоящая матовость и недоплав выглядят похоже, а ведут себя по-разному: ' +
           'сухая недоплавленная поверхность царапается и пачкается.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
-    src: [SRC.matte, SRC.satin],
+    est: ['umf'], vendor: 'Лаборатория керамики / Портал керамики',
+    product: 'ЛК Белая матовая, S-0220', form: 'suspension',
+    pack: 'ведро 5 кг готовой суспензии', packKg: 5, priceRub: 2472,
+    unknown: [], na: [],
+    src: [SRC.matte, SRC.satin, SRC.lkMatte],
   },
   {
     id: 'rutile-blue',

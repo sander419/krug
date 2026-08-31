@@ -16,7 +16,7 @@ import { tune } from './tuning.js';
 export const COST_DEFAULTS = {
   minPerPiece: 20,        // минут ручной работы на изделие (формовка + подрезка + сборка)
   hourRate: 700,          // ₽/ч мастера с накладными
-  glazeRubPerKg: 1200,    // ₽/кг сухой глазурной смеси — ориентир розницы, не паспорт
+  glazeRubPerKg: null,    // ₽/кг сухой смеси; null — взять из паспорта глазури
   otherPct: 12,           // упаковка, расходники, электричество помимо печи
   lossPct: 10,            // брак: трещины, сколы, непрокрас
   marginPct: 100,         // наценка к себестоимости для минимальной цены
@@ -26,7 +26,30 @@ export const COST_DEFAULTS = {
 };
 
 /** Что из чисел — ориентир, а не паспорт. Панель обязана это показывать. */
-export const COST_ESTIMATED = ['glazeRubPerKg', 'minPerPiece', 'hourRate', 'otherPct', 'lossPct'];
+export const COST_ESTIMATED = ['minPerPiece', 'hourRate', 'otherPct', 'lossPct'];
+
+/**
+ * Почём килограмм глазури и откуда это известно.
+ *
+ * В реестре у части глазурей стоит цена конкретного товара рынка. Но брать её
+ * можно не всегда: цена суспензии — за килограмм готовой, разведённой водой,
+ * а смета считает сухую смесь. Пересчитать одно в другое без паспортной доли
+ * сухого остатка нельзя, и выдумывать эту долю мы не будем.
+ *
+ * @returns {{rubPerKg, from:'own'|'passport'|null, note}}
+ */
+export function glazePrice(glaze, own) {
+  if (own != null && +own > 0) return {rubPerKg: +own, from: 'own', note: 'ваша цена'};
+  const g = glaze || {};
+  if (g.form === 'powder' && g.priceRub && g.packKg)
+    return {rubPerKg: g.priceRub / g.packKg, from: 'passport',
+            note: `${g.product || g.name}, ${g.pack || g.packKg + ' кг'} — ${g.priceRub} ₽`};
+  if (g.form === 'suspension' && g.priceRub && g.packKg)
+    return {rubPerKg: null, from: null,
+            note: `${g.product || g.name}: цена известна за килограмм готовой суспензии (` +
+                  Math.round(g.priceRub / g.packKg) + ' ₽/кг), а смета считает сухую смесь — впишите свою'};
+  return {rubPerKg: null, from: null, note: 'цена этой глазури не опубликована — впишите свою'};
+}
 
 const clampNum = (v, lo, hi, def) => {
   const n = +v;
@@ -41,8 +64,15 @@ export const COST_LIMITS = {
 
 export function sanitizeCost(raw) {
   const o = {...COST_DEFAULTS, ...(raw && typeof raw === 'object' ? raw : {})};
-  for (const [k, [lo, hi]] of Object.entries(COST_LIMITS))
+  for (const [k, [lo, hi]] of Object.entries(COST_LIMITS)) {
+    /* Цена глазури — единственное поле, где пусто это ответ: «взять из
+       паспорта». Обрезать пустое до минимума значило бы подменить паспорт нулём. */
+    if (k === 'glazeRubPerKg' && (o[k] === null || o[k] === undefined || o[k] === '')) {
+      o[k] = null;
+      continue;
+    }
     o[k] = clampNum(o[k], lo, hi, COST_DEFAULTS[k]);
+  }
   return o;
 }
 
@@ -90,8 +120,10 @@ export function pieceCost(state, prod, prof, opt = {}) {
      инструмента (js/config/tuning.js), цена — число мастерской. */
   const areaCm2 = glazedAreaCm2(prof, state.wall, state.hollow);
   const glazeKg = areaCm2 * tune('glazeGperCm2') / 1000;
-  const glazeRub = o.glazeRubPerKg > 0 ? glazeKg * o.glazeRubPerKg : null;
-  if (glazeRub != null) est.push('расход и цена глазури: оценка');
+  const price = glazePrice(opt.glaze, o.glazeRubPerKg);
+  const glazeRub = price.rubPerKg > 0 ? glazeKg * price.rubPerKg : null;
+  if (glazeRub != null) est.push('расход глазури: оценка');
+  else est.push('глазурь: ' + price.note);
 
   /* Обжиг: ₽ на изделие приходит из садки печи — сколько влезло, столько
      и делит киловатт-часы. Печь не выбрана или изделие не влезло — пусто. */
@@ -112,7 +144,7 @@ export function pieceCost(state, prod, prof, opt = {}) {
   const minPrice = total * (1 + o.marginPct / 100);
   return {
     clayKg, clayPerKg, clayRub,
-    areaCm2, glazeKg, glazeRub,
+    areaCm2, glazeKg, glazeRub, glazePrice: price,
     fireRub, labourRub, toolingRub, otherRub, lossRub,
     total, minPrice, marginRub: minPrice - total,
     complete: clayRub != null && fireRub != null,   // всё ли посчитано по факту

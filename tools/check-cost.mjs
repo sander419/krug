@@ -7,16 +7,18 @@
 // пусто, а не выдумано) и то, что тираж это та же штука, умноженная на N.
 import { state } from '../js/core/state.js';
 import { computeProduction, userProfileMM } from '../js/core/math.js';
-import { COST_DEFAULTS, COST_LIMITS, sanitizeCost, glazedAreaCm2, pieceCost, batchPlan }
+import { COST_DEFAULTS, COST_LIMITS, sanitizeCost, glazedAreaCm2, glazePrice, pieceCost, batchPlan }
   from '../js/core/cost.js';
 import { MATERIALS, byId as materialById } from '../js/config/materials.js';
+import { GLAZES, byGlazeId } from '../js/config/glazes.js';
 import { tune } from '../js/core/tuning.js';
 
 const problems = [];
 const P = t => problems.push(t);
 const prod = () => computeProduction(state);
 const prof = () => userProfileMM(state);
-const cost = (o = {}) => pieceCost(state, prod(), prof(), {firePerPiece: 30, ...o});
+const glz = () => byGlazeId(state.glazeId);
+const cost = (o = {}) => pieceCost(state, prod(), prof(), {firePerPiece: 30, glaze: glz(), ...o});
 
 /* ---------- очистка входа ---------- */
 const dirty = sanitizeCost({hourRate: -100, lossPct: 500, minPerPiece: 'ерунда', n: 0});
@@ -89,6 +91,38 @@ if (dirty.n !== COST_LIMITS.n[0]) P('нулевой тираж не обреза
   if (noFire.complete) P('смета без обжига не может считаться полной');
 }
 
+/* ---------- цена глазури: паспорт, своя или честное «не знаю» ---------- */
+{
+  const powder = GLAZES.find(g => g.form === 'powder' && g.priceRub && g.packKg);
+  const susp = GLAZES.find(g => g.form === 'suspension' && g.priceRub && g.packKg);
+  const blank = GLAZES.find(g => !g.priceRub);
+  if (!powder) P('в реестре не осталось глазури-порошка с ценой — смете неоткуда её брать');
+  else {
+    const p = glazePrice(powder, null);
+    if (p.from !== 'passport') P('цена глазури-порошка не берётся из паспорта');
+    if (Math.abs(p.rubPerKg - powder.priceRub / powder.packKg) > 1e-9)
+      P('цена за килограмм считается не из фасовки');
+    const c = pieceCost(state, prod(), prof(), {firePerPiece: 30, glaze: powder});
+    if (!(c.glazeRub > 0)) P('паспортная цена есть, а глазурь в смете не посчитана');
+    if (c.est.some(e => /цена глазури/.test(e))) P('паспортная цена не должна помечаться как неизвестная');
+  }
+  if (susp) {
+    /* Суспензия — килограммы разведённой водой глазури: на сухую смесь
+       её цена не переводится, и подставлять её было бы враньём. */
+    const p = glazePrice(susp, null);
+    if (p.rubPerKg !== null) P('цена суспензии подставлена в расчёт сухой смеси');
+    if (!/суспензи/.test(p.note)) P('про суспензию не сказано, почему цена не взята');
+    const c = pieceCost(state, prod(), prof(), {firePerPiece: 30, glaze: susp});
+    if (c.glazeRub !== null) P('глазурь-суспензия посчитана в смете как сухая смесь');
+    if (c.complete === undefined) P('полнота сметы должна быть определена');
+  }
+  if (blank && glazePrice(blank, null).rubPerKg !== null)
+    P('у глазури без цены откуда-то взялась цена');
+  /* Своя цена бьёт паспорт: это цифра мастерской, а не наша. */
+  const own = glazePrice(powder || blank, 2000);
+  if (own.rubPerKg !== 2000 || own.from !== 'own') P('своя цена глазури не перебивает паспортную');
+}
+
 /* ---------- расход глазури идёт из настроек ---------- */
 {
   const c = cost();
@@ -117,7 +151,8 @@ console.log('Проверка себестоимости\n');
   const c = cost();
   const mat = materialById(state.mat);
   console.log(`  ${mat.name}: глина ${c.clayRub == null ? '—' : c.clayRub.toFixed(0)} ₽ · ` +
-    `глазурь ${c.glazeRub.toFixed(0)} ₽ (${c.areaCm2.toFixed(0)} см²) · обжиг ${c.fireRub.toFixed(0)} ₽ · ` +
+    `глазурь ${c.glazeRub == null ? '—' : c.glazeRub.toFixed(0) + ' ₽'} (${c.areaCm2.toFixed(0)} см², ` +
+    `${c.glazePrice.from || 'цены нет'}) · обжиг ${c.fireRub.toFixed(0)} ₽ · ` +
     `работа ${c.labourRub.toFixed(0)} ₽ → итого ${c.total.toFixed(0)} ₽, цена от ${c.minPrice.toFixed(0)} ₽`);
 }
 

@@ -339,6 +339,8 @@ input[type=range]::-moz-range-thumb{
 .cost-sub{font-size:var(--fs-xs);color:var(--muted);line-height:1.6;}
 .cost-sub b{color:var(--text);}
 .cost-list{margin-bottom:10px;}
+/* Откуда взято число: товар, фасовка, цена — мелко, но на виду. */
+.src-note{display:block;color:var(--muted2);font-size:calc(var(--fs-xs) * .92);line-height:1.5;}
 
 /* Пометка «оценка» — обещание реестров, вынесенное в интерфейс: число без
    паспорта обязано выглядеть иначе, чем число из паспорта. */

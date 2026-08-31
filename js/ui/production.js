@@ -19,12 +19,29 @@ import { computeProduction, userProfileMM, computeWarnings, computeStrength } fr
 import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js';
 import { castMouldNumbers } from '../three/castMould.js';
 import { byId as materialById } from '../config/materials.js';
+import { byGlazeId } from '../config/glazes.js';
 import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
 import { firingBill } from '../core/kiln.js';
 import { $, esc, num, rub, plural } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { toast } from './overlays.js';
+
+const bag = (map, id, kg) => map.set(id, (map.get(id) || 0) + kg);
+
+/* Закупка: сколько это в таре поставщика. Фасовку берём из паспорта — где её
+   нет, там и не выдумываем: «столько-то килограммов» тоже ответ. */
+function packList(map, lookup) {
+  const parts = [];
+  for (const [id, kg] of map) {
+    const r = lookup(id);
+    if (!r) continue;
+    parts.push(r.packKg
+      ? `${esc(r.name.toLowerCase())} — ${num(kg / r.packKg, 1)} × ${esc(r.pack || (r.packKg + ' кг'))}`
+      : `${esc(r.name.toLowerCase())} — ${num(kg, 1)} кг, фасовка не опубликована`);
+  }
+  return parts.join(' · ');
+}
 
 /* До какой температуры греем эту работу: из паспорта её массы. Работы
    с разной температурой в одну садку не идут — это учитывает firingBill. */
@@ -39,7 +56,8 @@ function workNumbers() {
   const prof = userProfileMM(state);
   const opt = sanitizeCost(state.cost);
   const kiln = kilnNumbers();
-  const per = pieceCost(state, prod, prof, {...opt, firePerPiece: kiln.perItem || 0});
+  const per = pieceCost(state, prod, prof,
+    {...opt, firePerPiece: kiln.perItem || 0, glaze: byGlazeId(state.glazeId)});
   const plan = batchPlan(per, {n: opt.n, perFiring: kiln.load ? kiln.load.total : null,
                                mouldLifePieces: 50});
   const bad = computeWarnings(state, prod, computeStrength(state))
@@ -55,6 +73,7 @@ function workNumbers() {
     mouldParts: mould ? mould.parts : null,
     mouldKg: mould ? mould.plasterL * 2 * 1.42 : null,
     item: kilnItem(),                       // габарит после обжига — для общей садки
+    matId: state.mat, glazeId: state.glazeId,
     topC: topOf(),                          // до скольки греем: разные температуры не мешают
     glaze: state.firing === 'glaze',
     kwh: (state.kiln || {}).kwh || 6,
@@ -114,8 +133,9 @@ export function syncProduction() {
 
   const rows = [];
   let clay = 0, cost = 0, margin = 0, firings = 0, pieces = 0, revenue = 0;
-  let glaze = false, kwh = 6;
+  let glaze = false, kwh = 6, glazeKg = 0, glazeRub = 0;
   const items = [];
+  const clayBy = new Map(), glazeBy = new Map();
   for (const w of list) {
     const n = withDNA(w.dna, () => workNumbers());
     if (!n) continue;
@@ -123,6 +143,11 @@ export function syncProduction() {
     firings += n.plan.firings || 0; pieces += n.plan.n; revenue += n.plan.revenue;
     items.push({...n.item, n: n.plan.n, topC: n.topC});
     glaze = glaze || n.glaze; kwh = n.kwh;
+    /* Глину и глазурь покупают тарой, поэтому копим по каждой массе отдельно:
+       две работы на разных массах — это два мешка, а не один. */
+    bag(clayBy, n.matId, n.plan.clayKg);
+    bag(glazeBy, n.glazeId, n.plan.glazeKg);
+    glazeKg += n.plan.glazeKg; glazeRub += (n.per.glazeRub || 0) * n.plan.n;
     rows.push(rowHTML(w, n));
   }
 
@@ -134,7 +159,11 @@ export function syncProduction() {
     <dl class="spec prod-total">
       <dt>Всего в работе</dt><dd><b>${rows.length}</b> ${plural(rows.length, 'работа', 'работы', 'работ')} ·
         ${pieces} ${plural(pieces, 'изделие', 'изделия', 'изделий')}</dd>
-      <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b> <span class="dim">(${num(clay / 20, 1)} валюшек по 20 кг)</span></dd>
+      <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b>
+        <span class="dim">${packList(clayBy, id => materialById(id))}</span></dd>
+      <dt>Глазури</dt><dd><b>${num(glazeKg, 1)} кг</b> сухой смеси${glazeRub
+        ? ` · ${rub(glazeRub)} <span class="est-tag">оценка</span>` : ''}
+        <span class="dim">${packList(glazeBy, id => byGlazeId(id))}</span></dd>
       <dt>Обжигов</dt><dd>${mix.firings
         ? `<b>${mix.firings}</b> ${plural(mix.firings, 'загрузка', 'загрузки', 'загрузок')}
            <span class="dim">${mix.groups.length > 1
