@@ -17,7 +17,7 @@ import { loadWorks } from '../core/works.js';
 import { kilnNumbers } from './kiln.js';
 import { currentWorkId } from './works.js';
 import { openScreen, refreshScreen } from './screen.js';
-import { $, esc, num, rub } from './dom.js';
+import { $, esc, num, rub, signed } from './dom.js';
 
 let left = null, right = null;
 
@@ -89,8 +89,8 @@ function bodyHTML() {
     if (Number.isFinite(x) && Number.isFinite(y)) {
       const diff = y - x;
       const pct = x ? diff / x * 100 : null;
-      d = `${diff > 0 ? '+' : ''}${r.money ? rub(diff) : num(diff, r.dec)}${
-        pct == null ? '' : ` · ${diff > 0 ? '+' : ''}${num(pct, 1)} %`}`;
+      d = `${r.money ? signed(diff, 0, (v) => rub(v)) : signed(diff, r.dec)}${
+        pct == null ? '' : ` · ${signed(pct, 1)} %`}`;
       if (r.better && Math.abs(pct || 0) > 0.5)
         cls = (r.better === 'less' ? diff < 0 : diff > 0) ? 'win-b' : 'win-a';
     }

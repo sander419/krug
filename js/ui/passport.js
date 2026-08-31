@@ -27,7 +27,7 @@ import { currentWork, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent } from './kiln.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { openRelease } from './release.js';
-import { $, esc, num, rub, plural } from './dom.js';
+import { $, esc, num, rub, plural, signed } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './overlays.js';
 
@@ -84,13 +84,17 @@ function section(title, rows, extra = '') {
 function factHTML(w, d) {
   const calc = calcForFact(d);
   const rows = compareFact(calc, w ? w.fact : {});
-  const fields = FACT_FIELDS.map(f => {
-    const v = w && w.fact && w.fact[f.k] !== undefined ? w.fact[f.k] : '';
-    const c = calc[f.k];
-    return `<label class="field-row"><span>${f.n}</span>
-      <input type="number" data-fact="${f.k}" step="${f.step}" value="${v}"
-             inputmode="decimal" placeholder="${c == null ? '' : num(c, f.dec)}"
-             aria-label="${f.n}, факт"><i class="unit">${f.u}</i></label>`;
+  /* Поля разбираются по именам, а не через `f.что-то`: у реестра факта они
+     называются `name` и `unit`, а у соседних реестров — `n` и `u`. Опечатка
+     здесь однажды уже подписала все восемь полей словом «undefined», и молча:
+     при разборе имени промах виден сразу — падает, а не рисует. */
+  const fields = FACT_FIELDS.map(({k, name, unit, step, dec}) => {
+    const v = w && w.fact && w.fact[k] !== undefined ? w.fact[k] : '';
+    const c = calc[k];
+    return `<label class="field-row"><span>${name}</span>
+      <input type="number" data-fact="${k}" step="${step}" value="${v}"
+             inputmode="decimal" placeholder="${c == null ? '' : num(c, dec)}"
+             aria-label="${name}, факт"><i class="unit">${unit}</i></label>`;
   }).join('');
 
   const table = rows.length ? `<table class="pp-fact">
@@ -99,7 +103,7 @@ function factHTML(w, d) {
       <td>${r.name}</td>
       <td>${r.calc == null ? '—' : num(r.calc, r.dec) + ' ' + r.unit}</td>
       <td><b>${num(r.fact, r.dec)} ${r.unit}</b></td>
-      <td>${r.pct == null ? '—' : (r.pct > 0 ? '+' : '') + num(r.pct, 1) + ' %'}</td>
+      <td>${r.pct == null ? '—' : signed(r.pct, 1) + ' %'}</td>
     </tr>`).join('')}</tbody></table>`
     : `<p class="dim">Замеров пока нет. Впишите то, что получилось на самом деле, —
        и рядом с каждым обещанием встанет отклонение.</p>`;

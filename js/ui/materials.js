@@ -16,7 +16,7 @@ import { MEASURABLE, getNote, addMeasure, removeMeasure, setNoteText, measureSum
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { openScreen, refreshScreen } from './screen.js';
-import { $, esc, num } from './dom.js';
+import { $, esc, num, signed } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './overlays.js';
 
@@ -74,7 +74,7 @@ function measuresHTML(kind, r) {
           <b>${f.name}</b>
           <span class="dim">паспорт: ${s.passport == null ? 'нет' : num(s.passport, f.dec) + ' ' + f.unit}</span>
           ${s.avg != null ? `<span class="fact-tag">моё среднее ${num(s.avg, f.dec)} ${f.unit}${
-            s.deltaPct != null ? ` · ${s.deltaPct > 0 ? '+' : ''}${num(s.deltaPct, 1)} %` : ''}</span>` : ''}
+            s.deltaPct != null ? ` · ${signed(s.deltaPct, 1)} %` : ''}</span>` : ''}
         </div>
         <div class="mt-values">
           ${s.list.map((v, i) => `<button class="mt-val" data-drop="${kind}|${r.id}|${f.k}|${i}"

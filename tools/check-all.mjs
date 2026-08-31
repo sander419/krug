@@ -32,6 +32,7 @@ const CHECKS = [
   ['Интерфейс',    'check-ui.mjs'],
   ['Пакет',        'check-zip.mjs'],
   ['Брендбук',     'check-brand.mjs'],
+  ['Факт',         'check-fact.mjs'],
 ];
 
 let failed = 0;
