@@ -27,6 +27,8 @@ const ACTIONS = [
   {name: 'Обучение', ico: 'graduation-cap', btn: 'kbBtn', keys: 'энциклопедия статьи курс'},
   {name: 'Как здесь работать', ico: 'circle-help', btn: 'guideBtn', keys: 'подсказка шаги помощь'},
   {name: 'Тема: светлая или тёмная', ico: 'sun', btn: 'themeBtn', keys: 'цвет ночь день'},
+  {name: 'Цветовая схема', ico: 'palette', btn: 'viewBtn',
+   keys: 'цвет палитра оформление мастерская селадон кобальт графит'},
   {name: 'Окружение вокруг модели', ico: 'image', btn: 'envBtn', keys: 'фон студия сцена'},
   {name: 'Мои изделия', ico: 'folder-open', btn: 'worksBtn', keys: 'работы открыть сохранить список избранное архив'},
   {name: 'Снимок вида в PNG', ico: 'camera', btn: 'snapBtn', keys: 'скриншот картинка'},

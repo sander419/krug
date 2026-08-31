@@ -84,8 +84,22 @@ const PAIRS = [
   ['text', 'toastBg', 4.5, 'всплывающая строка'],
 ];
 
-for (const [name, sel] of [['тёмная', ':root{'], ['светлая', ':root[data-theme="light"]{']]) {
-  const t = tokens(sel);
+/* Схема — второй набор токенов поверх темы: проверяем ровно то, что увидит
+   человек, то есть тему и схему вместе. Схема `clay` своего блока не имеет —
+   это и есть базовые токены. */
+const SKINS = ['celadon', 'cobalt', 'graphite'];
+const SETS = [
+  ['тёмная', [':root{']],
+  ['светлая', [':root[data-theme="light"]{']],
+];
+for (const skin of SKINS) {
+  SETS.push([`тёмная · ${skin}`, [':root{', `:root[data-theme="dark"][data-skin="${skin}"]{`]]);
+  SETS.push([`светлая · ${skin}`,
+    [':root{', ':root[data-theme="light"]{', `:root[data-theme="light"][data-skin="${skin}"]{`]]);
+}
+
+for (const [name, sels] of SETS) {
+  const t = Object.assign({}, ...sels.map(tokens));
   if (!Object.keys(t).length) continue;
   let worst = {r: 99, what: ''};
   for (const [fg, bg, min, what] of PAIRS) {
@@ -96,7 +110,7 @@ for (const [name, sel] of [['тёмная', ':root{'], ['светлая', ':root
     if (r < min) P(`${name}: ${what} — контраст ${r.toFixed(2)}:1 при пороге ${min}:1 (--${fg} на --${bg})`);
     if (r < worst.r) worst = {r, what};
   }
-  console.log(`  ${name} тема: самая слабая пара — ${worst.what}, ${worst.r.toFixed(2)}:1`);
+  console.log(`  ${name}: самая слабая пара — ${worst.what}, ${worst.r.toFixed(2)}:1`);
 }
 
 /* ---------- страница обязана рисоваться ---------- */
@@ -124,4 +138,4 @@ if (problems.length) {
   for (const p of problems) console.log('  ✗ ' + p);
   process.exit(1);
 }
-console.log('\nОбе темы держат контраст по WCAG, корень страницы не спрятан.');
+console.log('\nВсе темы и схемы держат контраст по WCAG, корень страницы не спрятан.');

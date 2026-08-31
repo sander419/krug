@@ -68,6 +68,83 @@
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
+/* ---------- цветовые схемы ----------
+   Схема — второй, независимый от темы переключатель: тема решает, светло или
+   темно, схема — какого цвета мастерская. Обе живут в атрибутах корня
+   (`data-theme`, `data-skin`), и обе задают одни и те же токены, поэтому
+   ни одному правилу ниже не нужно знать, что схем стало больше.
+
+   Схема не трогает сцену: 3D-вид остаётся тёплым, потому что это мастерская
+   с глиной, а не панель приборов. Меняются интерфейсные поверхности, акцент
+   и цвет раздела «форма» — он и есть акцент.
+
+   Порог читаемости у схем тот же, что у тем: их контраст считает
+   `tools/check-contrast.mjs` по тем же парам. */
+
+/* Селадон: холодная зелень печного черепка. Для тех, кому терракота
+   интерфейса спорит с терракотой на модели. */
+:root[data-theme="dark"][data-skin="celadon"]{
+  --bg:#0e100f; --panel:#171918; --panel2:#1e211f; --line:#2a2d2b; --line2:#3f4441;
+  --text:#eff3f1; --muted:#a4aca8; --muted2:#8b938f;
+  --accent:#3fa88c; --accent2:#7ad6bc; --accentDark:#2c7d67; --onAccent:#04140f;
+  --chip:rgba(18,21,20,.78);
+  --field:#111413; --sunken:#121514; --strip:#141716; --track:#2f3331; --knob:#848d89;
+  --headA:#1a1c1b; --headB:#141615; --toastBg:#212523;
+  --glow:rgba(63,168,140,.30); --sect-form:#3fa88c;
+}
+:root[data-theme="light"][data-skin="celadon"]{
+  --bg:#eceeec; --panel:#ffffff; --panel2:#f5f8f6; --line:#dfe4e1; --line2:#c3cac6;
+  --text:#182019; --muted:#525a56; --muted2:#6f7873;
+  --accent:#1c7d64; --accent2:#136050; --accentDark:#175f4d; --onAccent:#f6fffb;
+  --chip:rgba(255,255,255,.9);
+  --field:#ffffff; --sunken:#eff2f0; --strip:#f4f7f5; --track:#d7dedd; --knob:#9aa39e;
+  --headA:#ffffff; --headB:#f2f5f3; --toastBg:#ffffff;
+  --glow:rgba(28,125,100,.20); --sect-form:#1c7d64;
+}
+
+/* Кобальт: синий кобальт по белому — гжель. Холодная схема для тех, кто
+   считает деньги дольше, чем крутит модель. */
+:root[data-theme="dark"][data-skin="cobalt"]{
+  --bg:#0d0f13; --panel:#16191f; --panel2:#1d2128; --line:#2a2e36; --line2:#3e444e;
+  --text:#eff2f7; --muted:#a5abb6; --muted2:#8b919c;
+  --accent:#5b8ae8; --accent2:#96b9f7; --accentDark:#3f66b8; --onAccent:#050b18;
+  --chip:rgba(17,20,25,.78);
+  --field:#101318; --sunken:#111419; --strip:#13161c; --track:#2e333b; --knob:#858c97;
+  --headA:#191c22; --headB:#131619; --toastBg:#212630;
+  --glow:rgba(91,138,232,.30); --sect-form:#5b8ae8; --sect-print:#57b0c9;
+}
+:root[data-theme="light"][data-skin="cobalt"]{
+  --bg:#ebedf1; --panel:#ffffff; --panel2:#f5f7fa; --line:#dfe3e9; --line2:#c3c8d1;
+  --text:#171a20; --muted:#525863; --muted2:#6e7480;
+  --accent:#2a58b8; --accent2:#1f4796; --accentDark:#234a9c; --onAccent:#f7faff;
+  --chip:rgba(255,255,255,.9);
+  --field:#ffffff; --sunken:#eef1f5; --strip:#f4f6f9; --track:#d6dbe3; --knob:#98a0ac;
+  --headA:#ffffff; --headB:#f2f4f8; --toastBg:#ffffff;
+  --glow:rgba(42,88,184,.20); --sect-form:#2a58b8; --sect-print:#1f6c86;
+}
+
+/* Графит: нейтральная сталь без собственного цвета. Единственная схема,
+   в которой интерфейс не подмешивает свой оттенок к глазури на модели, —
+   когда цвет изделия решают глазами, берут её. */
+:root[data-theme="dark"][data-skin="graphite"]{
+  --bg:#101112; --panel:#191a1b; --panel2:#212223; --line:#2c2d2e; --line2:#434547;
+  --text:#f1f2f3; --muted:#a7a9ab; --muted2:#8c8e90;
+  --accent:#8fa3b0; --accent2:#c3d0d8; --accentDark:#66798a; --onAccent:#0d1114;
+  --chip:rgba(19,20,21,.78);
+  --field:#131415; --sunken:#141516; --strip:#161718; --track:#313334; --knob:#8b8d8f;
+  --headA:#1c1d1e; --headB:#151617; --toastBg:#242627;
+  --glow:rgba(143,163,176,.24); --sect-form:#8fa3b0;
+}
+:root[data-theme="light"][data-skin="graphite"]{
+  --bg:#eceded; --panel:#ffffff; --panel2:#f6f7f7; --line:#e1e3e3; --line2:#c6c8c9;
+  --text:#1a1c1d; --muted:#565859; --muted2:#717374;
+  --accent:#4a5c68; --accent2:#37474f; --accentDark:#3d4c56; --onAccent:#f9fbfc;
+  --chip:rgba(255,255,255,.9);
+  --field:#ffffff; --sunken:#f0f1f1; --strip:#f5f6f6; --track:#dadcdc; --knob:#9b9d9e;
+  --headA:#ffffff; --headB:#f3f4f4; --toastBg:#ffffff;
+  --glow:rgba(74,92,104,.18); --sect-form:#4a5c68;
+}
+
 /* Поверхности, которые мы не рисовали, всё равно принадлежат дизайну: выделение
    текста, каретка, галочки, маркеры списков, кольцо фокуса, полосы прокрутки.
    С браузерными умолчаниями страница выглядит собранной, а не сделанной. */
@@ -234,6 +311,33 @@ header{
 }
 .pop-row .seg{padding:3px;}
 .pop-row .seg button{min-width:36px;}
+/* Цветовая схема выбирается не названием, а самим цветом: кружок показывает
+   фон, панель и акцент схемы разом — так видно, что получишь, до нажатия. */
+.pop-row-col{flex-direction:column;align-items:stretch;gap:8px;}
+.skin-row{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.skin-dot{
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  background:none;border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:6px 8px;color:var(--muted);font-size:var(--fs-xs);text-align:left;
+  transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.skin-dot:hover{border-color:var(--line2);color:var(--text);}
+.skin-dot.current{border-color:var(--accent);color:var(--text);}
+.skin-swatch{
+  width:18px;height:18px;border-radius:50%;flex:none;
+  border:1px solid rgba(255,255,255,.14);
+  background:conic-gradient(var(--sw-accent) 0 33%, var(--sw-panel) 0 66%, var(--sw-bg) 0);
+}
+/* Образцы схем нарисованы своими цветами, а не текущими токенами: иначе все
+   четыре кружка выглядят одинаково — в цвете той схемы, что уже включена. */
+[data-skin-swatch="clay"]{--sw-accent:#e0693a;--sw-panel:#191817;--sw-bg:#100f0e;}
+[data-skin-swatch="celadon"]{--sw-accent:#3fa88c;--sw-panel:#171918;--sw-bg:#0e100f;}
+[data-skin-swatch="cobalt"]{--sw-accent:#5b8ae8;--sw-panel:#16191f;--sw-bg:#0d0f13;}
+[data-skin-swatch="graphite"]{--sw-accent:#8fa3b0;--sw-panel:#191a1b;--sw-bg:#101112;}
+:root[data-theme="light"] [data-skin-swatch="clay"]{--sw-accent:#b84e1b;--sw-panel:#ffffff;--sw-bg:#eeecea;}
+:root[data-theme="light"] [data-skin-swatch="celadon"]{--sw-accent:#1c7d64;--sw-panel:#ffffff;--sw-bg:#eceeec;}
+:root[data-theme="light"] [data-skin-swatch="cobalt"]{--sw-accent:#2a58b8;--sw-panel:#ffffff;--sw-bg:#ebedf1;}
+:root[data-theme="light"] [data-skin-swatch="graphite"]{--sw-accent:#4a5c68;--sw-panel:#ffffff;--sw-bg:#eceded;}
 .pop-item{
   display:flex;align-items:center;gap:9px;width:100%;text-align:left;cursor:pointer;
   background:none;border:1px solid transparent;border-radius:8px;padding:8px 9px;
@@ -1823,6 +1927,9 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
 @media (pointer:coarse), (max-width:940px){
   .block-move{opacity:1;}
   .block-move button{width:40px;height:40px;font-size:11px;}
+  /* пальцем схема выбирается в один столбец: цель нажатия 44 px, как везде */
+  .skin-row{grid-template-columns:1fr;}
+  .skin-dot{min-height:44px;}
 }
 
 /* ===================== широкая панель ===================== */
