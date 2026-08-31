@@ -425,9 +425,13 @@ input[type=range]::-moz-range-thumb{
 
 /* сегменты */
 .seg{display:flex;gap:4px;background:var(--sunken);padding:4px;border-radius:var(--radius);border:1px solid var(--line);}
+/* Переключатель один на весь инструмент: утопленная дорожка, поднятый
+   активный. Раньше выбранное в одном месте было залито акцентом, в другом —
+   подсвечено фоном, и каждый узел учил заново, что считается выбранным. */
 .seg button{
-  flex:1;min-height:32px;padding:6px 4px;border:none;background:none;color:var(--muted);
-  border-radius:7px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;transition:background var(--dur) var(--ease),color .15s;
+  flex:1;min-height:34px;padding:7px 6px;border:none;background:none;color:var(--muted);
+  border-radius:var(--radius-sm);font-size:var(--fs-xs);font-weight:600;cursor:pointer;
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
 }
 .seg button:hover{color:var(--text);}
 /* Выбор «что формуем»: кнопок столько, сколько прилепов, — в одну строку они
@@ -440,7 +444,12 @@ input[type=range]::-moz-range-thumb{
   border:1px solid color-mix(in oklab, var(--bad) 40%, var(--line));
   border-radius:var(--radius);padding:10px 12px;
 }
-.seg button.active{background:var(--accent);color:var(--onAccent);}
+/* На тёмной теме тень не видна: поднятое состояние держит светлая заливка
+   и волосяная рамка, а не размытие под элементом. */
+.seg button.active{
+  background:var(--panel2);color:var(--text);
+  box-shadow:0 1px 2px var(--shade),inset 0 0 0 1px var(--line2);
+}
 
 select{
   width:100%;min-height:38px;background:var(--field);border:1px solid var(--line);color:var(--text);
@@ -1272,7 +1281,10 @@ details.block.found{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in
   display:inline-flex;align-items:center;justify-content:center;gap:7px;
 }
 .profile-switch button:hover{color:var(--text);}
-.profile-switch button.active{background:var(--panel2);color:var(--text);box-shadow:0 1px 2px var(--shade);}
+.profile-switch button.active{
+  background:var(--panel2);color:var(--text);
+  box-shadow:0 1px 2px var(--shade),inset 0 0 0 1px var(--line2);
+}
 .profile-switch .ico{color:var(--muted2);}
 .profile-switch button.active .ico{color:var(--accent);}
 
