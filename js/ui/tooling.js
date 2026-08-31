@@ -164,9 +164,40 @@ function render() {
 }
 
 
+/* Техкарта текстом. Считает ту же себестоимость, что и панель: обжиг в неё
+   входит. Наружу — для пакета производства. */
+export function techCardText() {
+  const an = analyzeFormability(state);
+  const prod = computeProduction(state);
+  return techCard(state, prod, an, currentProcId(an), batch,
+    {...econ, firePerPiece: kilnPerItem() || 0},
+    {mould, plasterId: plasterState().id, waterRatio: plasterState().wr});
+}
+
+/* Профили оснастки в DXF. Наружу по той же причине, что и лист: пакет
+   производства собирает те же файлы, что и отдельные кнопки. */
+export function dxfText() {
+  const wp = wareProfiles(state);
+  const roller = rollerProfile(state);
+  const layers = [
+    {name: 'IZDELIE', color: 1, points: wp.outer, closed: false},
+    {name: 'STENKA', color: 3, points: wp.inner, closed: false},
+    {name: 'MATRICA', color: 5, points: cavityPath(state, mould), closed: true},
+  ];
+  if (roller) layers.push({name: 'ROLIK', color: 2, points: roller, closed: false});
+  const mat = materialById(state.mat);
+  return buildDXF(layers, [
+    `KRUG: ${state.name || 'izdelie'} — profili osnastki, mm, syroy razmer`,
+    `Massa: ${mat.name} (${mat.vendor}), usadka ${mat.shrinkPct}%`,
+    `IZDELIE - naruzhnaya poverhnost, STENKA - vnutrennyaya (profil rolika),`,
+    `MATRICA - sechenie nizhney poluformy. X = radius, Y = vysota.`,
+  ]);
+}
+
 /* Лист для производства: собираем модель из тех же чисел, что показывает панель.
-   Вида три, а источник один — иначе чертёж и экран разойдутся. */
-function sheetSVG() {
+   Вида три, а источник один — иначе чертёж и экран разойдутся.
+   Наружу — потому что тот же лист кладётся в пакет производства («Выпуск»). */
+export function sheetSVG() {
   const prof = userProfileMM(state);
   const prod = computeProduction(state);
   const an = analyzeFormability(state);
@@ -374,22 +405,7 @@ export function initTooling() {
   $('toolStlLower').onclick = stl('lower', 'матрица');
   $('toolStlUpper').onclick = stl('upper', 'пуансон');
   $('toolDxf').onclick = () => {
-    const wp = wareProfiles(state);
-    const roller = rollerProfile(state);
-    const layers = [
-      {name: 'IZDELIE', color: 1, points: wp.outer, closed: false},
-      {name: 'STENKA', color: 3, points: wp.inner, closed: false},
-      {name: 'MATRICA', color: 5, points: cavityPath(state, mould), closed: true},
-    ];
-    if (roller) layers.push({name: 'ROLIK', color: 2, points: roller, closed: false});
-    const mat = materialById(state.mat);
-    const notes = [
-      `KRUG: ${state.name || 'izdelie'} — profili osnastki, mm, syroy razmer`,
-      `Massa: ${mat.name} (${mat.vendor}), usadka ${mat.shrinkPct}%`,
-      `IZDELIE - naruzhnaya poverhnost, STENKA - vnutrennyaya (profil rolika),`,
-      `MATRICA - sechenie nizhney poluformy. X = radius, Y = vysota.`,
-    ];
-    download(new Blob([buildDXF(layers, notes)], {type: 'application/dxf'}), fileName(state, 'профили.dxf'));
+    download(new Blob([dxfText()], {type: 'application/dxf'}), fileName(state, 'профили.dxf'));
     toast('DXF сохранён: профили изделия, стенки, ролика и сечение матрицы');
   };
   for (const [id, key] of [['econCycle', 'cycleSec'], ['econTool', 'toolingCostRub'],
@@ -404,13 +420,7 @@ export function initTooling() {
     });
   }
   $('toolCard').onclick = () => {
-    const an = analyzeFormability(state);
-    const prod = computeProduction(state);
-    // техкарта считает ту же себестоимость, что и панель: обжиг в неё входит
-    const text = techCard(state, prod, an, currentProcId(an), batch,
-      {...econ, firePerPiece: kilnPerItem() || 0},
-      {mould, plasterId: plasterState().id, waterRatio: plasterState().wr});
-    download(new Blob([text], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
+    download(new Blob([techCardText()], {type: 'text/markdown'}), fileName(state, 'техкарта.md'));
     markExported();
     toast('Техкарта сохранена');
   };

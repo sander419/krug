@@ -30,6 +30,7 @@ const CHECKS = [
   ['Путь',         'check-next.mjs'],
   ['Читаемость',   'check-contrast.mjs'],
   ['Интерфейс',    'check-ui.mjs'],
+  ['Пакет',        'check-zip.mjs'],
 ];
 
 let failed = 0;

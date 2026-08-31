@@ -1077,6 +1077,75 @@ body.screen-open{overflow:hidden;}
   .screen-body{padding:14px;}
 }
 
+/* ---------- паспорт изделия ---------- */
+.pp-head{display:flex;gap:var(--gap-3);align-items:flex-start;margin-bottom:var(--gap-3);flex-wrap:wrap;}
+.pp-thumb{
+  width:200px;height:150px;object-fit:cover;border-radius:var(--radius);
+  border:1px solid var(--line);background:var(--sunken);
+}
+.pp-head-main{flex:1;min-width:220px;display:grid;gap:6px;}
+.pp-title{font-size:var(--fs-xl);font-weight:650;letter-spacing:-.02em;}
+.pp-sub{font-size:var(--fs-sm);color:var(--muted);}
+.pp-verdict{
+  display:inline-flex;align-items:flex-start;gap:8px;font-size:var(--fs-sm);
+  padding:9px 12px;border-radius:var(--radius);border:1px solid var(--line);
+  background:var(--sunken);text-wrap:pretty;
+}
+.pp-verdict.ok{color:var(--ok);border-color:color-mix(in oklab, var(--ok) 35%, var(--line));}
+.pp-verdict.warn{color:var(--warn);border-color:color-mix(in oklab, var(--warn) 35%, var(--line));}
+.pp-verdict.bad{color:var(--bad);border-color:color-mix(in oklab, var(--bad) 40%, var(--line));}
+
+.pp-grid{display:grid;gap:var(--gap-3);grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.pp-sect{
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;
+}
+.pp-sect h3{font-size:var(--fs-md);font-weight:650;margin-bottom:9px;}
+.pp-wide{grid-column:1/-1;margin-top:var(--gap-3);}
+.pp-list{display:grid;gap:6px;margin:0;}
+.pp-row{display:grid;grid-template-columns:minmax(96px,38%) 1fr;gap:10px;font-size:var(--fs-sm);}
+.pp-row dt{color:var(--muted);}
+.pp-row dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums;text-wrap:pretty;}
+.pp-row dd b{font-weight:650;}
+.pp-total{font-size:var(--fs-lg);color:var(--accent2);}
+.src-tag{
+  font-size:calc(var(--fs-micro) * .95);color:var(--muted2);border:1px solid var(--line2);
+  border-radius:4px;padding:0 4px;margin-left:3px;white-space:nowrap;
+}
+.fact-tag{
+  font-size:calc(var(--fs-micro) * .95);color:var(--ok);border:1px solid var(--ok);
+  border-radius:4px;padding:0 4px;margin-left:3px;white-space:nowrap;
+}
+
+/* Расчёт против факта: таблица, где отклонение — главный столбец. */
+.pp-fact{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin-bottom:var(--gap-2);}
+.pp-fact th{
+  text-align:left;font-weight:600;color:var(--muted);font-size:var(--fs-xs);
+  padding:4px 8px 6px;border-bottom:1px solid var(--line);
+}
+.pp-fact td{padding:7px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+.pp-fact tr.lvl-ok td:last-child{color:var(--ok);}
+.pp-fact tr.lvl-warn td:last-child{color:var(--warn);}
+.pp-fact tr.lvl-bad td:last-child{color:var(--bad);}
+.pp-fact-form{display:grid;gap:4px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+.field-row.wide{grid-column:1/-1;}
+.field-row.wide input{width:100%;text-align:left;}
+.pp-acts{margin-top:var(--gap-3);align-items:center;}
+
+/* ---------- выпуск ---------- */
+.rel-group{margin-bottom:var(--gap-4);}
+.rel-group h3{font-size:var(--fs-md);font-weight:650;margin-bottom:4px;}
+.rel-group > p{font-size:var(--fs-xs);margin-bottom:var(--gap-2);}
+.rel-items{display:grid;gap:var(--gap-1);grid-template-columns:repeat(auto-fit,minmax(230px,1fr));}
+.rel-item{
+  display:grid;gap:2px;text-align:left;cursor:pointer;padding:11px 13px;
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);
+}
+.rel-item:hover{border-color:var(--accent);}
+.rel-item b{font-size:var(--fs-sm);font-weight:650;}
+.rel-item span{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;text-wrap:pretty;}
+.rel-pack{background:var(--sunken);border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+
 /* ---------- мои изделия ---------- */
 /* Список изделий переехал из всплывающей панели в шапке в полноэкранный
    экран: он стал точкой входа, а не выпадашкой на десять строк. */

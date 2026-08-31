@@ -20,6 +20,8 @@ import { initTuning } from './ui/tuning.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent } from './ui/works.js';
 import { openWorksScreen } from './ui/worksScreen.js';
+import { openPassport } from './ui/passport.js';
+import { openRelease } from './ui/release.js';
 import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
@@ -187,6 +189,8 @@ step('подсказка',()=>initGuide());
 step('изделия',()=>{
   initWorks(name=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView(); toast('Открыто изделие «'+name+'»'); });
   $('worksBtn').onclick=()=>openWorksScreen();
+  $('passportBtn').onclick=()=>openPassport();
+  $('releaseBtn').onclick=()=>openRelease();
 });
 step('инструменты вида',()=>initTools(refreshNow));
 

@@ -72,13 +72,17 @@
     </div>
 
     <i class="kb-sep" aria-hidden="true"></i>
-    <div class="export-group" role="group" aria-label="Экспорт модели">
-      <span class="export-label" data-icon="download" data-icon-size="15">Экспорт</span>
+    <button class="btn" id="passportBtn" data-icon="clipboard-list"
+            title="Паспорт изделия: размеры, масса, материал, печь, деньги и факт"
+            aria-label="Паспорт изделия"><span class="btn-label">Паспорт</span></button>
+    <div class="export-group" role="group" aria-label="Выпуск">
       <button class="btn primary" id="stlBtn" title="STL — для 3D-печати">STL</button>
+      <button class="btn" id="releaseBtn" data-icon="download"
+              title="Выпуск: все выгрузки и пакет производства"><span class="btn-label">Выпуск</span></button>
       <div class="pop-wrap">
         <button class="btn icon" id="exportMoreBtn" data-icon="ellipsis" aria-haspopup="true"
-                aria-expanded="false" title="Другие выгрузки и ссылки" aria-label="Другие выгрузки"></button>
-        <div class="head-pop" id="exportPop" role="menu" aria-label="Другие выгрузки">
+                aria-expanded="false" title="Ещё выгрузки" aria-label="Ещё выгрузки"></button>
+        <div class="head-pop" id="exportPop" role="menu" aria-label="Ещё выгрузки">
           <button class="pop-item" id="objBtn" data-icon="box">OBJ — для 3D-редакторов</button>
           <button class="pop-item" id="glbBtn" data-icon="package">GLB — вид как на экране</button>
           <button class="pop-item" id="snapBtn" data-icon="camera">Снимок вида в PNG</button>

@@ -87,7 +87,11 @@ function exportGeo(){
   return merged;
 }
 
-/* Двоичный STL из любой геометрии — общий для изделия и для оснастки. */
+/* Двоичный STL из любой геометрии — общий для изделия и для оснастки.
+   Наружу под своим именем: пакет производства кладёт в архив те же байты,
+   что кнопка отдаёт в загрузки. */
+export const stlBlobFromGeometry = geometry => stlBlob(geometry);
+
 function stlBlob(geometry){
   const g=geometry.index?geometry.toNonIndexed():geometry;
   const pos=g.attributes.position,n=pos.count/3;
@@ -117,6 +121,30 @@ function lidGeo(state){
   return buildLathe(L.pts.map(p=>({x:Math.max(p.r,0.01),y:p.y})), Math.max(state.segments,48));
 }
 
+/**
+ * Файлы модели как содержимое, а не как загрузка: их складывает в один архив
+ * экран «Выпуск». Отдельные кнопки продолжают качать поштучно — это тот же
+ * материал, просто другой конец.
+ * @returns [{name, blob}]
+ */
+export function modelFiles(state){
+  const out=[];
+  const geo=fabricationGeo(state);
+  out.push({name:'model.stl', blob:stlBlob(geo)});
+  geo.dispose();
+  const lg=lidGeo(state);
+  if(lg){ out.push({name:'lid.stl', blob:stlBlob(lg)}); lg.dispose(); }
+  return out;
+}
+
+/** OBJ как текст — для пакета. */
+export function objText(state){
+  const geo=fabricationGeo(state);
+  const t=objFromGeometry(geo, state.name);
+  geo.dispose();
+  return t;
+}
+
 export function exportSTL(state){
   const geo=fabricationGeo(state);
   download(stlBlob(geo), fileName(state,'stl'));
@@ -138,15 +166,23 @@ export function exportPathSTL(state, path, suffix){
   geo.dispose();
 }
 
-export function exportOBJ(state){
-  const g=fabricationGeo(state),pos=g.attributes.position,nor=g.attributes.normal,idx=g.index;
-  let s=`# КРУГ — производственный симулятор гончарных форм\n# units mm, сырой размер (до обжига)\no ${(state.name||'pot').replace(/\s/g,'_')}\n`;
+/* Один сборщик OBJ на кнопку и на пакет производства: две копии этого цикла
+   разъехались бы на первой же правке единиц. */
+function objFromGeometry(g, name){
+  const pos=g.attributes.position,nor=g.attributes.normal,idx=g.index;
+  let s=`# КРУГ — производственный симулятор гончарных форм\n# units mm, сырой размер (до обжига)\no ${(name||'pot').replace(/\s/g,'_')}\n`;
   for(let i=0;i<pos.count;i++)s+=`v ${pos.getX(i).toFixed(3)} ${pos.getY(i).toFixed(3)} ${pos.getZ(i).toFixed(3)}\n`;
   for(let i=0;i<nor.count;i++)s+=`vn ${nor.getX(i).toFixed(3)} ${nor.getY(i).toFixed(3)} ${nor.getZ(i).toFixed(3)}\n`;
   for(let i=0;i<idx.count;i+=3){
     const a=idx.getX(i)+1,b=idx.getX(i+1)+1,c=idx.getX(i+2)+1;
     s+=`f ${a}//${a} ${b}//${b} ${c}//${c}\n`;
   }
+  return s;
+}
+
+export function exportOBJ(state){
+  const g=fabricationGeo(state);
+  const s=objFromGeometry(g, state.name);
   g.dispose();
   download(new Blob([s],{type:'text/plain'}), fileName(state,'obj'));
 }
