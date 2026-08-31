@@ -216,6 +216,7 @@ function bodyHTML() {
     <section class="pp-sect pp-wide"><h3>Контроль: расчёт против факта</h3>${factHTML(w, d)}</section>
     <div class="btn-row pp-acts">
       <button class="btn primary" id="ppRelease">${icon('download', 15)}Выпуск и выгрузки</button>
+      <button class="btn" id="ppProcess">${icon('clipboard-check', 15)}Производственный процесс</button>
       <button class="btn" id="ppSave">${icon('save', 15)}Сохранить изделие</button>
       ${w ? '' : '<span class="dim">изделие ещё не в списке — сохраните, чтобы записывать факт</span>'}
     </div>`;
@@ -236,6 +237,11 @@ function mount(box) {
   });
   const rel = $('ppRelease');
   if (rel) rel.onclick = () => openRelease();
+  const pr = $('ppProcess');
+  if (pr) pr.onclick = async () => {
+    const {openProcess} = await import('./process.js');
+    openProcess();
+  };
   const save = $('ppSave');
   if (save) save.onclick = () => {
     const name = saveCurrent();

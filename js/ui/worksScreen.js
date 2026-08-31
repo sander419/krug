@@ -121,6 +121,7 @@ function bodyHTML() {
           <option value="created"${view.sort === 'created' ? ' selected' : ''}>по созданию</option>
           <option value="name"${view.sort === 'name' ? ' selected' : ''}>по названию</option>
         </select></label>
+      <button class="btn" id="wsMat">${icon('layers', 15)}Материалы</button>
       <button class="btn primary" id="wsNew2">${icon('plus', 15)}Создать</button>
     </div>
     <p class="screen-note">Изделий ${all.length}, показано ${list.length}. Всё лежит в этом
@@ -149,6 +150,11 @@ function mount(box) {
       rerender();
     };
   });
+  const mat = $('wsMat');
+  if (mat) mat.onclick = async () => {
+    const {openMaterials} = await import('./materials.js');
+    openMaterials();
+  };
   for (const id of ['wsNew', 'wsNew2']) {
     const b = $(id);
     if (b) b.onclick = () => newWork();
