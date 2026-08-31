@@ -16,9 +16,11 @@
 <body>
 
 <header>
-  <div class="logo"></div>
+  <div class="logo" id="krugMark"></div>
+  <img class="brand-logo" id="brandLogo" alt="" hidden>
   <div class="brand">
-    <h1 class="brand-name">КРУГ</h1>
+    <h1 class="brand-name" id="brandName">КРУГ</h1>
+    <div class="brand-own" id="brandOwn" hidden></div>
     <div class="brand-sub">рецепт → форма → прочность → оснастка → экспорт</div>
   </div>
   <div class="head-group head-context">
@@ -41,39 +43,12 @@
     <button class="btn" id="worksBtn" data-icon="folder-open"
             title="Мои изделия: список, поиск, избранное, архив (Ctrl+S — сохранить)"
             aria-label="Мои изделия"><span class="btn-label">Изделия</span></button>
-    <div class="env-wrap">
-      <button class="btn icon" id="envBtn" data-icon="image" aria-haspopup="true" aria-expanded="false"
-              title="Окружение вокруг модели" aria-label="Окружение"></button>
-      <div class="env-pop" id="envPop" role="menu" aria-label="Окружение вокруг модели"></div>
-    </div>
-
-    <!-- вид: тема, масштаб, раскладка, подсказка — всё, что настраивают раз и забывают -->
-    <div class="pop-wrap">
-      <button class="btn icon" id="viewBtn" data-icon="sliders-horizontal" aria-haspopup="true"
-              aria-expanded="false" title="Вид: тема, масштаб, раскладка" aria-label="Вид"></button>
-      <div class="head-pop" id="viewPop" role="menu" aria-label="Вид">
-        <div class="pop-row">
-          <span>Тема</span>
-          <button class="btn icon" id="themeBtn" data-keep-open title="Тема"></button>
-        </div>
-        <div class="pop-row pop-row-col">
-          <span>Цветовая схема</span>
-          <div class="skin-row" id="skinRow" role="group" aria-label="Цветовая схема"></div>
-        </div>
-        <div class="pop-row">
-          <span>Масштаб интерфейса</span>
-          <span class="seg">
-            <button id="uiDownBtn" data-keep-open title="Мельче интерфейс" aria-label="Уменьшить интерфейс">А−</button>
-            <button id="uiUpBtn" data-keep-open title="Крупнее интерфейс" aria-label="Увеличить интерфейс">А+</button>
-          </span>
-        </div>
-        <button class="pop-item" id="tuneBtn" data-icon="sliders-horizontal"
-                title="Свои пороги вместо умолчаний инструмента">Настройки расчёта</button>
-        <button class="pop-item" id="resetLayoutBtn" data-icon="rotate-ccw"
-                title="Ширины колонок и порядок блоков — как было">Сбросить раскладку</button>
-        <button class="pop-item" id="guideBtn" data-icon="circle-help">Как здесь работать</button>
-      </div>
-    </div>
+    <!-- всё, что настраивают раз и забывают, живёт на одном экране под одной
+         подписанной кнопкой: две иконки без подписи в ряду из десяти человек
+         честно не находил -->
+    <button class="btn" id="settingsBtn" data-icon="sliders-horizontal"
+            title="Настройки: вид, брендбук мастерской, рабочее место, расчёт и данные"
+            aria-label="Настройки"><span class="btn-label">Настройки</span></button>
 
     <i class="kb-sep" aria-hidden="true"></i>
     <button class="btn" id="passportBtn" data-icon="clipboard-list"

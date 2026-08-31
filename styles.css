@@ -32,6 +32,10 @@
      каша, поэтому от тела вверх идёт множитель ~1.25, а не +1 px.
      --ui — масштаб интерфейса (кнопки Аа в шапке). */
   --ui:1;
+  /* Шрифты — тоже токены: брендбук мастерской вправе поставить свой набор,
+     но только из тех, что лежат в vendor/. Внешних запросов у КРУГа нет. */
+  --font-ui:'Manrope',system-ui,sans-serif;
+  --font-head:'Unbounded','Manrope',system-ui,sans-serif;
   --fs-micro:calc(11px * var(--ui));
   --fs-xs:calc(12.5px * var(--ui));
   --fs-sm:calc(14px * var(--ui));     /* тело интерфейса */
@@ -66,6 +70,76 @@
   --shade:rgba(40,32,26,.16); --glow:rgba(184,78,27,.22);
   --sect-form:#b84e1b; --sect-mat:#8d5f26; --sect-print:#2f6d95;
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
+}
+
+/* ---------- экран «Настройки» ---------- */
+/* Разделы переключаются сегментами, содержимое — строками «подпись слева,
+   ручка справа»: так на любой ширине видно, что настраивается, а не только чем. */
+.set-nav{flex-wrap:wrap;margin-bottom:var(--gap-3);}
+.set-nav button{display:flex;align-items:center;gap:7px;}
+.set-body{display:flex;flex-direction:column;gap:var(--gap-3);}
+.set-row{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--gap-3);
+  padding-bottom:var(--gap-3);border-bottom:1px solid var(--line);
+}
+.set-row:last-child{border-bottom:none;padding-bottom:0;}
+.set-row.col{flex-direction:column;align-items:stretch;}
+.set-label{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.set-label b{font-size:var(--fs-md);}
+.set-label span{font-size:var(--fs-xs);color:var(--muted);}
+.set-pick{display:flex;align-items:center;gap:var(--gap-1);flex-wrap:wrap;flex:none;}
+/* в настройках схемы стоят рядом, а не сеткой: места хватает */
+.set-pick.skin-row{display:flex;}
+.set-row.col .set-pick{flex:1 1 auto;}
+.set-pick input[type=text]{min-width:min(320px,60vw);}
+.set-pick input[type=color]{
+  width:44px;height:34px;padding:2px;background:var(--field);
+  border:1px solid var(--line2);border-radius:var(--radius-sm);cursor:pointer;
+}
+.set-val{font-size:var(--fs-sm);color:var(--muted);}
+.set-chip{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  background:var(--field);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:7px 11px;color:var(--text);font-size:var(--fs-xs);min-height:34px;
+  transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.set-chip:hover:not(:disabled){border-color:var(--accent);}
+.set-chip:disabled{opacity:.45;cursor:default;}
+.set-chip.current{border-color:var(--accent);background:color-mix(in oklab, var(--accent) 14%, var(--field));}
+/* Файл выбирается настоящим input'ом, спрятанным внутри подписи: браузерная
+   кнопка «Выберите файл» не подчиняется ни одной строке этого файла. */
+.as-file{position:relative;overflow:hidden;}
+.as-file input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.brand-logo-pick{align-items:center;}
+.brand-logo-prev{
+  width:52px;height:52px;object-fit:contain;background:var(--sunken);
+  border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px;
+}
+.set-warn{
+  border:1px solid color-mix(in oklab, var(--warn) 45%, var(--line));
+  background:color-mix(in oklab, var(--warn) 8%, transparent);
+  border-radius:var(--radius-sm);padding:9px 11px;
+}
+.set-warn p{display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-xs);color:var(--text);}
+.set-warn p + p{margin-top:6px;}
+.set-warn .ico{color:var(--warn);flex:none;margin-top:1px;}
+.set-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--gap-1);}
+.set-check{display:flex;align-items:center;gap:9px;font-size:var(--fs-sm);cursor:pointer;min-height:34px;}
+.set-env{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--gap-1);}
+.set-env-item{
+  display:flex;align-items:center;gap:9px;text-align:left;cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:9px 10px;color:var(--text);
+}
+.set-env-item:hover{border-color:var(--line2);}
+.set-env-item.current{border-color:var(--accent);}
+.set-env-item b{display:block;font-size:var(--fs-sm);}
+.set-env-item i{display:block;font-size:var(--fs-micro);color:var(--muted);font-style:normal;}
+.set-env-ico{color:var(--accent);flex:none;}
+@media (max-width:640px){
+  .set-row{flex-direction:column;align-items:stretch;}
+  .set-pick{justify-content:flex-start;}
+  .set-pick input[type=text]{min-width:0;width:100%;}
 }
 
 /* ---------- цветовые схемы ----------
@@ -191,7 +265,7 @@ body{height:100%;}
 [hidden]{display:none !important;}
 body{
   background:var(--bg);color:var(--text);
-  font-family:'Manrope',system-ui,sans-serif;font-size:var(--fs-md);line-height:1.55;
+  font-family:var(--font-ui);font-size:var(--fs-md);line-height:1.55;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   display:flex;flex-direction:column;overflow:hidden;
 }
@@ -200,7 +274,7 @@ body{
    и ссылки заданы выше, в блоке поверхностей браузера: здесь их дублировать
    нельзя — две разные версии одного правила расходятся при первой же правке. */
 h1,h2,h3,.brand-name{
-  margin:0;font-family:'Unbounded',sans-serif;line-height:1.2;
+  margin:0;font-family:var(--font-head);line-height:1.2;
   letter-spacing:-.02em;text-wrap:balance;
 }
 button,input,select{font-family:inherit;}
@@ -220,7 +294,19 @@ header{
 }
 .logo::after{content:"";position:absolute;inset:9px;border-radius:50%;border:2px solid rgba(255,235,215,.35);}
 .brand{display:flex;flex-direction:column;gap:1px;min-width:0;}
+/* Логотип мастерской встаёт на место знака КРУГа — тем же размером и с теми же
+   полями: чужая картинка не должна раздвигать шапку и отбирать высоту у сцены. */
+.brand-logo{
+  width:36px;height:36px;flex:none;object-fit:contain;border-radius:8px;
+}
+.brand-own{
+  font-size:var(--fs-micro);color:var(--muted2);letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 .brand-name{font-size:var(--fs-lg);font-weight:700;letter-spacing:.14em;}
+/* Имя мастерской бывает длинным, а высота шапки принадлежит сцене: одна
+   строка с многоточием вместо второй строки на весь экран. */
+.brand-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(26ch,30vw);}
 /* Путь задачи в подзаголовке — одна строка. У задачи «всё сразу» это восемь
    вкладок: во вторую строку они удваивали высоту шапки и отбирали её у сцены. */
 .brand-sub{
@@ -636,7 +722,7 @@ select:focus{border-color:var(--accent);}
 .mat-sub.dim{color:var(--muted2);}
 .mat-card{display:flex;flex-direction:column;gap:var(--gap-2);}
 .mat-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
-.mat-card-head b{font-size:var(--fs-lg);font-family:'Unbounded',sans-serif;font-weight:700;}
+.mat-card-head b{font-size:var(--fs-lg);font-family:var(--font-head);font-weight:700;}
 .mat-note{font-size:var(--fs-sm);line-height:1.6;color:var(--text);text-wrap:pretty;max-width:56ch;}
 .mat-actions{display:flex;flex-wrap:wrap;gap:8px;}
 
@@ -692,7 +778,7 @@ dl.spec dd.src a:hover{color:var(--onAccent);}
 /* Замечания можно свернуть: на ноутбуке они держали треть высоты панели
    постоянно, даже когда там «мастер одобряет». Сколько их — видно и свёрнутым. */
 .foot-title{
-  font-family:'Manrope',system-ui,sans-serif;list-style:none;cursor:pointer;
+  font-family:var(--font-ui);list-style:none;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-size:var(--fs-sm);font-weight:650;letter-spacing:-.005em;
   color:var(--text);
@@ -951,7 +1037,7 @@ body.learning main,body.learning #metrics{display:none;}
 
 /* ---------- обзор курса ---------- */
 .kb-overview{max-width:1180px;margin-inline:auto;}
-.ov-title{font-family:'Unbounded',sans-serif;font-size:calc(24px * var(--ui));font-weight:700;margin-bottom:10px;text-wrap:balance;}
+.ov-title{font-family:var(--font-head);font-size:calc(24px * var(--ui));font-weight:700;margin-bottom:10px;text-wrap:balance;}
 .ov-lead{font-size:var(--fs-lg);line-height:1.6;color:var(--muted);margin-bottom:26px;text-wrap:pretty;max-width:62ch;}
 .ov-h{
   font-size:var(--fs-sm);font-weight:650;color:var(--muted);margin:26px 0 12px;
@@ -987,7 +1073,7 @@ body.learning main,body.learning #metrics{display:none;}
 .kb-article{max-width:72ch;margin-inline:auto;}
 .kb-crumb{font-size:var(--fs-xs);color:var(--muted);margin-bottom:8px;}
 .kb-article h3{
-  font-family:'Unbounded',sans-serif;font-size:calc(23px * var(--ui));font-weight:700;line-height:1.25;
+  font-family:var(--font-head);font-size:calc(23px * var(--ui));font-weight:700;line-height:1.25;
   letter-spacing:-.01em;margin-bottom:12px;text-wrap:balance;
 }
 .kb-article h4{font-size:var(--fs-lg);font-weight:700;color:var(--accent2);margin:24px 0 8px;text-wrap:balance;scroll-margin-top:12px;}
@@ -1540,7 +1626,7 @@ body.screen-open{overflow:hidden;}
 }
 .tune-group{margin-bottom:16px;}
 .tune-group h3{
-  font-family:'Manrope',system-ui,sans-serif;
+  font-family:var(--font-ui);
   font-size:var(--fs-sm);font-weight:650;color:var(--muted);margin-bottom:8px;
 }
 .tune-row{
@@ -1853,7 +1939,7 @@ body[data-mode="simple"] [data-adv]{display:none !important;}
   padding:22px 24px 20px;box-shadow:0 26px 70px var(--shade);
 }
 .guide-head{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
-.guide-head h2{font-family:'Unbounded',sans-serif;font-size:calc(21px * var(--ui));font-weight:700;}
+.guide-head h2{font-family:var(--font-head);font-size:calc(21px * var(--ui));font-weight:700;}
 .guide-head .btn{margin-left:auto;}
 .guide-lead{font-size:var(--fs-sm);line-height:1.6;color:var(--muted);margin-bottom:18px;text-wrap:pretty;}
 .guide-steps{display:flex;flex-direction:column;gap:8px;}
@@ -1929,7 +2015,8 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
   .block-move button{width:40px;height:40px;font-size:11px;}
   /* пальцем схема выбирается в один столбец: цель нажатия 44 px, как везде */
   .skin-row{grid-template-columns:1fr;}
-  .skin-dot{min-height:44px;}
+  .skin-dot,.set-chip,.set-check,.set-env-item{min-height:44px;}
+  .set-pick.skin-row{display:grid;}
 }
 
 /* ===================== широкая панель ===================== */

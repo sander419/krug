@@ -31,6 +31,7 @@ const CHECKS = [
   ['Читаемость',   'check-contrast.mjs'],
   ['Интерфейс',    'check-ui.mjs'],
   ['Пакет',        'check-zip.mjs'],
+  ['Брендбук',     'check-brand.mjs'],
 ];
 
 let failed = 0;

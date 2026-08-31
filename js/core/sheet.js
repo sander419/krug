@@ -44,12 +44,15 @@ function dimV(y1, y2, x, label) {
 const path = pts => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
 
 /**
- * @param m {name, date, dna, prof, wall, H, D, firedH, firedD, shrinkPct,
+ * @param m {name, date, dna, brand?:{name, sub, logo}, prof, wall, H, D, firedH, firedD, shrinkPct,
  *           parts:[{name, az, pts, reach}], rows:[[label, value]], notes:[string],
  *           lid?:{pts:[{r,y}], outline:[{r,y}], seatD, seatDFired, gapFired, topY, outD}}
  */
 export function buildSheet(m) {
   const {pad} = SHEET;
+  /* Лист уходит клиенту и на верстак: если у мастерской есть свой знак и имя,
+     в углу стоят они, а не название инструмента. Нет — стоит «КРУГ». */
+  const brand = {name: 'КРУГ', sub: '', logo: '', ...(m.brand || {})};
   const tblY = SHEET.h - pad - 40;                 // над этой линией — виды
   const top = pad + 10;
   const viewH = tblY - top - 6;
@@ -176,9 +179,14 @@ export function buildSheet(m) {
   <rect x="${pad / 2}" y="${pad / 2}" width="${SHEET.w - pad}" height="${SHEET.h - pad}"
     fill="none" stroke="${INK}" stroke-width="0.5"/>
 
-  <text x="${pad}" y="${pad + 5}" font-size="6" font-weight="700" fill="${INK}">${esc(m.name)}</text>
+  ${brand.logo ? `<image href="${brand.logo}" x="${pad}" y="${pad - 4}" width="12" height="12"
+    preserveAspectRatio="xMidYMid meet"/>` : ''}
+  <text x="${pad + (brand.logo ? 15 : 0)}" y="${pad + 5}" font-size="6" font-weight="700"
+    fill="${INK}">${esc(m.name)}</text>
   <text x="${SHEET.w - pad}" y="${pad + 5}" font-size="3.4" fill="${THIN}"
-    text-anchor="end">КРУГ · ${esc(m.date)} · масштаб 1:${(1 / k).toFixed(1)}</text>
+    text-anchor="end">${esc(brand.name)} · ${esc(m.date)} · масштаб 1:${(1 / k).toFixed(1)}</text>
+  ${brand.sub ? `<text x="${SHEET.w - pad}" y="${pad + 9.5}" font-size="2.8" fill="${THIN}"
+    text-anchor="end">${esc(brand.sub)}</text>` : ''}
 
   ${frame(x0[0], top, col[0], viewH, 'Вид спереди')}
   ${frame(x0[1], top, col[1], viewH, 'Разрез')}

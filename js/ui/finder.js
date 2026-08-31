@@ -20,16 +20,29 @@ import { openArticle } from './kb.js';
 const MAX = 9;                 // больше девяти строк — уже не выбор, а список
 
 /* Действия шапки и чертежа: имя, что нажать, слова для поиска.
-   Здесь только то, чего нет во вкладках и блоках. */
+   Здесь только то, чего нет во вкладках и блоках.
+
+   `btn` — нажать кнопку с таким id; действия без кнопки в разметке (они уехали
+   на экран «Настройки») несут `run`. Экран грузится по требованию: поиск
+   открывается на первой секунде работы, тянуть ради него настройки незачем. */
+const open_ = section => import('./settings.js').then(m => m.openSettings(section));
 const ACTIONS = [
   {name: 'Сменить задачу', ico: 'sliders-horizontal', btn: 'routeBtn', keys: 'режим набор вкладок'},
   {name: 'Обвести картинку', ico: 'image', btn: 'photoBtn', keys: 'фото чертёж силуэт обводка'},
   {name: 'Обучение', ico: 'graduation-cap', btn: 'kbBtn', keys: 'энциклопедия статьи курс'},
-  {name: 'Как здесь работать', ico: 'circle-help', btn: 'guideBtn', keys: 'подсказка шаги помощь'},
-  {name: 'Тема: светлая или тёмная', ico: 'sun', btn: 'themeBtn', keys: 'цвет ночь день'},
-  {name: 'Цветовая схема', ico: 'palette', btn: 'viewBtn',
+  {name: 'Как здесь работать', ico: 'circle-help',
+   run: () => import('./guide.js').then(m => m.openGuide()), keys: 'подсказка шаги помощь обучение'},
+  {name: 'Настройки', ico: 'sliders-horizontal', btn: 'settingsBtn',
+   keys: 'вид тема схема масштаб окружение данные параметры'},
+  {name: 'Тема: светлая или тёмная', ico: 'sun',
+   run: () => open_('view'), keys: 'цвет ночь день'},
+  {name: 'Цветовая схема', ico: 'palette', run: () => open_('view'),
    keys: 'цвет палитра оформление мастерская селадон кобальт графит'},
-  {name: 'Окружение вокруг модели', ico: 'image', btn: 'envBtn', keys: 'фон студия сцена'},
+  {name: 'Логотип и брендбук мастерской', ico: 'palette', run: () => open_('brand'),
+   keys: 'бренд лого фирменный стиль название имя цвет клиенту'},
+  {name: 'Что хранится в браузере', ico: 'save', run: () => open_('data'),
+   keys: 'данные память очистить забыть'},
+  {name: 'Окружение вокруг модели', ico: 'image', run: () => open_('view'), keys: 'фон студия сцена свет'},
   {name: 'Мои изделия', ico: 'folder-open', btn: 'worksBtn', keys: 'работы открыть сохранить список избранное архив'},
   {name: 'Снимок вида в PNG', ico: 'camera', btn: 'snapBtn', keys: 'скриншот картинка'},
   {name: 'ДНК формы: ссылка', ico: 'dna', btn: 'dnaBtn', keys: 'поделиться рецепт ссылка'},
@@ -42,11 +55,13 @@ const ACTIONS = [
   {name: 'Экспорт GLB', ico: 'download', btn: 'glbBtn', keys: 'выгрузка витрина'},
   {name: 'Отменить', ico: 'undo-2', btn: 'undoBtn', keys: 'назад ctrl+z'},
   {name: 'Повторить', ico: 'redo-2', btn: 'redoBtn', keys: 'вперёд'},
-  {name: 'Настройки расчёта', ico: 'sliders-horizontal', btn: 'tuneBtn',
+  {name: 'Настройки расчёта', ico: 'gauge',
+   run: () => import('./tuning.js').then(m => m.openTuning()),
    keys: 'пороги зазоры уклон облой замки допуски свои значения'},
-  {name: 'Сбросить раскладку', ico: 'rotate-ccw', btn: 'resetLayoutBtn', keys: 'колонки блоки порядок'},
-  {name: 'Крупнее интерфейс', ico: 'zoom-in', btn: 'uiUpBtn', keys: 'масштаб шрифт больше'},
-  {name: 'Мельче интерфейс', ico: 'zoom-out', btn: 'uiDownBtn', keys: 'масштаб шрифт меньше'},
+  {name: 'Сбросить раскладку', ico: 'rotate-ccw', run: () => open_('place'),
+   keys: 'колонки блоки порядок'},
+  {name: 'Масштаб интерфейса', ico: 'zoom-in', run: () => open_('view'),
+   keys: 'крупнее мельче шрифт больше меньше'},
   {name: 'Чертёж: править точками', ico: 'circle-dot', sel: '[data-dmode="points"]', keys: 'профиль точки тянуть'},
   {name: 'Чертёж: провести линию', ico: 'activity', sel: '[data-dmode="draw"]', keys: 'профиль линия рисовать силуэт'},
   {name: 'Масштаб чертежа', ico: 'ruler', btn: 'draftScale', keys: '1:1 вписать'},
@@ -78,7 +93,7 @@ function index() {
   const list = [
     ...tabs.map(t => ({name: TABS[t].name, ico: TABS[t].ico, where: 'вкладка', tab: t, keys: TABS[t].txt})),
     ...blocks(),
-    ...ACTIONS.filter(a => !a.btn || $(a.btn)).map(a => ({...a, where: 'действие'})),
+    ...ACTIONS.filter(a => a.run || !a.btn || $(a.btn)).map(a => ({...a, where: 'действие'})),
     ...ARTICLES.map(a => ({name: a.title, ico: 'book-open', where: 'обучение',
                            article: a.id, keys: (a.tags || []).join(' ') + ' ' + (a.lead || '')})),
   ];
@@ -115,6 +130,7 @@ function run(it) {
     setTimeout(() => d.classList.remove('found'), 1400);
     return;
   }
+  if (it.run) { it.run(); return; }
   const el = it.btn ? $(it.btn) : document.querySelector(it.sel);
   if (el) el.click();
 }

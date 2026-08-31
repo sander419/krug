@@ -30,6 +30,15 @@ import { byId as materialById, density } from '../config/materials.js';
 import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
+import { currentBrand } from './brand.js';
+
+/* Брендбук для документа: галочка «где показывать» решает по каждому месту
+   отдельно — лист может уходить со знаком мастерской, а техкарта без него. */
+function brandForDocs(where) {
+  const b = currentBrand();
+  return b.where[where] && (b.name || b.logo || b.sub)
+    ? {name: b.name || 'КРУГ', sub: b.sub, logo: b.logo} : null;
+}
 
 
 let manualProc = null;      // выбран руками — не перебиваем рекомендацией
@@ -171,7 +180,8 @@ export function techCardText() {
   const prod = computeProduction(state);
   return techCard(state, prod, an, currentProcId(an), batch,
     {...econ, firePerPiece: kilnPerItem() || 0},
-    {mould, plasterId: plasterState().id, waterRatio: plasterState().wr});
+    {mould, plasterId: plasterState().id, waterRatio: plasterState().wr,
+     brand: brandForDocs('card')});
 }
 
 /* Профили оснастки в DXF. Наружу по той же причине, что и лист: пакет
@@ -245,7 +255,9 @@ export function sheetSVG() {
       ['Глина на крышку', `${Math.round(lm.massG)} г`]);
   }
 
+  const brand = brandForDocs('sheet');
   return buildSheet({
+    brand,
     name: state.name || 'Без названия',
     date: new Date().toLocaleDateString('ru'),
     dna: `ДНК ${dna.slice(0, 14)}…${dna.slice(-6)} · полная ссылка — в техкарте`,

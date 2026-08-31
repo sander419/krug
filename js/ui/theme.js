@@ -36,6 +36,13 @@ const sysDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
 export const currentTheme = () => (mode === 'system' ? (sysDark() ? 'dark' : 'light') : mode);
 /** Какая схема выбрана: id из SKINS. */
 export const currentSkin = () => skin;
+/** Выбранный режим темы: 'system' | 'light' | 'dark' (не путать с получившимся). */
+export const themeMode = () => mode;
+export const THEME_MODES = MODES;
+export const THEME_LABEL = LABEL;
+export const THEME_ICON = ICON;
+export const UI_STEPS = STEPS;
+export const uiStep = () => step;
 export function onTheme(fn) { listeners.add(fn); }
 
 function store(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
@@ -51,7 +58,7 @@ function apply() {
   else root.setAttribute('data-skin', skin);
   root.style.setProperty('--ui', STEPS[step]);
 
-  const b = $('themeBtn');
+  const b = $('themeBtn');           // кнопки в шапке нет: тема живёт в «Настройках»
   if (b) {
     b.innerHTML = icon(ICON[mode]);
     b.title = `Тема: ${LABEL[mode]} — нажмите, чтобы сменить`;
@@ -64,6 +71,11 @@ function apply() {
     const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
     if (bg) meta.setAttribute('content', bg);
   }
+  for (const b of document.querySelectorAll('[data-theme-pick]')) {
+    const on = b.dataset.themePick === mode;
+    b.classList.toggle('current', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
   for (const b of document.querySelectorAll('[data-skin-pick]')) {
     const on = b.dataset.skinPick === skin;
     b.classList.toggle('current', on);
@@ -74,6 +86,22 @@ function apply() {
   if (up) up.disabled = step === STEPS.length - 1;
 
   for (const fn of listeners) fn(currentTheme());
+}
+
+/** Поставить режим темы. */
+export function setTheme(m) {
+  if (!MODES.includes(m)) return;
+  mode = m;
+  store(KEY_THEME, mode);
+  apply();
+}
+
+/** Поставить ступень масштаба интерфейса. */
+export function setUiStep(i) {
+  if (!STEPS[i]) return;
+  step = i;
+  store(KEY_UI, step);
+  apply();
 }
 
 /** Сменить цветовую схему. */
@@ -106,17 +134,8 @@ export function initTheme() {
   if ($('uiDownBtn')) $('uiDownBtn').onclick = () => bump(-1);
   if ($('uiUpBtn')) $('uiUpBtn').onclick = () => bump(1);
 
-  /* Ряд схем собирается из реестра: добавить схему — значит дописать её
-     в SKINS и блок токенов в styles.css, разметку трогать не нужно. */
-  const row = $('skinRow');
-  if (row) {
-    row.innerHTML = SKINS.map(s => `<button class="skin-dot" data-skin-pick="${s.id}"
-      data-keep-open type="button" title="${s.name}: ${s.what}" aria-label="Схема: ${s.name}"
-      ><i class="skin-swatch" data-skin-swatch="${s.id}"></i><span>${s.name}</span></button>`).join('');
-    row.querySelectorAll('[data-skin-pick]').forEach(b => {
-      b.onclick = () => setSkin(b.dataset.skinPick);
-    });
-  }
+  /* Разметку схем и темы рисует экран «Настройки»: реестр SKINS отдан наружу,
+     здесь остаётся только подсветка текущего выбора в apply(). */
 
   // система переключилась по времени суток — идём за ней, но только в режиме «как в системе»
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

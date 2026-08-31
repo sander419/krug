@@ -290,6 +290,13 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
 
   L.push(`# Техкарта оснастки · ${state.name || 'изделие'}`);
   L.push('');
+  /* Документ уходит в производство и клиенту: имя мастерской стоит первой
+     строкой, если оно задано в брендбуке. */
+  const brand = mouldOpt.brand || null;
+  if (brand && brand.name) {
+    L.push(`**${brand.name}**${brand.sub ? ` · ${brand.sub}` : ''}`);
+    L.push('');
+  }
   L.push(`Процесс: ${n.proc.name}`);
   L.push(`Масса: ${n.mat.name} (${n.mat.vendor})`);
   L.push('');

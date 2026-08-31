@@ -20,10 +20,12 @@ import { initTuning } from './ui/tuning.js';
 import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent, savedWorks } from './ui/works.js';
 import { openWorksScreen } from './ui/worksScreen.js';
+import { openSettings } from './ui/settings.js';
+import { initBrand, currentBrand, onBrand } from './ui/brand.js';
 import { openPassport } from './ui/passport.js';
 import { openRelease } from './ui/release.js';
 import { paintIcons } from './ui/icons.js';
-import { initTheme, onTheme } from './ui/theme.js';
+import { initTheme, onTheme, currentTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
 import { resetPalette } from './ui/palette.js';
 import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
@@ -168,19 +170,23 @@ step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);
 $('kbBtn').onclick=()=>openKB();
 step('окружение',()=>initEnvironment());   // выбирается до темы: тема лишь пересобирает его
-onTheme(t=>{                       // цвета canvas и сцены живут в тех же токенах
+const repaint=t=>{                 // цвета canvas и сцены живут в тех же токенах
   resetPalette();
-  sceneAPI.applyTheme(t);
+  sceneAPI.applyTheme(t||currentTheme());
   drawEditor();
   syncGlaze();
-});
+};
+onTheme(repaint);
+/* Фирменный цвет меняет те же токены, что и тема, — значит, и чертёж с диаграммой
+   обязаны перерисоваться: иначе линия профиля остаётся в цвете прежнего бренда. */
+onBrand(()=>repaint());
 step('тема',()=>initTheme());   // подписка раньше вызова: иначе сцена не узнает тему при запуске
+step('брендбук',()=>initBrand());  // после темы: оттенки фирменного цвета зависят от неё
 step('иконки',()=>paintIcons());
 step('подсказки',()=>initTips());
 step('поиск',()=>initFinder());
 step('настройки расчёта',()=>initTuning());
 step('меню шапки',()=>{
-  popover($('viewBtn'),$('viewPop'));
   popover($('exportMoreBtn'),$('exportPop'));
 });
 step('раскладка',()=>initLayout());
@@ -191,6 +197,7 @@ step('изделия',()=>{
   initWorks((name,mode)=>{ syncAll(); syncHistoryButtons(); sceneAPI.frameView();
     if(mode!=='new') toast('Открыто изделие «'+name+'»'); });
   $('worksBtn').onclick=()=>openWorksScreen();
+  $('settingsBtn').onclick=()=>openSettings();
   $('passportBtn').onclick=()=>openPassport();
   $('releaseBtn').onclick=()=>openRelease();
 });
@@ -203,7 +210,11 @@ $('dnaBtn').onclick=()=>{
 };
 $('embedBtn').onclick=()=>{
   const url=location.origin+location.pathname+'#dna='+encodeDNA();
-  copyText(`<iframe src="${url}" title="КРУГ — 3D-витрина" style="width:100%;height:620px;border:0;border-radius:12px" loading="lazy"></iframe>`);
+  /* Витрина встаёт на сайт мастерской: подпись у неё её же, если брендбук
+     разрешил показывать себя здесь. */
+  const b=currentBrand();
+  const who=(b.where.embed&&b.name)?b.name:'КРУГ';
+  copyText(`<iframe src="${url}" title="${who} — 3D-витрина" style="width:100%;height:620px;border:0;border-radius:12px" loading="lazy"></iframe>`);
   toast('Код встраивания 3D-витрины скопирован (headless-плеер для e-commerce)');
 };
 const shrinkNow=()=>byId(state.mat).shrinkPct;
