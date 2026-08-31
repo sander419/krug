@@ -20,7 +20,8 @@ import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js
 import { castMouldNumbers } from '../three/castMould.js';
 import { byId as materialById } from '../config/materials.js';
 import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
-import { kilnNumbers } from './kiln.js';
+import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
+import { mixedFirings } from '../core/kiln.js';
 import { $, esc, num, rub, plural } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { toast } from './overlays.js';
@@ -46,6 +47,7 @@ function workNumbers() {
     lid: !!(state.lid && state.lid.on),
     mouldParts: mould ? mould.parts : null,
     mouldKg: mould ? mould.plasterL * 2 * 1.42 : null,
+    item: kilnItem(),                       // габарит после обжига — для общей садки
   };
 }
 
@@ -102,21 +104,31 @@ export function syncProduction() {
 
   const rows = [];
   let clay = 0, cost = 0, margin = 0, firings = 0, pieces = 0, revenue = 0;
+  const items = [];
   for (const w of list) {
     const n = withDNA(w.dna, () => workNumbers());
     if (!n) continue;
     clay += n.plan.clayKg; cost += n.plan.total; margin += n.plan.margin;
     firings += n.plan.firings || 0; pieces += n.plan.n; revenue += n.plan.revenue;
+    items.push({...n.item, n: n.plan.n});
     rows.push(rowHTML(w, n));
   }
+
+  /* Обжиги считаются на все работы разом: греть печь ради неполной полки
+     мастерская не станет, она соберёт садку из разных наименований. */
+  const mix = mixedFirings(kilnCurrent(), items);
 
   box.innerHTML = `
     <dl class="spec prod-total">
       <dt>Всего в работе</dt><dd><b>${rows.length}</b> ${plural(rows.length, 'работа', 'работы', 'работ')} ·
         ${pieces} ${plural(pieces, 'изделие', 'изделия', 'изделий')}</dd>
       <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b> <span class="dim">(${num(clay / 20, 1)} валюшек по 20 кг)</span></dd>
-      <dt>Обжигов</dt><dd><b>${firings || '—'}</b> <span class="dim">${firings
-        ? 'считая, что в садку идёт одно наименование' : 'изделия не входят в выбранную печь'}</span></dd>
+      <dt>Обжигов</dt><dd>${mix.firings
+        ? `<b>${mix.firings}</b> ${plural(mix.firings, 'загрузка', 'загрузки', 'загрузок')}
+           <span class="dim">${mix.apart > mix.firings
+             ? `общей садкой вместо ${mix.apart} порознь — полки заняты разными работами`
+             : 'плотнее не собрать: высокие работы съедают высоту камеры'}</span>`
+        : `<span class="dim">${esc(mix.why || 'изделия не входят в выбранную печь')}</span>`}</dd>
       <dt>Себестоимость</dt><dd><b>${rub(cost)}</b> на всё</dd>
       <dt>Выручка</dt><dd>${rub(revenue)} по минимальной цене · маржа <b>${rub(margin)}</b></dd>
     </dl>

@@ -100,6 +100,65 @@ export function kilnLoad(kiln, item) {
 }
 
 /**
+ * Общая садка: сколько обжигов нужно на несколько разных работ вместе.
+ *
+ * Считать обжиги по каждой работе отдельно и складывать — значит греть печь
+ * ради неполной полки. Мастерская так не делает: она ставит в одну садку
+ * несколько наименований. Но и валить всё в кучу нельзя — на одну полку
+ * ставят изделия близкой высоты, иначе следующая полка встаёт по самому
+ * высокому и место под низкими пропадает.
+ *
+ * Поэтому модель полочная и ровно такая, как в мастерской:
+ *   • полка отдаётся одному наименованию — сколько его влезает по площади
+ *     (это уже считает kilnLoad), столько на полке и стоит;
+ *   • полки складываются в обжиг, пока хватает высоты камеры и самих полок;
+ *   • высота полки — по её изделию, а не по самому высокому в печи.
+ *
+ * Чего модель не делает: не мешает два наименования на одной полке, даже если
+ * они влезли бы. Это осознанный запас в большую сторону — обещать садку плотнее
+ * той, что человек соберёт руками, нечестно.
+ *
+ * @param items [{d, h, n}] — габарит после обжига и сколько штук
+ * @returns {{firings, shelves, perFiringShelves, spare, why, apart}}
+ */
+export function mixedFirings(kiln, items) {
+  const g = gap();
+  const height = kiln.form === 'round' ? kiln.innerMM[1] : kiln.innerMM[2];
+  const maxShelves = kiln.shelves + 1;
+
+  /* Каждой работе — свои полки: сколько штук на полку и сколько таких полок. */
+  const shelves = [];
+  let apart = 0;                        // сколько обжигов вышло бы порознь
+  for (const it of items) {
+    if (!(it.n > 0)) continue;
+    const load = kilnLoad(kiln, it);
+    if (!load.perShelf || !load.tiers) return {firings: null, why: load.why || 'изделие не входит в печь', apart: null};
+    const need = Math.ceil(it.n / load.perShelf);
+    for (let i = 0; i < need; i++) shelves.push({h: it.h + kiln.shelfMM + g.tier});
+    apart += Math.ceil(it.n / load.total);
+  }
+  if (!shelves.length) return {firings: 0, shelves: 0, perFiringShelves: 0, spare: 0, why: '', apart: 0};
+
+  /* Полки повыше ставим первыми: так остаток обжига заполняется низкими,
+     а не наоборот. Это же делает и человек, собирая садку. */
+  shelves.sort((a, b) => b.h - a.h);
+
+  let firings = 1, used = 0, count = 0, spare = 0;
+  for (const sh of shelves) {
+    if (count >= maxShelves || used + sh.h > height) {
+      spare += height - used;
+      firings++; used = 0; count = 0;
+    }
+    used += sh.h; count++;
+  }
+  return {
+    firings, shelves: shelves.length,
+    perFiringShelves: Math.min(maxShelves, Math.floor(height / shelves[shelves.length - 1].h)),
+    spare, why: '', apart,
+  };
+}
+
+/**
  * Цена обжига. Энергия считается как мощность × время × доля под нагрузкой:
  * печь греет ступенями и держит выдержку, а не жрёт паспортные киловатты
  * все часы подряд. Доля грубая и помечена как оценка — точную даёт счётчик.

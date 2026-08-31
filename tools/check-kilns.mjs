@@ -9,7 +9,7 @@ import { KILNS, KILNS_SCHEMA, byKilnId } from '../js/config/kilns.js';
 import { tune } from '../js/core/tuning.js';
 const GAPS = {item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')};
 const DUTY = tune('duty'), BISQUE_C = tune('bisqueC');
-import { kilnLoad, firingCost, kilnEconomy, firedSize } from '../js/core/kiln.js';
+import { kilnLoad, firingCost, kilnEconomy, firedSize, mixedFirings } from '../js/core/kiln.js';
 import { checkContract } from './registry-contract.mjs';
 
 const problems = [];
@@ -115,4 +115,46 @@ if (problems.length) {
   for (const p of problems) console.log('  ✗ ' + p);
   process.exit(1);
 }
+/* ---------- общая садка нескольких работ ---------- */
+/* Мастерская ставит в один обжиг разные наименования. Складывать обжиги
+   по каждой работе — значит греть печь ради неполной полки и завышать счёт. */
+{
+  const k = byKilnId('studio-60');
+  const small = {d: 90, h: 95};
+  const alone = kilnLoad(k, small);
+
+  const one = mixedFirings(k, [{...small, n: 5}]);
+  if (one.firings !== Math.ceil(5 / alone.total))
+    P(`одна работа: общая садка ${one.firings} не сошлась с обычной ${Math.ceil(5 / alone.total)}`);
+  if (one.apart !== one.firings) P('на одной работе «вместе» и «порознь» обязаны совпасть');
+
+  /* Три мелкие партии влезают в один обжиг — в этом весь смысл общей садки. */
+  const three = mixedFirings(k, [{...small, n: 5}, {...small, n: 5}, {...small, n: 5}]);
+  if (!(three.firings < three.apart))
+    P(`три мелкие партии не собрались в общую садку: ${three.firings} против ${three.apart} порознь`);
+  if (three.firings !== 1) P(`три партии по 5 штук должны влезть в один обжиг, вышло ${three.firings}`);
+
+  /* Обжигов не может быть меньше, чем требует самая большая работа. */
+  const big = mixedFirings(k, [{...small, n: 500}, {...small, n: 5}]);
+  const need = Math.ceil(500 / alone.total);
+  if (!(big.firings >= need)) P(`общая садка обещает ${big.firings} обжигов там, где одной работе нужно ${need}`);
+
+  /* Высокое изделие съедает высоту камеры: чуда не обещаем. */
+  const tall = mixedFirings(k, [{d: 120, h: 300, n: 3}, {d: 90, h: 60, n: 8}]);
+  if (tall.firings === null) P('высокая работа не должна ломать расчёт, если она входит в печь');
+
+  /* Изделие не входит — честное «не знаю» с причиной, а не ноль обжигов. */
+  const nope = mixedFirings(k, [{d: 2000, h: 95, n: 5}]);
+  if (nope.firings !== null || !nope.why) P('изделие не входит в печь, а общая садка что-то посчитала');
+
+  /* Больше штук — не меньше обжигов. */
+  let prev = 0;
+  for (const n of [1, 10, 50, 200]) {
+    const f = mixedFirings(k, [{...small, n}]).firings;
+    if (f < prev) P(`${n} штук дали меньше обжигов, чем ${prev}`);
+    prev = f;
+  }
+  console.log(`  общая садка: три партии по 5 шт → ${three.firings} обжиг вместо ${three.apart} порознь`);
+}
+
 console.log('\nСадка сходится: ничего не вылезает за камеру и не наезжает на соседа.');

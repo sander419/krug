@@ -172,6 +172,12 @@ function bind() {
   });
 }
 
+/** Печь, по которой считаем сейчас: из реестра или своя. */
+export const kilnCurrent = () => kilnNow();
+
+/** Габарит текущего изделия после обжига: {d, h}. */
+export const kilnItem = () => itemNow();
+
 /** Садка и цена обжига текущего изделия: {load, cost, perItem}. */
 export function kilnNumbers() {
   const k = kilnNow(), mat = byId(state.mat), fire = mat.firing || {};
