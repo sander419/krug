@@ -116,6 +116,22 @@ const ctx = (over = {}) => {
   }
 }
 
+/* ---------- каждый шаг достижим хотя бы в одной задаче профиля ---------- */
+/* Шаг, вкладки которого нет ни в одной задаче профиля, — обещание, которое
+   человек в этом профиле выполнить не может: кнопка ведёт в никуда всегда. */
+{
+  const steps = nextSteps(ctx());
+  for (const p of PROFILES) {
+    const tabs = new Set();
+    for (const id of p.routes) for (const t of routeTabs(routeById(id))) tabs.add(t);
+    for (const s of steps) {
+      if (!s.go || !s.go.tab) continue;
+      if (!tabs.has(s.go.tab))
+        P(`шаг «${s.id}» ведёт на вкладку «${s.go.tab}», которой нет ни в одной задаче профиля «${p.id}»`);
+    }
+  }
+}
+
 /* ---------- простой вид ничего не удаляет ---------- */
 {
   const master = profileById('master');

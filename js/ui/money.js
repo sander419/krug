@@ -64,7 +64,7 @@ function fields(o) {
     const v = o[f.k] == null ? '' : o[f.k];
     return `<label class="field-row"><span>${f.n}${f.est ? ' ' + estTag : ''}</span>
       <input type="number" data-cost="${f.k}" min="${lo}" max="${hi}" step="${f.step}"
-             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="из паспорта"' : ''}
+             value="${v}" inputmode="numeric"${f.empty ? ' placeholder="паспорт"' : ''}
              ><i class="unit">${f.u}</i></label>`;
   }).join('');
 }

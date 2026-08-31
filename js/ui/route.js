@@ -160,12 +160,19 @@ export function openRouteScreen(first = false) {
   const draw = () => {
     box.innerHTML = cardsHTML(first);
     box.querySelectorAll('[data-profile-pick]').forEach(b => {
-      b.onclick = () => { picking = profileById(b.dataset.profilePick) || picking; draw(); };
+      b.onclick = () => {
+        /* Профиль применяется сразу, а не когда выберут задачу. Иначе человек,
+           нажавший «У меня мастерская» и закрывший экран по Esc, остаётся
+           в прежнем профиле и не понимает, почему у него другие вкладки. */
+        picking = profileById(b.dataset.profilePick) || picking;
+        applyProfile(picking.id);
+        draw();
+      };
     });
     box.querySelectorAll('[data-route-pick]').forEach(b => {
       b.onclick = () => {
         box.dataset.first = '0';
-        applyProfile(picking.id);
+        if (picking.id !== profile.id) applyProfile(picking.id);
         applyRoute(b.dataset.routePick);
         closeRouteScreen();
         toast(`${picking.name} · задача: ${activeRoute().name}. Сменить — кнопкой в шапке`);

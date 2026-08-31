@@ -15,7 +15,8 @@ import { $ } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { showTab, openBlock } from './panels.js';
 import { activeRoute, onRoute } from './route.js';
-import { routeTabs } from '../config/routes.js';
+import { routeTabs, TABS } from '../config/routes.js';
+import { toast } from './overlays.js';
 
 let open = false;
 let exported = false;              // хоть что-то выгружено за сеанс
@@ -40,7 +41,11 @@ function go(step) {
   }
   const tabs = routeTabs(activeRoute());
   if (g.block && openBlock(g.block)) return;
-  if (g.tab && tabs.includes(g.tab)) showTab(g.tab);
+  if (g.tab && tabs.includes(g.tab)) { showTab(g.tab); return; }
+  /* Вкладку убрала текущая задача. Молча ничего не делать нельзя — это
+     мёртвая кнопка; говорим, где искать. */
+  toast(`«${TABS[g.tab] ? TABS[g.tab].name : 'Эта вкладка'}» убрана задачей «${activeRoute().name}». ` +
+        'Сменить задачу — кнопкой в шапке');
 }
 
 /**

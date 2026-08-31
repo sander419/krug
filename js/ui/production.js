@@ -18,7 +18,9 @@ import { emit } from '../core/bus.js';
 import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../core/math.js';
 import { sanitizeCost, COST_LIMITS, pieceCost, batchPlan } from '../core/cost.js';
 import { castMouldNumbers } from '../three/castMould.js';
+import { plasterMix } from '../config/plasters.js';
 import { byId as materialById } from '../config/materials.js';
+import { byId as processById } from '../config/processes.js';
 import { byGlazeId } from '../config/glazes.js';
 import { savedWorks, updateWorkDNA, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent, kilnItem } from './kiln.js';
@@ -43,6 +45,15 @@ function packList(map, lookup) {
   return parts.join(' · ');
 }
 
+/* Ресурс гипсовой формы — из реестра способов, одним числом на весь инструмент:
+   в «Деньгах» и здесь оно обязано быть одним и тем же. */
+const plasterWR = () => ({wr: 70, ...(state.plaster || {})}).wr;
+
+function mouldLifePieces() {
+  const p = processById('casting');
+  return p && p.mouldLife ? p.mouldLife[0] : null;
+}
+
 /* До какой температуры греем эту работу: из паспорта её массы. Работы
    с разной температурой в одну садку не идут — это учитывает firingBill. */
 function topOf() {
@@ -59,7 +70,7 @@ function workNumbers() {
   const per = pieceCost(state, prod, prof,
     {...opt, firePerPiece: kiln.perItem || 0, glaze: byGlazeId(state.glazeId)});
   const plan = batchPlan(per, {n: opt.n, perFiring: kiln.load ? kiln.load.total : null,
-                               mouldLifePieces: 50});
+                               mouldLifePieces: mouldLifePieces()});
   const bad = computeWarnings(state, prod, computeStrength(state))
     .filter(w => w.lvl === 'bad').length;
   let mould = null;
@@ -71,7 +82,10 @@ function workNumbers() {
     parts: (state.parts || []).length,
     lid: !!(state.lid && state.lid.on),
     mouldParts: mould ? mould.parts : null,
-    mouldKg: mould ? mould.plasterL * 2 * 1.42 : null,
+    /* Гипс — сколько отвесить сухого порошка под замес мастерской: ровно то же
+       число, что показывает вкладка «Отливка». Масса схватившейся формы больше
+       (она держит воду), и смешивать эти два числа в одном инструменте нельзя. */
+    mouldKg: mould ? plasterMix(mould.plasterL * 2, plasterWR()).plasterKg : null,
     item: kilnItem(),                       // габарит после обжига — для общей садки
     matId: state.mat, glazeId: state.glazeId,
     topC: topOf(),                          // до скольки греем: разные температуры не мешают
@@ -100,7 +114,7 @@ function rowHTML(w, n) {
         ? `<b>${n.plan.firings}</b> × ${n.plan.perFiring} шт`
         : '<span class="dim">не входит в печь</span>'}</dd></div>
       <div><dt>Форм</dt><dd>${n.plan.moulds
-        ? `<b>${n.plan.moulds}</b> × ${n.mouldParts || 2} ч.${n.mouldKg ? ` · ${num(n.mouldKg * n.plan.moulds, 0)} кг гипса` : ''}`
+        ? `<b>${n.plan.moulds}</b> × ${n.mouldParts || 2} ч.${n.mouldKg ? ` · ${num(n.mouldKg * n.plan.moulds, 1)} кг гипса` : ''}`
         : '<span class="dim">—</span>'}</dd></div>
       <div><dt>Себестоимость</dt><dd><b>${rub(n.plan.perPiece)}</b>/шт</dd></div>
       <div><dt>Цена</dt><dd>${rub(n.per.minPrice)}/шт</dd></div>
@@ -132,7 +146,7 @@ export function syncProduction() {
   }
 
   const rows = [];
-  let clay = 0, cost = 0, margin = 0, firings = 0, pieces = 0, revenue = 0;
+  let clay = 0, cost = 0, margin = 0, pieces = 0, revenue = 0;
   let glaze = false, kwh = 6, glazeKg = 0, glazeRub = 0;
   const items = [];
   const clayBy = new Map(), glazeBy = new Map();
@@ -140,7 +154,7 @@ export function syncProduction() {
     const n = withDNA(w.dna, () => workNumbers());
     if (!n) continue;
     clay += n.plan.clayKg; cost += n.plan.total; margin += n.plan.margin;
-    firings += n.plan.firings || 0; pieces += n.plan.n; revenue += n.plan.revenue;
+    pieces += n.plan.n; revenue += n.plan.revenue;
     items.push({...n.item, n: n.plan.n, topC: n.topC});
     glaze = glaze || n.glaze; kwh = n.kwh;
     /* Глину и глазурь покупают тарой, поэтому копим по каждой массе отдельно:
@@ -161,8 +175,8 @@ export function syncProduction() {
         ${pieces} ${plural(pieces, 'изделие', 'изделия', 'изделий')}</dd>
       <dt>Глины</dt><dd><b>${num(clay, 0)} кг</b>
         <span class="dim">${packList(clayBy, id => materialById(id))}</span></dd>
-      <dt>Глазури</dt><dd><b>${num(glazeKg, 1)} кг</b> сухой смеси${glazeRub
-        ? ` · ${rub(glazeRub)} <span class="est-tag">оценка</span>` : ''}
+      <dt>Глазури</dt><dd><b>${num(glazeKg, 1)} кг</b> сухой смеси${glazeRub > 0
+        ? ` · ${rub(glazeRub)}` : ' <span class="dim">· цена не взята из паспорта</span>'}
         <span class="dim">${packList(glazeBy, id => byGlazeId(id))}</span></dd>
       <dt>Обжигов</dt><dd>${mix.firings
         ? `<b>${mix.firings}</b> ${plural(mix.firings, 'загрузка', 'загрузки', 'загрузок')}

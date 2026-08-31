@@ -99,10 +99,29 @@ for (const [name, sel] of [['тёмная', ':root{'], ['светлая', ':root
   console.log(`  ${name} тема: самая слабая пара — ${worst.what}, ${worst.r.toFixed(2)}:1`);
 }
 
+/* ---------- страница обязана рисоваться ---------- */
+/* Правило, спрятавшее <html> или <body>, даёт белый экран без единой ошибки
+   в консоли: проверки токенов его не видят, а пользователь видит пустоту.
+   Так уже случилось: комментарий, вставленный между «html,» и «body{»,
+   склеил селектор в «html, [hidden]» — и весь сайт стал display:none. */
+{
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  for (const [, sel, body] of rules) {
+    const clean = sel.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+    const parts = clean.split(',').map(x => x.trim()).filter(Boolean);
+    const hidesRoot = parts.some(p => p === 'html' || p === 'body' || p === ':root');
+    if (hidesRoot && /display\s*:\s*none/.test(body))
+      problems.push(`правило «${clean.slice(0, 60)}» прячет корень страницы — будет белый экран`);
+    /* Селектор, склеенный с комментарием, — та же ловушка в зародыше. */
+    if (/^(html|body)\s*,\s*$/.test(sel.replace(/\/\*[\s\S]*?\*\//g, '').trim()))
+      problems.push('селектор обрывается на запятой: следующее правило приклеится к html или body');
+  }
+}
+
 console.log('\nПроверка читаемости темы');
 if (problems.length) {
   console.log('\nОШИБКИ:');
   for (const p of problems) console.log('  ✗ ' + p);
   process.exit(1);
 }
-console.log('\nОбе темы держат контраст по WCAG.');
+console.log('\nОбе темы держат контраст по WCAG, корень страницы не спрятан.');
