@@ -45,10 +45,10 @@ export function updateStats(prod,str,tris){
     <div class="chip" title="Запас прочности стенки при печати и где он самый малый">
       <span class="k">Прочность стенки</span>
       <b class="${sfCls}">${str.minSF.toFixed(1)}× <span class="to">·</span> ${atLevel(str.minY)}</b></div>
-    <div class="chip" data-adv><span class="k">Объём глины</span>
+    <div class="chip" data-adv title="Сколько глины по объёму: стенка, дно и крышка вместе"><span class="k">Объём глины</span>
       <b>${Math.round(prod.volMl)} см³${prod.lidMl?` <span class="to">·</span> крышка ${Math.round(prod.lidMl)}`:''}</b></div>
-    <div class="chip" data-adv><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
-    <div class="chip" data-adv><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
+    <div class="chip" data-adv title="Обрезки от подрезки ножки: их размалывают и возвращают в массу"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
+    <div class="chip" data-adv title="Сколько треугольников в модели: на вес STL влияет напрямую, на расчёт — нет"><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
 }
 export function updateWarnings(list){
   $('warnList').innerHTML=list.map(w=>
