@@ -15,6 +15,7 @@ import { emit } from '../core/bus.js';
 import { PATTERNS, PATTERN_PRESETS, LIMITS, sanitizePattern, patternById, patternOn,
          patternVolumeMl, patternWarnings } from '../core/pattern.js';
 import { userProfileMM } from '../core/math.js';
+import { byId as materialById } from '../config/materials.js';
 import { beadWidth } from '../core/slicer.js';
 import { $, num } from './dom.js';
 import { icon } from './icons.js';
@@ -22,6 +23,10 @@ import { icon } from './icons.js';
 /* Узоры, которые лепятся поверх стенки, а не режутся в неё: у них ложбины нет,
    и пугать человека «остатком стенки» незачем. */
 const OUTWARD = new Set(['bump', 'spiral']);
+
+/* Светится не рельеф, а черепок: на красной глине тонкое дно окна остаётся
+   тонким дном, и обещать «на просвет» ей нельзя. */
+const TRANSLUCENT = /фарфор|porcelain/i;
 
 const FIELDS = {
   n:     {name: 'Повторов по кругу', unit: 'шт',  step: 1},
@@ -72,12 +77,19 @@ export function syncPattern() {
         <div class="pp-row"><dt>Шаг рельефа</dt>
           <dd>${p.uses.includes('n') ? `${num(step, 1)} мм по окружности` : '—'}
             <span class="dim">бусина принтера ${num(bead, 1)} мм</span></dd></div>
+        ${!state.hollow ? `
+        <div class="pp-row"><dt>Стенка</dt>
+          <dd>—<span class="dim">форма сплошная: рельеф режет само тело,
+            а не стенку</span></dd></div>`
+        : `
         <div class="pp-row"><dt>Стенка в ложбине</dt>
           <dd>${OUTWARD.has(pat.id) ? `${num(state.wall, 1)} мм`
             : `${num(Math.max(0, state.wall - pat.depth), 1)} мм`}
             <span class="dim">${OUTWARD.has(pat.id)
               ? 'рельеф растёт наружу — стенка не утоньшается'
-              : `из ${state.wall} мм — на просвет светится тонкое`}</span></dd></div>
+              : `из ${state.wall} мм${TRANSLUCENT.test(materialById(state.mat).name)
+                  ? ' — на просвет светится тонкое'
+                  : ' — просвет даст только фарфор, здесь это просто рельеф'}`}</span></dd></div>`}
         <div class="pp-row"><dt>Глины на рельеф</dt>
           <dd>${extraMl >= 0 ? '+' : '−'}${num(Math.abs(extraMl), 1)} см³
             <span class="dim">учтено в массе изделия</span></dd></div>
