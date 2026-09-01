@@ -89,7 +89,8 @@ if (TOUR.length < 8) P(`в экскурсии всего ${TOUR.length} оста
 /* Экраны, которые человек видит первыми, обязаны быть покрыты: без подсказок
    там остаётся стена кнопок. Список — то, ради чего затевался инструмент. */
 const MUST = ['#worksBtn', '#passportBtn', '#releaseBtn', '#settingsBtn', '#kbBtn',
-              '#thickSl', '#heightSl', '#matList', '#kilnBody', '.pp-fact'];
+              '#thickSl', '#heightSl', '#matList', '#kilnBody', '.pp-fact',
+              '#sculptBtn', '#pointBar', '.pat-grid'];
 for (const sel of MUST)
   if (!seen.has(sel)) P(`нет подсказки к ключевому месту ${sel}`);
 

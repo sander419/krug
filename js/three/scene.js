@@ -543,9 +543,7 @@ export const sceneAPI = {
     if(!picker.ray.intersectPlane(plane,hit)) return null;
     const sc=potMesh?(potMesh.scale.x||1):1;
     const along=hit.dot(dir);                 // положительная сторона — к зрителю
-    /* Локальные координаты круга: поворот группы не должен смещать хват. */
-    const spin=wheelGroup?wheelGroup.rotation.y:0;
-    return {r:Math.abs(along)/sc, y:hit.y/sc, side:along>=0?1:-1, spin};
+    return {r:Math.abs(along)/sc, y:hit.y/sc, side:along>=0?1:-1};
   },
 
   /** Кольцо на заданной высоте: показывает, какой уровень сейчас правят. */

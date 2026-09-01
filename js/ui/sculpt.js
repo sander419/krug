@@ -87,6 +87,19 @@ function onMove(e) {
        уведя курсор за край вазы, человек теряет хват на полпути. */
     const surf = sceneAPI.pickSilhouette(e.clientX, e.clientY);
     if (!surf) return;
+    if (e.altKey && dragIdx === state.points.length - 1) {
+      /* Кромку тянут вверх — растёт вся вещь. Без этого высоту нельзя было
+         менять на модели вовсе: диаметр рос, а высота — только ползунком. */
+      const grow = clamp(surf.y / Math.max(state.H, 1), 0.5, 1.05);
+      state.H = clamp(state.H * Math.min(grow, 1.03), 50, 400);
+      const sl = $('heightSl');
+      if (sl) sl.value = (state.H / 10).toFixed(1);
+      state.activePreset = -1;
+      sceneAPI.ring(state.H, p.r * state.D / 2, true);
+      showHUD(e.clientX, e.clientY, `высота ${num(state.H / 10, 1)} см`);
+      emit();
+      return;
+    }
     if (e.altKey && dragIdx > 0 && dragIdx < state.points.length - 1) {
       /* Alt тянет точку по высоте: на модели это второй естественный жест,
          а спорить с радиусом он не будет — их разводит клавиша. */

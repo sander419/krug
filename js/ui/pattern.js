@@ -65,6 +65,9 @@ export function syncPattern() {
       <p class="dim pat-lead">${p.what}. Рельеф уходит и в модель, и в STL, и в G-code:
         на экране то же, что напечатает машина.</p>
       <div class="field-grid">${fields}</div>
+      ${state.rings > 0.15 ? `<p class="screen-note">Поверх рельефа лежат следы гончара
+        (${num(state.rings, 1)} мм, ползунок «Следы гончара» выше): они складываются с узором.
+        Для чистого рисунка их убирают в ноль.</p>` : ''}
       <dl class="pp-list pat-nums">
         <div class="pp-row"><dt>Шаг рельефа</dt>
           <dd>${p.uses.includes('n') ? `${num(step, 1)} мм по окружности` : '—'}
