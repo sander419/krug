@@ -18,10 +18,10 @@ export const PLASTERS_SCHEMA = 1;
 export const PLASTER_SOLID_DENSITY = 2.64;   // г/см³
 
 const SRC = {
-  gvvs: {t: 'ОМА — гипс высокопрочный ГВВС-16', u: 'https://spb.oma-polymer.com/gips-vysokoprochnyj-gvvs-16/'},
-  pesh: {t: 'Портал керамики — гипс Пешеланский формовочный Г-5, S-4866', u: 'https://portalkeramiki.ru/catalog/143/145/S-4866/'},
-  usg:  {t: 'USG — No. 1 Pottery Plaster, submittal sheet', u: 'https://www.usg.com/content/dam/USG_Marketing_Communications/united_states/product_promotional_materials/finished_assets/usg-no1-pottery-plaster-data-en-IG1366.pdf'},
-  gost: {t: 'ГОСТ 125-2018 «Вяжущие гипсовые. Технические условия»', u: 'https://allgosts.ru/91/100/gost_125-2018'},
+  gvvs: {t: 'ОМА — гипс высокопрочный ГВВС-16', u: 'https://spb.oma-polymer.com/gips-vysokoprochnyj-gvvs-16/', kind: 'dealer'},
+  pesh: {t: 'Портал керамики — гипс Пешеланский формовочный Г-5, S-4866', u: 'https://portalkeramiki.ru/catalog/143/145/S-4866/', kind: 'dealer'},
+  usg:  {t: 'USG — No. 1 Pottery Plaster, submittal sheet', u: 'https://www.usg.com/content/dam/USG_Marketing_Communications/united_states/product_promotional_materials/finished_assets/usg-no1-pottery-plaster-data-en-IG1366.pdf', kind: 'dealer'},
+  gost: {t: 'ГОСТ 125-2018 «Вяжущие гипсовые. Технические условия»', u: 'https://allgosts.ru/91/100/gost_125-2018', kind: 'dealer'},
 };
 
 export const PLASTERS = [

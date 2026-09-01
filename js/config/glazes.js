@@ -18,35 +18,37 @@
 export const GLAZES_SCHEMA = 1;
 
 const SRC = {
-  celadon:   {t: 'Digitalfire — Celadon Glaze', u: 'https://digitalfire.com/glossary/celadon'},
-  tenmoku:   {t: 'Digitalfire — Tenmoku', u: 'https://digitalfire.com/glossary/tenmoku'},
-  shino:     {t: 'Digitalfire — Shino Glaze', u: 'https://digitalfire.com/glossary/shino'},
-  crystal:   {t: 'Digitalfire — Crystalline Glaze', u: 'https://digitalfire.com/glossary/crystalline+glaze'},
-  matte:     {t: 'Digitalfire — Matte Glaze', u: 'https://digitalfire.com/glossary/matte+glaze'},
-  satin:     {t: 'Digitalfire — Satin Glaze', u: 'https://digitalfire.com/glossary/satin+glaze'},
-  crazing:   {t: 'Digitalfire — Crazing', u: 'https://digitalfire.com/glossary/crazing'},
-  ash:       {t: 'Digitalfire — Ash Glaze', u: 'https://digitalfire.com/glossary/ash+glaze'},
-  rutile:    {t: 'Digitalfire — Rutile', u: 'https://digitalfire.com/glossary/rutile'},
-  terrasig:  {t: 'Digitalfire — Terra Sigillata', u: 'https://digitalfire.com/glossary/terra+sigillata'},
-  majolica:  {t: 'Digitalfire — Majolica', u: 'https://digitalfire.com/glossary/majolica'},
-  clear:     {t: 'Digitalfire — Clear Glaze', u: 'https://digitalfire.com/glossary/clear+glaze'},
-  transp:    {t: 'Digitalfire — Transparent Glaze', u: 'https://digitalfire.com/glossary/transparent+glaze'},
-  oilspot:   {t: 'Digitalfire — Oil Spot Glaze', u: 'https://digitalfire.com/glossary/oil+spot'},
-  copperRed: {t: 'Digitalfire — Copper Red', u: 'https://digitalfire.com/glossary/copper+red'},
-  engobe:    {t: 'Digitalfire — Engobe', u: 'https://digitalfire.com/glossary/engobe'},
-  foodSafe:  {t: 'Digitalfire — Food Safe', u: 'https://digitalfire.com/glossary/food+safe'},
-  leaching:  {t: 'Digitalfire — Leaching', u: 'https://digitalfire.com/glossary/leaching'},
-  umf:       {t: 'Digitalfire — Unity Molecular Formula', u: 'https://digitalfire.com/glossary/unity+molecular+formula'},
-  glazy:     {t: 'Glazy — открытая база рецептов глазурей', u: 'https://glazy.org/'},
+  celadon:   {t: 'Digitalfire — Celadon Glaze', u: 'https://digitalfire.com/glossary/celadon', kind: 'dealer'},
+  tenmoku:   {t: 'Digitalfire — Tenmoku', u: 'https://digitalfire.com/glossary/tenmoku', kind: 'dealer'},
+  shino:     {t: 'Digitalfire — Shino Glaze', u: 'https://digitalfire.com/glossary/shino', kind: 'dealer'},
+  crystal:   {t: 'Digitalfire — Crystalline Glaze', u: 'https://digitalfire.com/glossary/crystalline+glaze', kind: 'dealer'},
+  matte:     {t: 'Digitalfire — Matte Glaze', u: 'https://digitalfire.com/glossary/matte+glaze', kind: 'dealer'},
+  satin:     {t: 'Digitalfire — Satin Glaze', u: 'https://digitalfire.com/glossary/satin+glaze', kind: 'dealer'},
+  crazing:   {t: 'Digitalfire — Crazing', u: 'https://digitalfire.com/glossary/crazing', kind: 'dealer'},
+  ash:       {t: 'Digitalfire — Ash Glaze', u: 'https://digitalfire.com/glossary/ash+glaze', kind: 'dealer'},
+  rutile:    {t: 'Digitalfire — Rutile', u: 'https://digitalfire.com/glossary/rutile', kind: 'dealer'},
+  terrasig:  {t: 'Digitalfire — Terra Sigillata', u: 'https://digitalfire.com/glossary/terra+sigillata', kind: 'dealer'},
+  majolica:  {t: 'Digitalfire — Majolica', u: 'https://digitalfire.com/glossary/majolica', kind: 'dealer'},
+  clear:     {t: 'Digitalfire — Clear Glaze', u: 'https://digitalfire.com/glossary/clear+glaze', kind: 'dealer'},
+  transp:    {t: 'Digitalfire — Transparent Glaze', u: 'https://digitalfire.com/glossary/transparent+glaze', kind: 'dealer'},
+  oilspot:   {t: 'Digitalfire — Oil Spot Glaze', u: 'https://digitalfire.com/glossary/oil+spot', kind: 'dealer'},
+  copperRed: {t: 'Digitalfire — Copper Red', u: 'https://digitalfire.com/glossary/copper+red', kind: 'dealer'},
+  engobe:    {t: 'Digitalfire — Engobe', u: 'https://digitalfire.com/glossary/engobe', kind: 'dealer'},
+  foodSafe:  {t: 'Digitalfire — Food Safe', u: 'https://digitalfire.com/glossary/food+safe', kind: 'dealer'},
+  leaching:  {t: 'Digitalfire — Leaching', u: 'https://digitalfire.com/glossary/leaching', kind: 'dealer'},
+  umf:       {t: 'Digitalfire — Unity Molecular Formula', u: 'https://digitalfire.com/glossary/unity+molecular+formula', kind: 'dealer'},
+  glazy:     {t: 'Glazy — открытая база рецептов глазурей', u: 'https://glazy.org/', kind: 'dealer'},
   /* Цены рынка: конкретные товары конкретного продавца на 31.08.2026.
      Это не «столько стоит такая глазурь вообще», а «вот реальный товар этого
      типа и его цена» — по ней инструмент и считает, пока мастерская не впишет
      свою. Фасовка важна не меньше цены: килограмм из банки на 200 г вдвое
      дороже килограмма из ведра на 4 кг. */
   lkClear:   {t: 'Портал керамики — Глазурь ЛК Бесцветная прозрачная S-0104 (порошок, 4 кг — 3150 ₽)',
-              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/22/s-0104-detail'},
+              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/22/s-0104-detail',
+              kind: 'dealer'},
   lkMatte:   {t: 'Портал керамики — Глазурь ЛК Белая матовая S-0220 (суспензия, 5 кг — 2472 ₽)',
-              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/21/s-0220-detail'},
+              u: 'https://portalkeramiki.ru/index.php/eshop/materials/glazuri/21/s-0220-detail',
+              kind: 'dealer'},
 };
 
 export const GLAZE_FAMILIES = {
@@ -99,7 +101,8 @@ export const GLAZES = [
     note: 'Цек здесь не брак, а рисунок: сетку намеренно вызывают избытком щёлочи и потом ' +
           'втирают краситель или чай. Декоративная вещь, не посуда.',
     risk: 'Сетка трещин — открытый путь для влаги и бактерий: под еду и напитки не годится.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.crazing, SRC.foodSafe],
   },
   {
@@ -113,7 +116,8 @@ export const GLAZES = [
     note: 'Белый экран поверх красного черепка: по нему пишут красками, как по бумаге. ' +
           'Оловянная или цирконовая муть закрывает массу целиком.',
     risk: 'Толстый слой на ребре скалывается и сползает при обжиге.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.majolica],
   },
   {
@@ -127,7 +131,8 @@ export const GLAZES = [
     note: 'Классика: прозрачная плёнка с малым железом, цвет живёт толщиной. ' +
           'Ради этого и режут рельеф — в канавке слой глубже, и рисунок проявляется цветом.',
     risk: 'На гладкой форме почти бесцветен: без рельефа целадон нечем показать.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.celadon],
   },
   {
@@ -141,7 +146,8 @@ export const GLAZES = [
     note: 'Железа столько, что на ребре плёнка утоньшается и вспыхивает ржавой рыжиной, ' +
           'а в глубине остаётся чёрно-коричневым зеркалом. Форма читается сама собой.',
     risk: 'Течёт: у самого низа оставляйте сухой поясок, иначе прикипит к полке.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.tenmoku],
   },
   {
@@ -155,7 +161,8 @@ export const GLAZES = [
     note: 'Пузырь железа лопается у поверхности и оставляет серебристо-рыжее пятно. ' +
           'Рисунок задаёт выдержка на пике, а не кисть.',
     risk: 'Узкое окно обжига: перегрев съедает пятна, недожог оставляет булькающие оспины.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.oilspot],
   },
   {
@@ -169,7 +176,8 @@ export const GLAZES = [
     note: 'Густая неподвижная плёнка цвета топлёного молока с угольными затёками. ' +
           'Не течёт вовсе, поэтому терпит толстый слой и держит след пальца от макания.',
     risk: 'Наколы и складки — часть характера; на посуде под нож это минус.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.shino],
   },
   {
@@ -201,7 +209,8 @@ export const GLAZES = [
     note: 'Рутил разделяет плёнку на слои: синее пятно в глубине, охристые полосы по движению. ' +
           'Самая «фотогеничная» группа и самая непредсказуемая.',
     risk: 'Рисунок зависит от толщины и скорости остывания — две одинаковые чашки не выйдут.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.rutile],
   },
   {
@@ -215,7 +224,8 @@ export const GLAZES = [
     note: 'Древесная зола плавится сама и течёт: на плечах прозрачная, в перехвате собирается ' +
           'в тёмно-зелёную каплю. Форму нужно рисовать под этот сток.',
     risk: 'Самая текучая группа: без подставки и сухого пояска изделие приваривается к полке.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.ash],
   },
   {
@@ -229,7 +239,8 @@ export const GLAZES = [
     note: 'Мало глинозёма — расплав жидкий, и в нём успевают вырасти цветы виллемита. ' +
           'Требует выдержки на остывании и всегда штучная вещь.',
     risk: 'Стекает полностью: печатают и ставят только с ловушкой под изделием.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.crystal],
   },
   {
@@ -243,7 +254,8 @@ export const GLAZES = [
     note: 'Цвет даёт не медь как таковая, а восстановительная атмосфера: та же банка ' +
           'в окислении даёт зелёное. В электропечи без горелки не повторяется.',
     risk: 'Нужен газ или дровяная печь с восстановлением — на муфельной печи смысла нет.',
-    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor'], na: [],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: ['umf'], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: [],
     src: [SRC.copperRed],
   },
   {
@@ -257,7 +269,8 @@ export const GLAZES = [
     note: 'Не глазурь: тончайшая фракция той же глины, отмученная и залощённая. ' +
           'Стеклофазы нет, блеск даёт полировка — так работали до глазурей вообще.',
     risk: 'Не герметична: воду держит черепок, а не покрытие. Под пищу только с обжигом в спекание.',
-    est: [], unknown: ['priceRub', 'packKg', 'vendor'], na: ['umf'],
+    form: null,        // поставщик не публикует: порошок или суспензия
+    est: [], unknown: ['priceRub', 'packKg', 'vendor', 'form'], na: ['umf'],
     src: [SRC.terrasig, SRC.engobe],
   },
 ];

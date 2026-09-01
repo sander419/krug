@@ -50,7 +50,10 @@ for (const g of GLAZES) {
   if (g.breakColor !== undefined && typeof g.breakColor !== 'number')
     problems.push(`${id}: breakColor должен быть числом 0xrrggbb`);
 
-  checkContract(g, ['umf', 'priceRub', 'packKg', 'vendor'], id, problems);
+  /* `form` — порошок или суспензия. У семейств без конкретного товара его
+     не публикуют, и это должно быть помечено, а не подразумеваться: интерфейс
+     пишет «не указан», а реестр обязан говорить почему. */
+  checkContract(g, ['umf', 'priceRub', 'packKg', 'vendor', 'form'], id, problems);
 
   if (!Array.isArray(g.src) || !g.src.length) problems.push(`${id}: нет источника`);
   else for (const s of g.src) {

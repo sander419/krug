@@ -22,16 +22,16 @@ export const DEFAULT_MOISTURE = 0.22;
 export const densityFromMoisture = w => 1 / (w + (1 - w) / SOLIDS_DENSITY);
 
 const SRC = {
-  gzhel: {t: 'Керамика Гжели — масса гончарная красная пластичная 950–980 °С', u: 'https://ceramgzhel.ru/katalog/keramicheskie-massyi/massyi-dlya-lepki/keramika-gzheli/746.html'},
-  mkf2info: {t: 'Керамические материалы — о глине МКФ-2', u: 'https://breezecolor.ru/poleznaya-informatsiya/156/'},
-  mkf2shop: {t: 'Портал керамики — керамическая масса МКФ-2, S-6004', u: 'https://old.portalkeramiki.ru/index.php/eshop/materials/gliny/18/s-6004-detail'},
-  s6015: {t: 'Портал керамики — шамотированная масса S-6015', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6015/'},
-  s4p: {t: 'Портал керамики — шамотированная масса S4P, S-6014', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6014/'},
-  pg75: {t: 'Портал керамики — шамотированная масса ПГ-75, S-6019', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6019/'},
-  uralochka: {t: 'Портал керамики — шамотированная масса Уралочка МШ, S-6026', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6026/'},
-  chugun: {t: 'Портал керамики — шамотированная масса Чугун М, S-6018-01', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6018-01/'},
-  tihoretsk: {t: 'Портал керамики — пластичный Тихорецкий полуфарфор, S-6071', u: 'https://portalkeramiki.ru/catalog/30/43/50/S-6071/'},
-  snezhny: {t: 'Портал керамики — фарфор Снежный, S-6115', u: 'https://portalkeramiki.ru/catalog/30/43/54/S-6115/'},
+  gzhel: {t: 'Керамика Гжели — масса гончарная красная пластичная 950–980 °С', u: 'https://ceramgzhel.ru/katalog/keramicheskie-massyi/massyi-dlya-lepki/keramika-gzheli/746.html', kind: 'vendor'},
+  mkf2info: {t: 'Керамические материалы — о глине МКФ-2', u: 'https://breezecolor.ru/poleznaya-informatsiya/156/', kind: 'dealer'},
+  mkf2shop: {t: 'Портал керамики — керамическая масса МКФ-2, S-6004', u: 'https://old.portalkeramiki.ru/index.php/eshop/materials/gliny/18/s-6004-detail', kind: 'dealer'},
+  s6015: {t: 'Портал керамики — шамотированная масса S-6015', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6015/', kind: 'dealer'},
+  s4p: {t: 'Портал керамики — шамотированная масса S4P, S-6014', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6014/', kind: 'dealer'},
+  pg75: {t: 'Портал керамики — шамотированная масса ПГ-75, S-6019', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6019/', kind: 'dealer'},
+  uralochka: {t: 'Портал керамики — шамотированная масса Уралочка МШ, S-6026', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6026/', kind: 'dealer'},
+  chugun: {t: 'Портал керамики — шамотированная масса Чугун М, S-6018-01', u: 'https://portalkeramiki.ru/catalog/30/43/51/S-6018-01/', kind: 'dealer'},
+  tihoretsk: {t: 'Портал керамики — пластичный Тихорецкий полуфарфор, S-6071', u: 'https://portalkeramiki.ru/catalog/30/43/50/S-6071/', kind: 'dealer'},
+  snezhny: {t: 'Портал керамики — фарфор Снежный, S-6115', u: 'https://portalkeramiki.ru/catalog/30/43/54/S-6115/', kind: 'dealer'},
 };
 
 export const MATERIAL_TYPES = {

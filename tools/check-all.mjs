@@ -36,6 +36,7 @@ const CHECKS = [
   ['Подсказки',    'check-hints.mjs'],
   ['Узор',         'check-pattern.mjs'],
   ['Заготовки',    'check-presets.mjs'],
+  ['Источники',    'check-sources.mjs'],
 ];
 
 let failed = 0;

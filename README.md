@@ -245,6 +245,7 @@ styles.css            вся стилистика
 favicon.svg
 docs/                 ARCHITECTURE.md — устройство и правила проекта
                       ADDING-MATERIALS.md — как расширять библиотеку
+                      DATA-SOURCES.md — откуда берутся числа и что считается источником
 tools/                проверки реестра масс и базы знаний
 vendor/               three.js r160 и шрифты локально (без CDN)
 js/
