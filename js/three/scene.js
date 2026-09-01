@@ -18,6 +18,14 @@ import { createDome, setDomeColors } from './dome.js';
 import { byEnvId } from '../config/environments.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
+let ringMesh=null;
+const picker=new THREE.Raycaster();
+/* Цвет указателя берётся из тех же токенов, что и весь интерфейс: своя
+   константа разошлась бы с темой в первый же день. */
+const accentColor=()=>{
+  const v=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  try{ return new THREE.Color(v||'#e0693a'); }catch(_){ return new THREE.Color('#e0693a'); }
+};
 let groundMat, baseMat, shaftMat, hemi, keyLight, dome, grid;
 let groundMesh, baseMesh, shaftMesh, partsGroup, lidGroup, strainMesh;
 let envId='workshop', themeNow='dark';   // окружение и тема меняют сцену вместе
@@ -308,6 +316,11 @@ export const sceneAPI = {
     controls.enableDamping=true;controls.dampingFactor=.08;
     controls.addEventListener('change',()=>{camDirty=true;});
     controls.minDistance=60;controls.maxDistance=2600;
+    /* Раскладка кнопок — общая для обоих режимов: левая вращает, правая тоже.
+       В режиме лепки левую забирает форма (контролы выключаются целиком),
+       а правая остаётся камерой — так пальцу и мыши достаётся по способу. */
+    controls.mouseButtons={LEFT:THREE.MOUSE.ROTATE, MIDDLE:THREE.MOUSE.DOLLY,
+                           RIGHT:THREE.MOUSE.ROTATE};
     controls.maxPolarAngle=Math.PI*.58;
 
     const dir=new THREE.DirectionalLight(0xffe4c4,2.6);
@@ -481,6 +494,101 @@ export const sceneAPI = {
      нестандартная форма вылезали за край. */
   frameView(){ fitCamera(false); },
   refit(){ fitCamera(true); },
+
+  /* ---------- лепка прямо на модели ----------
+     Профиль правился только на чертеже: человек смотрел на вазу, а форму
+     менял в соседнем окне и мысленно переносил одно в другое. Здесь три
+     кирпича, из которых собирается прямое перетаскивание: попадание луча
+     в стенку, кольцо-указатель на этой высоте и выключение орбиты, чтобы
+     тяга формы не крутила камеру. */
+
+  /** Куда попал луч из точки экрана: высота и радиус в миллиметрах рецепта. */
+  pick(clientX, clientY){
+    if(!potMesh || !potMesh.geometry.attributes.position) return null;
+    const rect=renderer.domElement.getBoundingClientRect();
+    const ndc=new THREE.Vector2(
+      (clientX-rect.left)/rect.width*2-1,
+      -((clientY-rect.top)/rect.height)*2+1);
+    picker.setFromCamera(ndc,camera);
+    const hits=picker.intersectObject(potMesh,false);
+    if(!hits.length) return null;
+    /* Локальные координаты меша — это и есть миллиметры рецепта: усадка
+       сидит в масштабе меша, а поворот круга — в группе. */
+    const local=potMesh.worldToLocal(hits[0].point.clone());
+    return {y:local.y, r:Math.hypot(local.x,local.z), point:hits[0].point.clone()};
+  },
+
+  /**
+   * Где курсор в плоскости силуэта: вертикальная плоскость через ось, повёрнутая
+   * к камере. Тянуть форму по попаданию в стенку нельзя — стоит увести курсор
+   * за край вазы, и попадать становится некуда, тяга замирает. Здесь же радиус
+   * есть всегда, включая «наружу от силуэта».
+   */
+  pickSilhouette(clientX, clientY){
+    if(!camera||!renderer) return null;
+    const rect=renderer.domElement.getBoundingClientRect();
+    const ndc=new THREE.Vector2(
+      (clientX-rect.left)/rect.width*2-1,
+      -((clientY-rect.top)/rect.height)*2+1);
+    picker.setFromCamera(ndc,camera);
+    /* Нормаль плоскости — направление на камеру в горизонтали, повёрнутое
+       на 90°: сама плоскость проходит через ось вращения и смотрит на зрителя. */
+    const dir=new THREE.Vector3().subVectors(camera.position,controls.target);
+    dir.y=0;
+    if(dir.lengthSq()<1e-6) dir.set(0,0,1);
+    dir.normalize();
+    const normal=new THREE.Vector3(-dir.z,0,dir.x);
+    const plane=new THREE.Plane(normal,0);
+    const hit=new THREE.Vector3();
+    if(!picker.ray.intersectPlane(plane,hit)) return null;
+    const sc=potMesh?(potMesh.scale.x||1):1;
+    const along=hit.dot(dir);                 // положительная сторона — к зрителю
+    /* Локальные координаты круга: поворот группы не должен смещать хват. */
+    const spin=wheelGroup?wheelGroup.rotation.y:0;
+    return {r:Math.abs(along)/sc, y:hit.y/sc, side:along>=0?1:-1, spin};
+  },
+
+  /** Кольцо на заданной высоте: показывает, какой уровень сейчас правят. */
+  ring(y, r, on=true){
+    if(!potMesh) return;
+    if(!ringMesh){
+      ringMesh=new THREE.Mesh(
+        new THREE.TorusGeometry(1,0.5,8,96),
+        new THREE.MeshBasicMaterial({transparent:true,opacity:.8,depthTest:false}));
+      ringMesh.rotation.x=Math.PI/2;
+      ringMesh.renderOrder=5;
+      /* Кольцо живёт внутри самого меша: тогда усадка, поворот круга и любое
+         будущее преобразование применяются к нему сами собой. Пока оно висело
+         в группе круга, его приходилось умножать на масштаб вручную — и оно
+         уезжало под потолок при первой же неточности. */
+      potMesh.add(ringMesh);
+    }
+    ringMesh.visible=!!on;
+    if(!on) return;
+    const thick=Math.max(0.6,r*0.012);
+    ringMesh.geometry.dispose();
+    ringMesh.geometry=new THREE.TorusGeometry(Math.max(r,0.6),thick,8,96);
+    ringMesh.position.y=y;
+    ringMesh.material.color.set(accentColor());
+  },
+
+  /**
+   * Режим лепки: у камеры забирается левая кнопка и один палец, всё остальное
+   * ей остаётся. Выключать контролы целиком нельзя — на телефоне тогда вид
+   * не покрутить и не приблизить вовсе, а лепят там теми же пальцами.
+   */
+  setSculpt(on){
+    if(!controls) return;
+    if(on){
+      controls.mouseButtons={LEFT:null, MIDDLE:THREE.MOUSE.DOLLY, RIGHT:THREE.MOUSE.ROTATE};
+      controls.touches={ONE:null, TWO:THREE.TOUCH.DOLLY_ROTATE};
+    }else{
+      controls.mouseButtons={LEFT:THREE.MOUSE.ROTATE, MIDDLE:THREE.MOUSE.DOLLY,
+                             RIGHT:THREE.MOUSE.ROTATE};
+      controls.touches={ONE:THREE.TOUCH.ROTATE, TWO:THREE.TOUCH.DOLLY_PAN};
+    }
+  },
+  orbitEnabled(){ return controls?controls.mouseButtons.LEFT!==null:false; },
 
   /* Экранная привязка чертежа к модели: где на экране низ и верх силуэта изделия
      и сколько пикселей приходится на миллиметр рецепта. Считается по видимой стороне

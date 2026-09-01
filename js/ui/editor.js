@@ -162,6 +162,14 @@ function drawParts(P, out, px){
   ectx.fillText('прилепы развёрнуты в плоскость чертежа', view.axisX+4, view.baseY+26);
 }
 
+/** Подсветить точку снаружи: её тянут на модели, а показать надо и на чертеже. */
+export function highlightPoint(i){
+  const n=Number.isInteger(i)?i:-1;
+  if(n===hoverIdx) return;
+  hoverIdx=n;
+  drawEditor();
+}
+
 export function drawEditor(){
   if(!eW||!ectx)return;
   const P=pal();

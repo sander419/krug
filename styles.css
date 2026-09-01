@@ -72,6 +72,18 @@
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
+/* ---------- лепка на модели ---------- */
+/* В режиме лепки курсор говорит, что глину тянут, а не крутят камеру. */
+#viewport[data-sculpt="1"] canvas{cursor:grab;}
+#viewport[data-sculpt="1"] canvas:active{cursor:grabbing;}
+.sculpt-hud{
+  position:fixed;z-index:40;pointer-events:none;
+  transform:translate(14px,-140%);
+  background:var(--toastBg);color:var(--text);border:1px solid var(--line2);
+  border-radius:var(--radius-sm);padding:5px 9px;font-size:var(--fs-xs);
+  box-shadow:0 10px 24px var(--shade);white-space:nowrap;
+}
+
 /* ---------- узор на стенке ---------- */
 /* Узор выбирают глазами, а не по названию: карточка показывает сам рельеф
    маленькой иконкой-росчерком, нарисованной теми же токенами, что и всё. */
