@@ -57,13 +57,16 @@ export const PATTERNS = [
    uses: ['n', 'depth', 'm', 'twist'],
    f: a => Math.sin(a.th * a.n) * Math.cos(a.v * Math.PI * 2 * a.m)},
 
-  {id: 'bump', name: 'Чешуя', what: 'бугорки рядами — держатся в руке и играют на свету',
+  {id: 'bump', name: 'Чешуя', outward: true, what: 'бугорки рядами — держатся в руке и играют на свету',
    uses: ['n', 'depth', 'm', 'twist'],
-   f: a => Math.max(0, Math.sin(a.th * a.n) * Math.sin(a.v * Math.PI * 2 * a.m)) * 2 - 1},
+   /* Бугорки растут наружу от гладкой стенки, а не «вся стенка вдавлена, кроме
+      бугорков»: иначе глубина 2 мм срезала бы со всей вазы четверть объёма. */
+   f: a => Math.max(0, Math.sin(a.th * a.n) * Math.sin(a.v * Math.PI * 2 * a.m))},
 
-  {id: 'spiral', name: 'Спиральное ребро', what: 'один жгут, идущий по спирали снизу вверх',
+  {id: 'spiral', name: 'Спиральное ребро', outward: true, what: 'один жгут, идущий по спирали снизу вверх',
    uses: ['n', 'depth', 'twist'],
-   f: a => ridge(a.th * a.n, 0.12) * 2 - 1},
+   /* Жгут налеплен поверх стенки — так его и делают руками, и печатают. */
+   f: a => ridge(a.th * a.n, 0.12)},
 
   {id: 'window', name: 'Окна на просвет', what: 'вырезы почти на всю стенку: тонкое дно окна светится',
    thin: true, uses: ['n', 'depth', 'm', 'twist'],
@@ -258,7 +261,8 @@ export function patternWarnings(pat, ctx = {}) {
      становится `wall + depth`. Прорыв — это когда в ложбине не остаётся
      ничего; тонкая, но целая стенка — законный приём, на нём держится
      и просвет. У «Окон» тонкое дно и есть цель, поэтому им разрешено больше. */
-  const left = wall ? wall - pat.depth : null;
+  /* Наружный рельеф стенку не режет: он лежит поверх неё. */
+  const left = wall && !p.outward ? wall - pat.depth : null;
   const floor = p.thin ? 0.5 : 1.2;
   if (left !== null && left < floor)
     out.push({lvl: 'bad', txt: `Глубина ${pat.depth} мм при стенке ${wall} мм: в ложбине ` +

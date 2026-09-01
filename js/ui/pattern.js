@@ -19,6 +19,10 @@ import { beadWidth } from '../core/slicer.js';
 import { $, num } from './dom.js';
 import { icon } from './icons.js';
 
+/* Узоры, которые лепятся поверх стенки, а не режутся в неё: у них ложбины нет,
+   и пугать человека «остатком стенки» незачем. */
+const OUTWARD = new Set(['bump', 'spiral']);
+
 const FIELDS = {
   n:     {name: 'Повторов по кругу', unit: 'шт',  step: 1},
   depth: {name: 'Глубина рельефа',   unit: 'мм',  step: 0.2},
@@ -66,8 +70,11 @@ export function syncPattern() {
           <dd>${p.uses.includes('n') ? `${num(step, 1)} мм по окружности` : '—'}
             <span class="dim">бусина принтера ${num(bead, 1)} мм</span></dd></div>
         <div class="pp-row"><dt>Стенка в ложбине</dt>
-          <dd>${num(Math.max(0, state.wall - pat.depth), 1)} мм
-            <span class="dim">из ${state.wall} мм — на просвет светится тонкое</span></dd></div>
+          <dd>${OUTWARD.has(pat.id) ? `${num(state.wall, 1)} мм`
+            : `${num(Math.max(0, state.wall - pat.depth), 1)} мм`}
+            <span class="dim">${OUTWARD.has(pat.id)
+              ? 'рельеф растёт наружу — стенка не утоньшается'
+              : `из ${state.wall} мм — на просвет светится тонкое`}</span></dd></div>
         <div class="pp-row"><dt>Глины на рельеф</dt>
           <dd>${extraMl >= 0 ? '+' : '−'}${num(Math.abs(extraMl), 1)} см³
             <span class="dim">учтено в массе изделия</span></dd></div>
