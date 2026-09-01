@@ -16,7 +16,6 @@ import { CAST_DEFAULTS, castingPlan } from '../core/casting.js';
 import { castSubjects } from '../core/mould.js';
 import { userProfileMM } from '../core/math.js';
 import { partMetrics, partSelfOverlap } from '../core/parts.js';
-import { kindOf } from '../config/parts.js';
 import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js';
 import { $, esc, num, dec, rub } from './dom.js';
 import { castMouldNumbers, castMouldGeometry } from '../three/castMould.js';

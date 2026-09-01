@@ -75,6 +75,29 @@ export function floorY(state){
 }
 
 /* масса, отходы, устойчивость */
+/**
+ * Поправка объёма от следов гончара, см³.
+ *
+ * Кольца от пальцев складываются с радиусом по той же формуле, что в
+ * `js/core/geometry.js`, и в объём радиус входит квадратом: среднее смещение
+ * нулевое, а объём растёт. Величина небольшая, но она есть и в STL.
+ */
+export function ringsVolumeMl(state, out){
+  const amp=+state.rings||0;
+  if(amp<=0||!out||out.length<2) return 0;
+  const H=out[out.length-1].y;
+  let sum=0;
+  for(let i=1;i<out.length;i++){
+    const dy=out[i].y-out[i-1].y;
+    if(dy<=0) continue;
+    const y=(out[i].y+out[i-1].y)/2, r=(out[i].r+out[i-1].r)/2;
+    const fade=Math.max(0,Math.min(1,Math.min(y,H-y)/7));
+    const d=amp*fade*Math.sin(y*Math.PI*2/4.2+0.5);
+    sum+=Math.PI*((r+d)*(r+d)-r*r)*dy;
+  }
+  return sum/1000;
+}
+
 export function computeProduction(state){
   const out=userProfileMM(state);
   const wall=state.wall, footOn=state.footH>0;
@@ -111,7 +134,11 @@ export function computeProduction(state){
      поэтому «как у гладкой» врало бы на проценты массы даже там, где средний
      радиус не изменился. */
   const patMl=patternVolumeMl(sanitizePattern(state.pattern), out);
-  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl + lidMl + patMl;  // см³, вместе с прилепами и крышкой
+  /* Следы гончара — тоже рельеф: они меняют модель и уезжают в STL, значит
+     обязаны быть и в массе. Пока их считали «только видом», выгруженная
+     вещь весила не столько, сколько обещал инструмент. */
+  const ringMl=ringsVolumeMl(state, out);
+  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl + lidMl + patMl + ringMl;  // см³, вместе с прилепами и крышкой
   const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;

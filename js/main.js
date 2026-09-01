@@ -8,7 +8,8 @@ import { computeProduction, computeStrength, computeWarnings } from './core/math
 import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
-import { initEditor, drawEditor, syncEditorScale, initPointBar, syncPointBar } from './ui/editor.js';
+import { initEditor, drawEditor, syncEditorScale, initPointBar, syncPointBar,
+         dropSelection } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
@@ -29,7 +30,7 @@ import { paintIcons } from './ui/icons.js';
 import { initTheme, onTheme, currentTheme } from './ui/theme.js';
 import { initEnvironment } from './ui/environment.js';
 import { resetPalette } from './ui/palette.js';
-import { initPanels, initTabs, initBlocks, panelsAPI } from './ui/panels.js';
+import { initPanels, initTabs, initBlocks, panelsAPI, onLeaveForm } from './ui/panels.js';
 import { initParts, updateMechanics } from './ui/parts.js';
 import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
 import { coatWarnings } from './core/glazeCoat.js';
@@ -172,7 +173,7 @@ step('производство',()=>initProduction());
 step('крышка',()=>initLid());
 step('узор',()=>initPattern());
 step('лепка',()=>initSculpt());
-step('точка',()=>initPointBar());
+step('точка',()=>{ initPointBar(); onLeaveForm(dropSelection); });
 step('оснастка',()=>initTooling());
 step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);

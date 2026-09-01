@@ -8,7 +8,7 @@
 // и в текстах это сказано.
 import * as THREE from 'three';
 import { radiusAt } from './math.js';
-import { PART_KINDS, PART_LIMITS, kindOf, limitOf } from '../config/parts.js';
+import { PART_KINDS, kindOf, limitOf } from '../config/parts.js';
 import { strainerWarnings } from './strainer.js';
 import { clamp, round } from './util.js';
 import { tune } from './tuning.js';

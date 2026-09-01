@@ -43,7 +43,10 @@ function recipeJSON() {
     {...opt, firePerPiece: kiln.perItem || 0, glaze: byGlazeId(state.glazeId)});
   const k = 1 - mat.shrinkPct / 100;
   return JSON.stringify({
-    krug: {version: 1, made: new Date().toISOString()},
+    /* Версия рецепта растёт вместе с составом полей: во второй появился
+       узор на стенке. Иначе тот, кто читает файл, не отличит «узора нет»
+       от «эта версия про узор ещё не знала». */
+    krug: {version: 2, made: new Date().toISOString()},
     name: state.name,
     dna: encodeDNA(),
     link: location.origin + location.pathname + '#dna=' + encodeDNA(),

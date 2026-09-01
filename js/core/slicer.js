@@ -73,8 +73,12 @@ export function sliceGCode(state){
      напечатало бы гладкую вазу, а на экране был бы рельеф. */
   const pat=sanitizePattern(state.pattern);
   const patOn=patternOn(pat);
+  /* Рельеф повторяют все периметры, а не только наружный: внутренние идут
+     тем же контуром со смещением внутрь. Пока рельеф был только на первом,
+     между петлями гулял зазор в две глубины — местами бусины наезжали друг
+     на друга, местами между ними оставалась щель. */
   const rw=(z,p,ang=0)=>Math.max(radiusAt(out,z)
-    +(patOn&&p===0?patternOffset(pat,ang,z,H):0)-p*bead*0.95-bead/2,0.6);
+    +(patOn?patternOffset(pat,ang,z,H):0)-p*bead*0.95-bead/2,0.6);
   if(P===1){
     L.push('; --- стенка: непрерывная спираль ---');
     const stepsW=Math.max(segs,Math.round((H-floor)/pr.lh)*segs);
@@ -89,14 +93,14 @@ export function sliceGCode(state){
     for(let li=1;li<=layers;li++){
       const z=floor+(H-floor)*li/layers;
       for(let p=0;p<P;p++){
-        const r=rw(z,p);
-        if(r<=0.7) break;
+        const r0=rw(z,p,0);
+        if(r0<=0.7) break;
         // переезд на начало петли — на той же высоте и без подачи
-        L.push(`G1 X${fN(r+cx)} Y${fN(cy)} Z${fN(z)} F${pr.feed}`);
-        lastX=r;lastY=0;lastZ=z;
+        L.push(`G1 X${fN(r0+cx)} Y${fN(cy)} Z${fN(z)} F${pr.feed}`);
+        lastX=r0;lastY=0;lastZ=z;
         for(let k=1;k<=segs;k++){
           const ang=k/segs*Math.PI*2;
-          const rr=p===0?rw(z,0,ang):r;
+          const rr=rw(z,p,ang);
           ext(rr*Math.cos(ang),rr*Math.sin(ang),z);
         }
       }

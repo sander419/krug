@@ -171,7 +171,8 @@ for (const p of PATTERNS) {
     if (!m) continue;
     const z = +m[3];
     if (Math.abs(z - z0) > 1) continue;
-    pts.push({r: Math.hypot(+m[1] - 100, +m[2] - 100), a: Math.atan2(+m[2] - 100, +m[1] - 100)});
+    const c0 = bedCenter(g.text);
+    pts.push({r: Math.hypot(+m[1] - c0.x, +m[2] - c0.y), a: Math.atan2(+m[2] - c0.y, +m[1] - c0.x)});
   }
   if (pts.length < 8) P('в G-code не нашлось слоя для проверки рельефа');
   else {
@@ -181,6 +182,67 @@ for (const p of PATTERNS) {
       P(`в G-code рельеф ${spread.toFixed(1)} мм вместо ~${want} мм — сопло напечатает гладкую стенку`);
   }
   state.pattern = keep;
+}
+
+/* Центр изделия на столе печатает сам слайсер — берём оттуда, а не наугад:
+   у принтеров с нулём в углу он не в начале координат. */
+function bedCenter(text) {
+  const m = /центр изделия X([\d.-]+) Y([\d.-]+)/.exec(text);
+  return m ? {x: +m[1], y: +m[2]} : {x: 0, y: 0};
+}
+
+/* Рельеф обязан быть на каждом периметре, а не только на наружном: внутренние
+   идут тем же контуром со смещением внутрь. Пока это было не так, между
+   петлями гулял зазор в две глубины — местами бусины наезжали друг на друга,
+   местами между ними оставалась щель.
+
+   Проверяем не «на глаз по размаху», а совпадение с формулой: каждая точка
+   слоя обязана лечь на одну из петель, посчитанных тем же patternOffset. */
+{
+  const keep = {pattern: state.pattern, wall: state.wall};
+  state.pattern = {id: 'flute', n: 10, depth: 2.5, twist: 0, m: 8};
+  state.wall = 9;                                  // толстая стенка — несколько петель
+  const pat = sanitizePattern(state.pattern);
+  const g = sliceGCode(state);
+  const out2 = userProfileMM(state);
+  const Hs = out2[out2.length - 1].y;
+  const z0 = Hs * 0.5;
+  const bead = (state.pr.nozzle || 4) * 1.05;
+  const c = bedCenter(g.text);
+  const seen = new Set();
+  let offCurve = 0, total = 0;
+  for (const line of g.text.split(String.fromCharCode(10))) {
+    const m = /^G1 X(-?[\d.]+) Y(-?[\d.]+) Z([\d.]+)/.exec(line);
+    if (!m) continue;
+    const z = +m[3];
+    if (Math.abs(z - z0) > 0.6) continue;
+    const x = +m[1] - c.x, y = +m[2] - c.y;
+    const r = Math.hypot(x, y), ang = Math.atan2(y, x);
+    /* Радиус профиля на этой высоте — по тем же точкам, что и у слайсера. */
+    let rProf = out2[0].r;
+    for (let i = 1; i < out2.length; i++)
+      if (out2[i].y >= z) {
+        const k = (z - out2[i - 1].y) / Math.max(out2[i].y - out2[i - 1].y, 1e-9);
+        rProf = out2[i - 1].r + (out2[i].r - out2[i - 1].r) * k;
+        break;
+      }
+    const base = rProf + patternOffset(pat, ang, z, Hs) - bead / 2;
+    let bestP = -1, bestD = Infinity;
+    for (let p = 0; p < 4; p++) {
+      const d = Math.abs(r - (base - p * bead * 0.95));
+      if (d < bestD) { bestD = d; bestP = p; }
+    }
+    total++;
+    if (bestD > 0.4) offCurve++; else seen.add(bestP);
+  }
+  if (total < 20) P('в G-code не нашлось слоя с петлями для проверки рельефа');
+  else {
+    if (offCurve > total * 0.1)
+      P(`${offCurve} из ${total} точек слоя не лежат ни на одной петле с рельефом`);
+    if (seen.size < 2)
+      P('рельеф нашёлся только на одной петле — внутренние идут по гладкому контуру');
+  }
+  state.pattern = keep.pattern; state.wall = keep.wall;
 }
 
 /* ---------- замечания ---------- */

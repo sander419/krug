@@ -2,8 +2,8 @@
 // Экономика тиража: что дешевле — оснастка или руки, и с какой партии.
 // Все цифры, которые нельзя взять из паспорта (цикл, ставка, стоимость оснастки),
 // вводит пользователь: это его производство, а не наша выдумка.
-import { byId as materialById, density } from '../config/materials.js';
-import { byId as processById, LIMITS } from '../config/processes.js';
+import { byId as materialById } from '../config/materials.js';
+import { byId as processById } from '../config/processes.js';
 import { tune } from './tuning.js';
 
 export const ECON_DEFAULTS = {

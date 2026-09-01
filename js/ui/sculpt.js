@@ -21,15 +21,21 @@
 //     непонятно, за какое место взялся и что получится.
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
-import { record } from '../core/history.js';
 import { sceneAPI } from '../three/scene.js';
-import { userProfileMM } from '../core/math.js';
 import { clamp } from '../core/util.js';
 import { $, num } from './dom.js';
 import { toast } from './overlays.js';
 import { highlightPoint, selectPoint, syncPointBar } from './editor.js';
 
-let on = false, dragIdx = -1, hud = null, canvas = null, lastY = 0;
+let on = false, dragIdx = -1, hud = null, canvas = null;
+let spinBefore = null;               // вращение круга, каким оно было до лепки
+
+/* Кнопка вращения в панели вида отражает состояние: иначе круг стоит,
+   а кнопка говорит, что крутится. */
+function syncSpinButton() {
+  const b = $('spinBtn');
+  if (b) b.classList.toggle('active', !!state.spin);
+}
 
 /* Ползунок диаметра в панели должен показать то же число, что и модель:
    молчаливое расхождение подписи и вещи — худшее, что может случиться. */
@@ -64,7 +70,6 @@ const hideHUD = () => { if (hud) hud.hidden = true; };
 
 /** Подпись у курсора: что сейчас под пальцем и что получится. */
 function label(hit, idx) {
-  const prof = userProfileMM(state);
   const y = hit.y;
   const d = hit.r * 2;
   const which = idx === 0 ? 'дно' : idx === state.points.length - 1 ? 'кромка' : `точка ${idx + 1}`;
@@ -114,7 +119,6 @@ function onMove(e) {
     }
     p.r = clamp(want, 0.04, 1);
     state.activePreset = -1;
-    lastY = surf.y;
     sceneAPI.ring(surf.y, p.r * state.D / 2, true);
     showHUD(e.clientX, e.clientY,
       `Ø ${num(p.r * state.D / 10, 1)} см${e.shiftKey ? ' · точно' : ''}`);
@@ -137,11 +141,9 @@ function onDown(e) {
   if (!hit) return;
   e.preventDefault();
   dragIdx = nearestPoint(hit.y);
-  lastY = hit.y;
   /* Тянут на модели — та же точка выбирается на чертеже: рядом сразу видно
      её числа, и после грубой тяги можно поставить ровное значение. */
   selectPoint(dragIdx);
-  record();                            // один шаг отмены на всю тягу
   try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
 }
 
@@ -168,17 +170,24 @@ function onDouble(e) {
   const k = (t - a.t) / (b.t - a.t);
   state.points.splice(i, 0, {t, r: a.r + (b.r - a.r) * k});
   state.activePreset = -1;
-  record();
-  emit();
+  emit();                              // историю ведёт подписка на изменения
   toast('Точка добавлена — тяните её прямо на модели');
 }
-
-export const sculptOn = () => on;
 
 /** Включить или выключить лепку. */
 export function setSculpt(next) {
   on = !!next;
   sceneAPI.setSculpt(on);
+  /* Круг на время лепки останавливается: по вращающейся вазе рельеф и точка
+     уезжают из-под курсора, и «тяну сюда» превращается в «тяну куда-то». */
+  if (on) {
+    spinBefore = state.spin;
+    if (state.spin) { state.spin = false; syncSpinButton(); }
+  } else if (spinBefore !== null) {
+    state.spin = spinBefore;
+    spinBefore = null;
+    syncSpinButton();
+  }
   sceneAPI.ring(0, 0, false);
   hideHUD();
   highlightPoint(-1);
@@ -190,7 +199,7 @@ export function setSculpt(next) {
   const vp = $('viewport');
   if (vp) vp.dataset.sculpt = on ? '1' : '0';
   if (on) toast('Лепка: тяните стенку. Alt — поднять точку, двойной клик — добавить. ' +
-    'Камера — правой кнопкой или двумя пальцами');
+    'Круг остановлен, камера — правой кнопкой или двумя пальцами');
 }
 
 export function initSculpt() {

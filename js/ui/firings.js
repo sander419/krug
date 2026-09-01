@@ -14,7 +14,7 @@
 // которой считается себестоимость, и цена **по факту плана** — та, которую
 // мастерская заплатит за электричество.
 import { state, withDNA } from '../core/state.js';
-import { firedSize, kilnLoad, mixedFirings, firingBill, firingCost } from '../core/kiln.js';
+import { firedSize, kilnLoad, firingBill, firingCost } from '../core/kiln.js';
 import { userProfileMM } from '../core/math.js';
 import { partMetrics } from '../core/parts.js';
 import { sanitizeLid, lidProfile } from '../core/lid.js';
@@ -25,7 +25,6 @@ import { kilnCurrent } from './kiln.js';
 import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { $, esc, num, rub, plural } from './dom.js';
-import { icon } from './icons.js';
 
 /* Что кладём в печь: отмеченные работы. Отметки живут только на экране —
    это план на сегодня, а не свойство изделия. */

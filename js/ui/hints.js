@@ -56,8 +56,7 @@ function remember(id) {
   try { localStorage.setItem(KEY, JSON.stringify([...s].slice(-60))); } catch (_) {}
 }
 
-/** Показывали ли уже подсказку первого захода с таким id. */
-export const hintSeen = id => seen().has(id);
+const hintSeen = id => seen().has(id);
 
 /**
  * Разметка карточки «первый заход». Пустая строка, если её уже закрывали:

@@ -27,6 +27,11 @@ export const currentTab=()=>{
   const a=document.querySelector('.tab.active');
   return a?a.dataset.tab:null;
 };
+/* Кому сообщать, что вкладка формы закрылась. Через подписку, а не прямым
+   вызовом: панели не должны знать про чертёж и сцену. */
+const tabLeaveFns=[];
+export const onLeaveForm=fn=>{ if(typeof fn==='function') tabLeaveFns.push(fn); };
+
 export function initTabs(){
   const nav=document.querySelector('.tabs');
   const tabs=[...document.querySelectorAll('.tab')];
@@ -56,6 +61,9 @@ export function initTabs(){
     });
     document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===id));
     try{localStorage.setItem('krug.tab',id);}catch(_){}
+    /* Выбор точки принадлежит чертежу: ушли с формы — кольцо на модели
+       снимается вместе с ним, иначе оно обещает правку, которой уже нет. */
+    if(id!=='form') for(const fn of tabLeaveFns) fn();
   };
   showFn=show;
   tabs.forEach(t=>t.onclick=()=>show(t.dataset.tab));

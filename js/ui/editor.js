@@ -163,6 +163,11 @@ function drawParts(P, out, px){
   ectx.fillText('прилепы развёрнуты в плоскость чертежа', view.axisX+4, view.baseY+26);
 }
 
+/* Кольцо на модели живёт ровно столько, сколько актуален выбор точки. Пока
+   его снимали только по клику мимо, оно оставалось висеть на вазе, когда
+   человек уходил на другую вкладку, — и обещало правку, которой уже нет. */
+export function dropSelection(){ if(selIdx>=0) selectPoint(-1); }
+
 /** Подсветить точку снаружи: её тянут на модели, а показать надо и на чертеже. */
 export function highlightPoint(i){
   const n=Number.isInteger(i)?i:-1;
@@ -210,8 +215,12 @@ export function syncPointBar(){
   if(document.activeElement!==d) d.value=(p.r*state.D/10).toFixed(1);
   if(document.activeElement!==y) y.value=(p.t*state.H/10).toFixed(1);
   /* Дно и кромку по высоте не двигают: они и есть границы формы. */
-  y.disabled=selIdx===0||selIdx===state.points.length-1;
-  $('pointDrop').disabled=selIdx===0||selIdx===state.points.length-1;
+  const edge=selIdx===0||selIdx===state.points.length-1;
+  y.disabled=edge;
+  $('pointDrop').disabled=edge;
+  /* У дна и кромки соседей с двух сторон нет: сглаживать нечего, и кнопка
+     не должна выглядеть работающей. Раньше она просто молча ничего не делала. */
+  $('pointSmooth').disabled=edge;
 }
 
 /** Сгладить кривую вокруг выбранной точки: среднее с соседями. */

@@ -169,11 +169,6 @@ function onKey(e) {
   if (e.key === 'ArrowLeft') { e.stopPropagation(); prev(); }
 }
 
-/** Проходил ли человек экскурсию до конца. */
-export const tourDone = () => {
-  try { return localStorage.getItem(KEY) === '1'; } catch (_) { return false; }
-};
-
 /** Запустить экскурсию. `after` вызовется по окончании. */
 export function startTour(after) {
   stop();
@@ -185,5 +180,3 @@ export function startTour(after) {
   addEventListener('keydown', onKey, true);
   go(0);
 }
-
-export const stopTour = () => stop();
