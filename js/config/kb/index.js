@@ -112,6 +112,7 @@ export const CONTEXT_HELP = {
   'glaze-food': 'food-safe',
   glazeFamily: 'glaze-families',
   ldm: 'ldm-basics',
+  relief: 'relief-print',
   tooling: 'tooling-basics',
   ram: 'ram-press',
   roller: 'roller-forming',

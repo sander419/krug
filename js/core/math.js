@@ -190,7 +190,7 @@ export function computeWarnings(state, prod, str){
      видит «всё чисто» на вещи, у которой в ложбине миллиметр стенки. */
   for(const pw of patternWarnings(sanitizePattern(state.pattern),
       {wall:state.wall, hollow:state.hollow, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
-    if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'ldm',
+    if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'relief',
       txt:'Узор: '+pw.txt});
   const pt=sanitizePattern(state.pattern);
   if(patternOn(pt)){
