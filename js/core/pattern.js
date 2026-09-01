@@ -190,10 +190,12 @@ export function patternWarnings(pat, ctx = {}) {
   if (bead && R && p.uses.includes('n')) {
     const step = 2 * Math.PI * R / Math.max(1, pat.n);
     if (step < bead * 2)
-      out.push({lvl: 'bad', txt: `Шаг узора ${step.toFixed(1)} мм при бусине ${bead.toFixed(1)} мм — ` +
+      out.push({lvl: 'bad', area: 'print',
+        txt: `Шаг узора ${step.toFixed(1)} мм при бусине ${bead.toFixed(1)} мм — ` +
         'сопло его не повторит. Уменьшите число повторов.'});
     else if (step < bead * 3.5)
-      out.push({lvl: 'warn', txt: `Шаг узора ${step.toFixed(1)} мм — на границе того, ` +
+      out.push({lvl: 'warn', area: 'print',
+        txt: `Шаг узора ${step.toFixed(1)} мм — на границе того, ` +
         'что различит сопло; рельеф выйдет мягче, чем на экране.'});
   }
 
@@ -202,10 +204,12 @@ export function patternWarnings(pat, ctx = {}) {
     const shift = Math.abs(pat.twist) / 360 * 2 * Math.PI * R;   // сдвиг гребня по кругу, мм
     const ang = Math.atan2(shift, H) * 180 / Math.PI;
     if (ang > 60)
-      out.push({lvl: 'bad', txt: `Закрутка ${Math.round(ang)}° к оси — гребень ложится ` +
+      out.push({lvl: 'bad', area: 'print',
+        txt: `Закрутка ${Math.round(ang)}° к оси — гребень ложится ` +
         'почти горизонтально и повиснет в воздухе.'});
     else if (ang > 40)
-      out.push({lvl: 'warn', txt: `Закрутка ${Math.round(ang)}° к оси — на пределе: ` +
+      out.push({lvl: 'warn', area: 'print',
+        txt: `Закрутка ${Math.round(ang)}° к оси — на пределе: ` +
         'следите за свесом при печати.'});
   }
 

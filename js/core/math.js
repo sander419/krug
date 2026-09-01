@@ -5,7 +5,7 @@ import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
-import { sanitizePattern, patternVolumeMl } from './pattern.js';
+import { sanitizePattern, patternVolumeMl, patternWarnings } from './pattern.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -178,6 +178,12 @@ export function computeWarnings(state, prod, str){
   if(str.minSF<1.5) w.push({lvl:'bad',area:'print',help:'collapse',txt:`Печать: обрушение — запас прочности ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Утолщите стенки, снизьте высоту или возьмите пасту жёстче.`});
   else if(str.minSF<2.5) w.push({lvl:'warn',area:'print',help:'slump',txt:`Печать: осадка вероятна — мин. запас ${str.minSF.toFixed(1)}× ${atLevel(str.minY)}. Проверьте τᵧ пасты.`});
   for(const pw of partsWarnings(state,out)) w.push(pw);
+  /* Узор — часть формы, и его замечания идут в общий список: иначе мастер
+     видит «всё чисто» на вещи, у которой в ложбине миллиметр стенки. */
+  for(const pw of patternWarnings(sanitizePattern(state.pattern),
+      {wall:state.wall, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
+    if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'ldm',
+      txt:'Узор: '+pw.txt});
   for(const lw of lidWarnings(state,out,byId(state.mat))) w.push(lw);
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична и устойчива.'});
   return w;
