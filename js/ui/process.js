@@ -53,7 +53,10 @@ function bodyHTML() {
         ${s.kind === 'mark'
           ? `<label class="ps-check"><input type="checkbox" data-mark="${s.id}"
                ${s.status === 'done' ? 'checked' : ''}
-               ${w ? '' : 'disabled'}><span>сделано</span></label>`
+               ${w ? '' : 'disabled'}><span>сделано</span></label>
+             ${w && s.status !== 'done'
+               ? `<button class="chip-btn ps-upto" data-upto="${s.id}"
+                    title="Отметить этот шаг и все физические до него">и всё до него</button>` : ''}`
           : s.go ? `<button class="btn small" data-go="${s.id}">Открыть</button>` : ''}
       </span>
     </li>`).join('');
@@ -81,6 +84,29 @@ function bodyHTML() {
 
 function mount(box) {
   const rerender = () => { refreshScreen(bodyHTML()); mount(box); };
+
+  /* Вернулись к изделию, которое уже обожжено, — отмечать пять шагов подряд
+     незачем: «и всё до него» ставит галочки на этот шаг и на все физические
+     раньше. Обратно снимают по одной: снять лишнее опаснее, чем поставить. */
+  box.querySelectorAll('[data-upto]').forEach(b => {
+    b.onclick = () => {
+      const w = currentWork();
+      if (!w) { toast('Сначала сохраните изделие — отметке некуда лечь'); return; }
+      const marks = steps().filter(x => x.kind === 'mark').map(x => x.id);
+      const upto = marks.indexOf(b.dataset.upto);
+      if (upto < 0) return;
+      const done = {...w.done};
+      for (let i = 0; i <= upto; i++) done[marks[i]] = true;
+      patchWork(w.id, {done});
+      const after = currentWork();
+      patchWork(w.id, {phase: phaseFromSteps(processSteps({
+        state, work: after, kiln: kilnNumbers(),
+        warnings: computeWarnings(state, computeProduction(state), computeStrength(state)),
+      }))});
+      emit();
+      rerender();
+    };
+  });
 
   box.querySelectorAll('[data-mark]').forEach(inp => {
     inp.onchange = () => {

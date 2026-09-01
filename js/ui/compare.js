@@ -115,7 +115,7 @@ function bodyHTML() {
       'выгоднее производить. Разница считается от левого к правому.')}
     <div class="cmp-pick">
     ${pickHTML('left', left, works)}
-    <span class="cmp-vs">против</span>
+    <button class="chip-btn cmp-swap" data-swap="1" title="Поменять местами">против ⇄</button>
     ${pickHTML('right', right, works)}
   </div>`;
 
@@ -156,6 +156,15 @@ function bodyHTML() {
 }
 
 function mount(box) {
+  /* Разница считается от левого к правому, поэтому «поменять местами» —
+     не украшение: тем же двум изделиям она даёт обратный знак, и иногда
+     смотреть удобнее именно так. */
+  const swap = box.querySelector('[data-swap]');
+  if (swap) swap.onclick = () => {
+    const t = left; left = right; right = t;
+    refreshScreen(bodyHTML());
+    mount(box);
+  };
   box.querySelectorAll('[data-side]').forEach(sel => {
     sel.onchange = () => {
       if (sel.dataset.side === 'left') left = sel.value || null;

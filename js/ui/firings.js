@@ -107,7 +107,12 @@ function bodyHTML() {
 
     <section class="pp-sect pp-wide">
       <h3>Что ставим в этот обжиг</h3>
-      ${rows.length ? `<div class="fr-list">${list}</div>`
+      ${rows.length ? `
+        <div class="btn-row fr-bulk">
+          <button class="chip-btn" data-pick-all="1">Отметить все, что входят</button>
+          <button class="chip-btn" data-pick-none="1">Снять отметки</button>
+        </div>
+        <div class="fr-list">${list}</div>`
         : '<p class="dim">Сохранённых изделий пока нет: план садки собирать не из чего.</p>'}
     </section>
 
@@ -121,6 +126,24 @@ function bodyHTML() {
 }
 
 function mount(box) {
+  /* Собрать садку из десяти работ по одной галочке — двадцать кликов;
+     «все, что входят» делает то же одним. Не входящие не отмечаются:
+     обещать печи то, что в неё не влезет, нельзя. */
+  const bulk = (sel, on) => {
+    const b = box.querySelector(sel);
+    if (!b) return;
+    b.onclick = () => {
+      box.querySelectorAll('[data-pick]').forEach(inp => {
+        if (on && inp.disabled) return;
+        if (on) picked.add(inp.dataset.pick); else picked.delete(inp.dataset.pick);
+      });
+      refreshScreen(bodyHTML());
+      mount(box);
+    };
+  };
+  bulk('[data-pick-all]', true);
+  bulk('[data-pick-none]', false);
+
   box.querySelectorAll('[data-pick]').forEach(inp => {
     inp.onchange = () => {
       if (inp.checked) picked.add(inp.dataset.pick); else picked.delete(inp.dataset.pick);

@@ -72,6 +72,12 @@
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
+/* мелочи экранов: массовые действия и поиск по реестру */
+.fr-bulk{margin-bottom:var(--gap-2);}
+.mt-search{margin:var(--gap-2) 0;}
+.ps-upto{margin-left:var(--gap-1);}
+.cmp-swap{white-space:nowrap;}
+
 /* ---------- панель выбранной точки ---------- */
 .point-bar{
   display:flex;align-items:center;gap:var(--gap-1);flex-wrap:wrap;

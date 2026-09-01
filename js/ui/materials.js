@@ -23,6 +23,7 @@ import { toast } from './overlays.js';
 
 let tab = 'mat';
 let openId = null;
+let query = '';                 // поиск по названию: списки длинные
 
 const KINDS = [
   {id: 'mat', name: 'Массы', list: () => MATERIALS,
@@ -119,6 +120,12 @@ function cardHTML(kind, r) {
 
 function bodyHTML() {
   const k = KINDS.find(x => x.id === tab);
+  const q = query.trim().toLowerCase();
+  const all = k.list();
+  const list = q
+    ? all.filter(r => `${r.name} ${r.vendor || ''} ${r.product || ''} ${r.family || ''}`
+        .toLowerCase().includes(q))
+    : all;
   return `
     ${firstHintHTML('materials', 'Паспорт поставщика и ваши замеры',
       'Числа в карточках — из паспортов со ссылками на источник. Ваши собственные замеры ложатся рядом, подписанные как ваши, и показывают, насколько ваша мастерская отличается от того, что обещает поставщик.')}
@@ -129,15 +136,28 @@ function bodyHTML() {
     </div>
     <p class="screen-note">${k.lead} Числа — из паспортов поставщиков со ссылками;
       чего поставщик не публикует, помечено «не опубликована», а не выдумано.</p>
-    <div class="mt-list">${k.list().map(r => cardHTML(k.id, r)).join('')}</div>`;
+    <label class="works-search mt-search">${icon('search', 15)}
+      <input type="search" id="mtQ" value="${esc(query)}" placeholder="Поиск по названию или поставщику…"
+             autocomplete="off" aria-label="Поиск по реестру"></label>
+    <div class="mt-list">${list.length
+      ? list.map(r => cardHTML(k.id, r)).join('')
+      : '<p class="dim">Ничего не нашлось. Попробуйте другое слово или очистите поиск.</p>'}</div>`;
 }
 
 function mount(box) {
   const rerender = () => { refreshScreen(bodyHTML()); mount(box); };
 
   box.querySelectorAll('[data-kind]').forEach(b => {
-    b.onclick = () => { tab = b.dataset.kind; openId = null; rerender(); };
+    b.onclick = () => { tab = b.dataset.kind; openId = null; query = ''; rerender(); };
   });
+  const q = $('mtQ');
+  if (q) q.oninput = () => {
+    query = q.value;
+    const at = q.selectionStart;
+    rerender();
+    const f = $('mtQ');
+    if (f) { f.focus(); f.setSelectionRange(at, at); }
+  };
   box.querySelectorAll('[data-card]').forEach(b => {
     b.onclick = () => { openId = openId === b.dataset.card ? null : b.dataset.card; rerender(); };
   });
