@@ -5,7 +5,7 @@ import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
 import { buildLathe, applyLips } from './lathe.js';
 import { strainerSpec } from './strainer.js';
-import { sanitizePattern, patternOn, patternOffset } from './pattern.js';
+import { sanitizePattern, patternOn, patternFn, patternFade } from './pattern.js';
 
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
@@ -116,9 +116,22 @@ export function buildPot(state, reuse){
   const patOn=patternOn(pat) && u>=3.5;
   const Htop=prof[prof.length-1].y;
   const grow=clamp((u-3.5)/1.2,0,1);
-  const warp=patOn
-    ? (phi,p)=>p.outer?patternOffset(pat,phi,p.y,Htop)*grow:0
-    : null;
+  /* Всё, что не зависит от угла, считается один раз по точкам контура: доля
+     высоты и гашение. В цикле сборки остаётся только сама форма рельефа —
+     иначе на четырнадцати тысячах вершин «Кинотеатр» начинает спотыкаться.
+     Значения лежат в массивах по индексу точки: поиск в WeakMap на каждую
+     вершину стоил дороже самой формулы. */
+  const pf=patOn?patternFn(pat):null;
+  let warp=null;
+  if(pf){
+    const vArr=new Float64Array(path.length), fArr=new Float64Array(path.length);
+    for(let j=0;j<path.length;j++){
+      if(!path[j].outer) continue;
+      vArr[j]=Htop>0?Math.min(1,Math.max(0,path[j].y/Htop)):0;
+      fArr[j]=patternFade(path[j].y,Htop)*grow;
+    }
+    warp=(phi,p,j)=>fArr[j]?pf(phi,vArr[j],fArr[j]):0;
+  }
   const geometry=buildLathe(path,state.segments,reuse,skip,warp);
   // слив оттягивают на круге, пока изделие сырое — раньше, чем прилепляют ручки
   const lips=(state.parts||[]).filter(p=>p.kind==='lip');

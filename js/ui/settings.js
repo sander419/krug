@@ -239,6 +239,8 @@ const KEY_NAMES = {
   'krug.work': 'последняя работа (автосохранение)', 'krug.work.current': 'какое изделие открыто',
   'krug.tab': 'открытая вкладка', 'krug.foot': 'полоса метрик внизу',
   'krug.guide': 'обучение показано', 'krug.guided': 'обучение показано',
+  'krug.hintsSeen': 'какие подсказки вы уже закрывали',
+  'krug.tour': 'экскурсия пройдена',
 };
 
 function dataHTML() {

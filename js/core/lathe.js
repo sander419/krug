@@ -106,7 +106,7 @@ export function buildLathe(points, segments, reuse, skip, warp) {
      и оставила бы стенку плоской на свету. Считаем по самой сетке: она
      регулярная, соседи известны, шва на стыке нет, потому что по кругу
      соседство замкнуто. */
-  if (warp) gridNormals(pos, nor, segments, n);
+  if (warp) gridNormals(pos, nor, segments, n, points);
 
   geo.attributes.position.needsUpdate = true;
   geo.attributes.normal.needsUpdate = true;
@@ -120,12 +120,23 @@ export function buildLathe(points, segments, reuse, skip, warp) {
    две касательные, их векторное произведение — нормаль. Направление берём
    от старой нормали: у внутренней стенки она смотрит в полость, и переворот
    вывернул бы её наизнанку. */
-function gridNormals(pos, nor, segments, n) {
+function gridNormals(pos, nor, segments, n, points) {
   const rows = segments + 1;
+  /* Рельеф лежит только на наружной стенке — там же и пересчитываем.
+     Внутренние точки не двигались, их аналитическая нормаль верна, а лишние
+     тринадцать тысяч векторных произведений на кадр в «Кинотеатре» видно. */
+  const touched = new Uint8Array(n);
+  for (let j = 0; j < n; j++)
+    if (!points || points[j].outer) {
+      touched[j] = 1;
+      if (j > 0) touched[j - 1] = 1;
+      if (j < n - 1) touched[j + 1] = 1;
+    }
   const at = (i, j) => (((i % segments) + segments) % segments) * n + j;
   const t = new Float64Array(3), u = new Float64Array(3), m = new Float64Array(3);
   for (let i = 0; i < rows; i++) {
     for (let j = 0; j < n; j++) {
+      if (!touched[j]) continue;
       const v = (i * n + j) * 3;
       const a = at(i + 1, j) * 3, b = at(i - 1, j) * 3;
       const jp = Math.min(j + 1, n - 1) * 3, jm = Math.max(j - 1, 0) * 3;
@@ -137,7 +148,9 @@ function gridNormals(pos, nor, segments, n) {
       m[0] = t[1] * u[2] - t[2] * u[1];
       m[1] = t[2] * u[0] - t[0] * u[2];
       m[2] = t[0] * u[1] - t[1] * u[0];
-      const len = Math.hypot(m[0], m[1], m[2]);
+      /* sqrt вместо hypot: hypot бережёт от переполнения, которого здесь быть
+         не может, и стоит в разы дороже — а вызовов тринадцать тысяч на кадр. */
+      const len = Math.sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
       if (!len) continue;
       const dot = (m[0] * nor[v] + m[1] * nor[v + 1] + m[2] * nor[v + 2]) < 0 ? -1 : 1;
       nor[v] = m[0] / len * dot;

@@ -189,7 +189,7 @@ export function computeWarnings(state, prod, str){
   /* Узор — часть формы, и его замечания идут в общий список: иначе мастер
      видит «всё чисто» на вещи, у которой в ложбине миллиметр стенки. */
   for(const pw of patternWarnings(sanitizePattern(state.pattern),
-      {wall:state.wall, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
+      {wall:state.wall, hollow:state.hollow, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
     if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'ldm',
       txt:'Узор: '+pw.txt});
   const pt=sanitizePattern(state.pattern);

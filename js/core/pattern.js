@@ -180,6 +180,33 @@ export function patternVolumeMl(pat, out) {
 }
 
 /**
+ * Готовая функция рельефа для горячего цикла.
+ *
+ * `patternOffset` удобен снаружи, но внутри он на каждый вызов ищет узор
+ * в реестре и пересчитывает гашение. При сборке тела вращения таких вызовов
+ * четырнадцать тысяч на кадр, и в «Кинотеатре» это заметно. Здесь всё, что
+ * не зависит от точки, вычисляется один раз.
+ *
+ * @returns null, если узора нет; иначе (th, v, fadeVal) → смещение в мм,
+ *          где `v` — доля высоты, `fadeVal` — уже посчитанное гашение.
+ */
+export function patternFn(pat) {
+  if (!patternOn(pat)) return null;
+  const f = patternById(pat.id).f;
+  const depth = pat.depth, n = pat.n, m = pat.m;
+  const twRad = pat.twist * Math.PI / 180;
+  const a = {th: 0, n, v: 0, m};
+  return (th, v, fadeVal) => {
+    a.th = th + twRad * v;
+    a.v = v;
+    return f(a) * depth * fadeVal;
+  };
+}
+
+/** Гашение у дна и кромки как отдельная функция: её считают по точкам контура. */
+export const patternFade = (y, H) => fade(y, H);
+
+/**
  * Насколько рельеф уходит от гладкой стенки на этой высоте, мм.
  * Чертежу нужны не сами борозды (сечение проходит по одной точке круга),
  * а границы, между которыми гуляет стенка.
@@ -220,7 +247,9 @@ export function patternWarnings(pat, ctx = {}) {
   const out = [];
   if (!patternOn(pat)) return out;
   const p = patternById(pat.id);
-  const wall = +ctx.wall || 0;
+  /* У сплошного тела стенки нет: там рельеф ничего не прорывает, и говорить
+     «в ложбине останется 2 мм» было бы выдумкой. */
+  const wall = ctx.hollow === false ? 0 : (+ctx.wall || 0);
   const bead = +ctx.bead || 0;
   const R = (+ctx.D || 0) / 2;
   const H = +ctx.H || 0;

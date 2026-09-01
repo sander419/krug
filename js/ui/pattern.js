@@ -43,7 +43,7 @@ export function syncPattern() {
              inputmode="decimal" aria-label="${f.name}"><i class="unit">${f.unit}</i></label>`;
   }).join('');
 
-  const warns = patternWarnings(pat, {wall: state.wall, D: state.D, H: state.H, bead});
+  const warns = patternWarnings(pat, {wall: state.wall, hollow: state.hollow, D: state.D, H: state.H, bead});
   const extraMl = patternVolumeMl(pat, prof);
   const step = pat.n ? 2 * Math.PI * (state.D / 2) / pat.n : 0;
 
@@ -75,7 +75,8 @@ export function syncPattern() {
       ${warns.length ? `<ul class="pat-warns">${warns.map(w =>
         `<li class="lvl-${w.lvl}">${icon(w.lvl === 'bad' ? 'circle-alert' : 'info', 14)}${w.txt}</li>`).join('')}</ul>` : ''}
       <p class="screen-note">Узор гасится у дна и у кромки: на посадочном пояске рельеф мешает
-        стоять, а на кромке — пить и держать крышку. Полость остаётся гладкой — вещь моют изнутри.</p>`
+        стоять, а на кромке — пить и держать крышку. Полость остаётся гладкой — вещь моют изнутри.
+        Крышка и прилепы рельефа не получают: их делают отдельно, и на круге они гладкие.</p>`
       : `<p class="dim pat-lead">Гладкая стенка, как выходит на круге. Рельеф — это то,
          что умеет машина: сопло меняет радиус на каждом шаге спирали.</p>`}`;
 
