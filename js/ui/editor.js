@@ -17,6 +17,7 @@ import { partCurve, partSection, pathFromParams, pathFromStroke, pathPoints,
 import { selectedPart, syncParts } from './parts.js';
 import { strainerHoles } from '../core/strainer.js';
 import { kindOf, limitOf } from '../config/parts.js';
+import { sanitizePattern, patternOn, patternAmp } from '../core/pattern.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let draftMode='points';         // 'points' — тянуть точки, 'draw' — вести линию
@@ -224,6 +225,26 @@ export function drawEditor(){
       ectx.beginPath();ectx.moveTo(f.x,f.y);ectx.lineTo(f2.x,f2.y);ectx.stroke();
     }
   }
+  /* Узор на чертеже: сечение проходит по одной точке круга и рельефа не
+     показывает вовсе — человек правит глубину и видит неподвижную линию.
+     Рисуем не сам узор, а его границы: пунктиром гребень и ложбину, между
+     которыми гуляет стенка. Так видно и глубину, и то, где рельеф гасится. */
+  const pat=sanitizePattern(state.pattern);
+  if(patternOn(pat)){
+    const Hs=out[out.length-1].y;
+    ectx.setLineDash([4,3]);ectx.lineWidth=1.1;ectx.strokeStyle=P.accent(.5);
+    for(const sign of [1,-1]){
+      ectx.beginPath();
+      out.forEach((o,i)=>{
+        const amp=patternAmp(pat,o.y,Hs);
+        const q=mmToPx(Math.max(o.r+sign*amp,0),o.y);
+        i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y);
+      });
+      ectx.stroke();
+    }
+    ectx.setLineDash([]);
+  }
+
   ectx.beginPath();
   outer.forEach((q,i)=>i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y));
   ectx.strokeStyle=P.accent2();ectx.lineWidth=2.4;

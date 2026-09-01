@@ -30,6 +30,7 @@ import { openScreen } from './screen.js';
 import { $, esc, num, rub } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './overlays.js';
+import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
 
 /* Рецепт в JSON: то же, что в ссылке-ДНК, но читаемое человеком и его
    инструментами. Ссылка удобна для передачи, файл — для архива работы. */
@@ -53,6 +54,16 @@ function recipeJSON() {
            capacityMl: Math.round(prod.capMl)},
     material: {id: mat.id, name: mat.name, vendor: mat.vendor || null},
     glaze: {id: state.glazeId, name: byGlazeId(state.glazeId).name},
+    /* Узор — часть формы: без него рецепт не описывает вещь, которую отдали. */
+    pattern: (() => {
+      const pt = sanitizePattern(state.pattern);
+      if (!patternOn(pt)) return null;
+      const p = patternById(pt.id);
+      return {id: pt.id, name: p.name, depthMM: pt.depth,
+              repeatsAround: p.uses.includes('n') ? pt.n : null,
+              repeatsUp: p.uses.includes('m') ? pt.m : null,
+              twistDeg: pt.twist || null};
+    })(),
     cost: {totalRub: Math.round(per.total), minPriceRub: Math.round(per.minPrice),
            batch: opt.n},
     note: 'Числа с пометкой «оценка» в интерфейсе — ориентиры мастерской, а не паспорт.',

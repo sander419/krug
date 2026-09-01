@@ -109,6 +109,7 @@
   currentColor 0 2px, transparent 2px 12px);}
 [data-pat-ico="window"]{--pat-img:repeating-linear-gradient(90deg,
   currentColor 0 5px, transparent 5px 11px);--pat-size:11px 13px;}
+.pat-presets{display:flex;flex-wrap:wrap;gap:var(--gap-1);margin-top:var(--gap-2);}
 .pat-lead{margin:var(--gap-2) 0;line-height:1.5;}
 .pat-nums{margin-top:var(--gap-2);}
 .pat-warns{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:var(--gap-2);}

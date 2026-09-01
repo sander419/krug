@@ -9,8 +9,9 @@
 //      напечатает гладкую вазу под красивой картинкой.
 //   2. **Числа считаются с рельефом.** В объём радиус входит квадратом, и
 //      «как у гладкой» врало бы на проценты массы.
-import { PATTERNS, LIMITS, sanitizePattern, patternById, patternOn, patternOffset,
-         patternVolumeMl, patternWarnings } from '../js/core/pattern.js';
+import { PATTERNS, PATTERN_PRESETS, LIMITS, sanitizePattern, patternById, patternOn,
+         patternOffset, patternVolumeMl, patternWarnings, patternAmp, patternAreaMM2 }
+  from '../js/core/pattern.js';
 import { sliceGCode } from '../js/core/slicer.js';
 import { state } from '../js/core/state.js';
 import { computeProduction, userProfileMM } from '../js/core/math.js';
@@ -117,6 +118,43 @@ for (const p of PATTERNS) {
   if (!(after > before)) P('масса изделия не учитывает рельеф узора');
 }
 
+/* ---------- пресеты ---------- */
+/* Пресет — обещание «нажми и получится»: он обязан проходить те же пороги,
+   которыми инструмент ругает ручную настройку. Иначе кнопка выдаёт вещь,
+   на которую сам же инструмент показывает красным. */
+{
+  const c = {wall: 5, D: 160, H: 220, bead: 4.2};
+  const ids = new Set();
+  for (const pr of PATTERN_PRESETS) {
+    if (ids.has(pr.id)) P(`пресет «${pr.id}» повторяется`);
+    ids.add(pr.id);
+    if (!pr.name || !pr.what) P(`пресет «${pr.id}» без имени или описания`);
+    const pat = sanitizePattern(pr.pat);
+    if (JSON.stringify(pat) !== JSON.stringify({...pat, ...sanitizePattern(pat)}))
+      P(`пресет «${pr.id}» не переживает очистку`);
+    if (!patternOn(pat)) P(`пресет «${pr.id}» ничего не включает`);
+    for (const w of patternWarnings(pat, c))
+      if (w.lvl === 'bad') P(`пресет «${pr.name}» сразу даёт красное: ${w.txt}`);
+  }
+  if (PATTERN_PRESETS.length < 4) P('пресетов меньше четырёх — выбирать не из чего');
+}
+
+/* ---------- чертёж и сечение ---------- */
+{
+  const pat = sanitizePattern({id: 'flute', n: 12, depth: 3, twist: 0, m: 8});
+  const amp = patternAmp(pat, H / 2, H);
+  if (Math.abs(amp - 3) > 0.05) P(`огибающая чертежа ${amp.toFixed(2)} мм вместо глубины 3 мм`);
+  if (patternAmp(pat, 0, H) > 0.2) P('огибающая не гаснет у дна — чертёж покажет рельеф там, где его нет');
+  if (patternAmp(sanitizePattern({id: 'none'}), H / 2, H) !== 0) P('без узора огибающая не нулевая');
+
+  /* Сечение с рельефом больше гладкого: гребни добавляют больше, чем убирают
+     ложбины, потому что радиус входит в площадь квадратом. */
+  const add = patternAreaMM2(pat, 70, H / 2, H);
+  if (!(add > 0)) P(`прирост сечения ${add.toFixed(2)} мм² — должен быть положительным`);
+  const ring = Math.PI * (70 * 70 - 65 * 65);
+  if (add > ring * 0.5) P(`прирост сечения ${add.toFixed(0)} мм² — больше половины кольца, это перебор`);
+}
+
 /* ---------- показанное = напечатанное ---------- */
 {
   const keep = state.pattern;
@@ -160,7 +198,7 @@ for (const p of PATTERNS) {
 }
 
 console.log('\nПроверка узора на стенке');
-console.log(`  узоров: ${PATTERNS.length - 1} плюс «без узора»`);
+console.log(`  узоров: ${PATTERNS.length - 1} плюс «без узора», пресетов: ${PATTERN_PRESETS.length}`);
 if (problems.length) {
   console.log('\nОШИБКИ:');
   for (const p of problems) console.log('  ✗ ' + p);

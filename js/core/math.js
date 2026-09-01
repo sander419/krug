@@ -5,7 +5,8 @@ import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
-import { sanitizePattern, patternVolumeMl, patternWarnings } from './pattern.js';
+import { sanitizePattern, patternOn, patternVolumeMl, patternWarnings, patternAreaMM2 }
+  from './pattern.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -137,7 +138,14 @@ export function computeProduction(state){
 export function computeStrength(state){
   const out=userProfileMM(state);
   const wall=state.wall, rho=density(byId(state.mat));
-  const area=out.map(o=>Math.PI*(o.r*o.r-(state.hollow?Math.pow(Math.max(o.r-wall,0),2):0)));
+  /* Площадь сечения считается вместе с рельефом: гребни добавляют материал,
+     ложбины убирают, и в сумме сечение чуть больше гладкого. Считать «как
+     у гладкой» значило бы занижать запас там, где узор его на самом деле
+     прибавил, — а мы обещаем числа, а не осторожность. */
+  const pat=sanitizePattern(state.pattern);
+  const H=out[out.length-1].y;
+  const area=out.map(o=>Math.PI*(o.r*o.r-(state.hollow?Math.pow(Math.max(o.r-wall,0),2):0))
+    +(patternOn(pat)?patternAreaMM2(pat,o.r,o.y,H):0));
   const wAbove=new Array(out.length).fill(0);
   let acc=0;
   for(let i=out.length-1;i>0;i--){
@@ -184,6 +192,26 @@ export function computeWarnings(state, prod, str){
       {wall:state.wall, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
     if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'ldm',
       txt:'Узор: '+pw.txt});
+  const pt=sanitizePattern(state.pattern);
+  if(patternOn(pt)){
+    /* Глазурь на рельефе ведёт себя иначе, чем на гладкой стенке, а наш расчёт
+       плёнки считает по сечению и про борозды не знает. Молчать об этом нельзя:
+       на пробу уходит обжиг. */
+    if(state.firing==='glaze')
+      w.push({lvl:'warn', area:'glaze', help:'glaze-run',
+        txt:'Узор и глазурь: на гребнях плёнка тоньше и может пробиться, в ложбинах — '
+          +'копится и течёт. Расчёт толщины считает по гладкому сечению; первую вещь обожгите пробно.'});
+    /* Просвет — свойство черепка, а не рельефа: на красной глине тонкое дно
+       окна просто станет хрупким местом. */
+    if(pt.id==='window'){
+      const m=byId(state.mat);
+      const translucent=/фарфор|porcelain/i.test(m.name+' '+(m.id||''));
+      if(!translucent)
+        w.push({lvl:'warn', help:'choose-mass',
+          txt:`Узор «Окна на просвет» светится только на просвечивающем черепке. `
+            +`«${m.name}» на свету не пропустит — возьмите фарфор или считайте окна рельефом.`});
+    }
+  }
   for(const lw of lidWarnings(state,out,byId(state.mat))) w.push(lw);
   if(!w.length) w.push({lvl:'ok',txt:'Мастер одобряет: форма технологична и устойчива.'});
   return w;

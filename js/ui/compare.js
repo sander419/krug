@@ -14,6 +14,7 @@ import { sanitizeCost, pieceCost, batchPlan } from '../core/cost.js';
 import { byId as materialById } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { loadWorks } from '../core/works.js';
+import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
 import { kilnNumbers } from './kiln.js';
 import { currentWorkId } from './works.js';
 import { firstHintHTML } from './hints.js';
@@ -39,6 +40,10 @@ function numbersOf() {
     capMl: prod.capMl, volMl: prod.volMl, clayG: prod.massN, massG: prod.massF,
     shrink: mat.shrinkPct, angle: prod.angle, sf: computeStrength(state).minSF,
     mat: mat.name, glaze: byGlazeId(state.glazeId).name,
+    pattern: (() => {
+      const pt = sanitizePattern(state.pattern);
+      return patternOn(pt) ? `${patternById(pt.id).name}, ${pt.depth} мм` : 'без узора';
+    })(),
     fire: kiln.perItem, cost: per.total, price: per.minPrice,
     margin: per.marginRub, workMin: opt.minPerPiece, n: opt.n,
     batchCost: plan.total, batchMargin: plan.margin, firings: plan.firings, bad,
@@ -124,9 +129,11 @@ function bodyHTML() {
 
   return `${head}
     <div class="cmp-heads">
-      <div><b>${esc(a.name)}</b><span class="dim">${esc(na.mat)} · ${esc(na.glaze.toLowerCase())}${
+      <div><b>${esc(a.name)}</b><span class="dim">${esc(na.mat)} · ${esc(na.glaze.toLowerCase())}
+        · ${esc(na.pattern.toLowerCase())}${
         na.bad ? ` · ${na.bad} замечаний «нельзя»` : ''}</span></div>
-      <div><b>${esc(b.name)}</b><span class="dim">${esc(nb.mat)} · ${esc(nb.glaze.toLowerCase())}${
+      <div><b>${esc(b.name)}</b><span class="dim">${esc(nb.mat)} · ${esc(nb.glaze.toLowerCase())}
+        · ${esc(nb.pattern.toLowerCase())}${
         nb.bad ? ` · ${nb.bad} замечаний «нельзя»` : ''}</span></div>
     </div>
     <div class="cmp-thumbs">

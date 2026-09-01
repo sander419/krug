@@ -78,6 +78,27 @@ export const PATTERNS = [
    }},
 ];
 
+/**
+ * Готовые сочетания. Четыре ползунка вслепую — это «покрутите и посмотрите»;
+ * пресет ставит рабочий набор целиком, дальше его правят под свою вещь.
+ * Числа не выдуманы: шаг рельефа у каждого крупнее двух бусин сопла 4 мм,
+ * глубина оставляет стенку целой при рецептных 5 мм.
+ */
+export const PATTERN_PRESETS = [
+  {id: 'colonna', name: 'Колонна', pat: {id: 'flute', n: 16, depth: 2, twist: 0, m: 8},
+   what: 'ровные каннелюры без закрутки'},
+  {id: 'twisted', name: 'Витой жгут', pat: {id: 'flute', n: 10, depth: 3, twist: 180, m: 8},
+   what: 'каннелюры, повёрнутые на пол-оборота'},
+  {id: 'gem', name: 'Огранка', pat: {id: 'facet', n: 12, depth: 1.6, twist: 0, m: 8},
+   what: 'плоские грани, свет ломается рёбрами'},
+  {id: 'basket', name: 'Корзина', pat: {id: 'weave', n: 14, depth: 2, twist: 60, m: 10},
+   what: 'ромбическая сетка с лёгкой закруткой'},
+  {id: 'pinecone', name: 'Шишка', pat: {id: 'bump', n: 16, depth: 2.2, twist: 120, m: 14},
+   what: 'бугорки по спирали, держатся в руке'},
+  {id: 'lamp', name: 'Светильник', pat: {id: 'window', n: 10, depth: 3.8, twist: 0, m: 6},
+   what: 'крупные окна: на просвет остаётся тонкое дно'},
+];
+
 export const patternById = id => PATTERNS.find(p => p.id === id) || PATTERNS[0];
 
 export const LIMITS = {
@@ -156,6 +177,39 @@ export function patternVolumeMl(pat, out) {
     sum += ring * (Math.PI * 2 / NA) * dy;
   }
   return sum / 1000;                               // мм³ → см³
+}
+
+/**
+ * Насколько рельеф уходит от гладкой стенки на этой высоте, мм.
+ * Чертежу нужны не сами борозды (сечение проходит по одной точке круга),
+ * а границы, между которыми гуляет стенка.
+ */
+export function patternAmp(pat, y, H) {
+  if (!patternOn(pat)) return 0;
+  let hi = 0;
+  for (let k = 0; k < 64; k++)
+    hi = Math.max(hi, Math.abs(patternOffset(pat, k / 64 * Math.PI * 2, y, H)));
+  return hi;
+}
+
+/**
+ * Прирост площади кольцевого сечения от рельефа, мм².
+ *
+ * Сечение стенки при узоре переменное: в ложбине тоньше, на гребне толще.
+ * Среднее смещение у синусоид равно нулю, но площадь всё равно растёт —
+ * радиус входит в неё квадратом. Для запаса прочности это важно: сжатие
+ * сырой стенки держит вся площадь сечения, а не самое тонкое место.
+ */
+export function patternAreaMM2(pat, r, y, H) {
+  if (!patternOn(pat)) return 0;
+  const NA = 48;
+  let sum = 0;
+  for (let k = 0; k < NA; k++) {
+    const th = k / NA * Math.PI * 2;
+    const d = patternOffset(pat, th, y, H);
+    sum += ((r + d) * (r + d) - r * r) / 2;
+  }
+  return sum * (Math.PI * 2 / NA);
 }
 
 /**

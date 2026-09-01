@@ -12,7 +12,7 @@
 // и посмотрите», а инструмент должен говорить, что именно вы крутите.
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
-import { PATTERNS, LIMITS, sanitizePattern, patternById, patternOn,
+import { PATTERNS, PATTERN_PRESETS, LIMITS, sanitizePattern, patternById, patternOn,
          patternVolumeMl, patternWarnings } from '../core/pattern.js';
 import { userProfileMM } from '../core/math.js';
 import { beadWidth } from '../core/slicer.js';
@@ -54,6 +54,9 @@ export function syncPattern() {
         <i class="pat-ico" data-pat-ico="${x.id}" aria-hidden="true"></i>
         <b>${x.name}</b></button>`).join('')}
     </div>
+    <div class="pat-presets">${PATTERN_PRESETS.map(x => `
+      <button class="chip-btn" data-pat-preset="${x.id}" title="${x.what}">${x.name}</button>`).join('')}
+    </div>
     ${patternOn(pat) ? `
       <p class="dim pat-lead">${p.what}. Рельеф уходит и в модель, и в STL, и в G-code:
         на экране то же, что напечатает машина.</p>
@@ -79,6 +82,14 @@ export function syncPattern() {
   box.querySelectorAll('[data-pat-pick]').forEach(b => {
     b.onclick = () => {
       state.pattern = sanitizePattern({...pat, id: b.dataset.patPick});
+      emit();
+    };
+  });
+  box.querySelectorAll('[data-pat-preset]').forEach(b => {
+    b.onclick = () => {
+      const p = PATTERN_PRESETS.find(x => x.id === b.dataset.patPreset);
+      if (!p) return;
+      state.pattern = sanitizePattern(p.pat);
       emit();
     };
   });

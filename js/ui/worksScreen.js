@@ -19,6 +19,7 @@ import { byId as materialById } from '../config/materials.js';
 import { loadWorks, selectWorks, upsertWork, patchWork, removeWork, duplicateWork,
          blankWork, phaseById, PHASES } from '../core/works.js';
 import { hasFact } from '../core/fact.js';
+import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
 import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen, closeScreen } from './screen.js';
 import { kilnNumbers } from './kiln.js';
@@ -41,6 +42,10 @@ function cardNumbers() {
     .filter(w => w.lvl === 'bad').length;
   return {
     mm: `${Math.round(state.H)}×${Math.round(state.D)}`,
+    pattern: (() => {
+      const pt = sanitizePattern(state.pattern);
+      return patternOn(pt) ? patternById(pt.id).name : '';
+    })(),
     mat: materialById(state.mat).name,
     massF: prod.massF, clayKg: prod.massN / 1000,
     cost: per.total, n: opt.n, bad,
@@ -67,6 +72,7 @@ function cardHTML(w, n) {
       <div class="work-meta">
         <span class="work-phase" data-phase="${w.phase}">${ph.name}</span>
         ${n ? `<span>${n.mm} мм · ${esc(n.mat)}</span>` : '<span class="dim">рецепт не читается</span>'}
+        ${n && n.pattern ? `<span class="work-flag">${esc(n.pattern.toLowerCase())}</span>` : ''}
         ${w.fact && hasFact(w.fact) ? '<span class="work-flag">есть факт</span>' : ''}
         ${n && n.bad ? `<span class="work-flag bad">${n.bad} ${plural(n.bad, 'замечание', 'замечания', 'замечаний')}</span>` : ''}
       </div>
