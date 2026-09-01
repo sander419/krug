@@ -58,6 +58,8 @@ const ACTIONS = [
    keys: 'узор грани фасет'},
   {name: 'Узор: Окна на просвет', ico: 'circle-dot', run: () => patternPreset('lamp'),
    keys: 'узор светильник литофания просвет окна'},
+  {name: 'Редактор изделия', ico: 'ruler', btn: 'editorBtn',
+   keys: 'форма части прилепы крышка заготовки пресеты правка'},
   {name: 'Лепить прямо на модели', ico: 'hammer', btn: 'sculptBtn',
    keys: 'тянуть форму 3d рукой профиль'},
   {name: 'Цветовая схема', ico: 'palette', run: () => open_('view'),

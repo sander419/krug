@@ -22,6 +22,7 @@ import { initRoute, activeRoute, onRoute } from './ui/route.js';
 import { initWorks, saveCurrent, savedWorks } from './ui/works.js';
 import { openWorksScreen } from './ui/worksScreen.js';
 import { openSettings } from './ui/settings.js';
+import { openEditorScreen } from './ui/editorScreen.js';
 import { initBrand, currentBrand, onBrand } from './ui/brand.js';
 import { applyHints, mountFirstHints } from './ui/hints.js';
 import { openPassport } from './ui/passport.js';
@@ -208,6 +209,7 @@ step('изделия',()=>{
     if(mode!=='new') toast('Открыто изделие «'+name+'»'); });
   $('worksBtn').onclick=()=>openWorksScreen();
   $('settingsBtn').onclick=()=>openSettings();
+  if($('editorBtn')) $('editorBtn').onclick=()=>openEditorScreen();
   $('passportBtn').onclick=()=>openPassport();
   $('releaseBtn').onclick=()=>openRelease();
 });

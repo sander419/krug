@@ -114,7 +114,7 @@
           </div>
         </details>
 
-        <details class="block" data-block="size" open>
+        <details class="block" data-block="size" id="sizeBlock" open>
           <summary class="block-title">Размеры на круге</summary>
           <div class="block-body">
             <div class="slider-row">
@@ -136,7 +136,7 @@
           </div>
         </details>
 
-        <details class="block" data-block="walls" open>
+        <details class="block" data-block="walls" id="wallsBlock" open>
           <summary class="block-title">Стенки и ножка
             <button class="help-dot" data-kb="wall-thickness" data-icon="circle-help" data-icon-size="15" title="Про толщину стенки" aria-label="Справка о толщине стенки"></button>
           </summary>
@@ -171,7 +171,7 @@
           <div class="block-body" id="partsBox"></div>
         </details>
 
-        <details class="block" data-block="pattern" open>
+        <details class="block" data-block="pattern" id="patternBlock" open>
           <summary class="block-title">Узор на стенке
             <button class="help-dot" data-kb="relief-print" data-icon="circle-help" data-icon-size="15"
                     title="Что машина умеет такого, чего не умеют руки" aria-label="Справка об узоре"></button>
@@ -529,6 +529,8 @@
       </div>
       <button class="chip-btn" id="draftTarget" hidden title="Что правит линия: корпус или выбранный прилеп">рисую: корпус</button>
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
+      <button class="chip-btn" id="editorBtn" data-icon="ruler" data-icon-size="13"
+              title="Редактор изделия: части, чертёж и свойства в одном окне">Редактор</button>
     </div>
     <canvas id="profileCanvas"></canvas>
     <!-- точная правка выбранной точки: тянуть удобно, но «ровно 12 см» мышью

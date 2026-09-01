@@ -78,6 +78,101 @@
 .ps-upto{margin-left:var(--gap-1);}
 .cmp-swap{white-space:nowrap;}
 
+/* ---------- редактор изделия ---------- */
+/* Экран прижат влево и не затемняет правую половину: форму правят, глядя
+   на саму вещь, а не на схему вещи. Поэтому же у него нет модального фона —
+   модель за ним живая и продолжает крутиться. */
+#screenHost.side{
+  justify-content:flex-start;align-items:stretch;
+  background:none;backdrop-filter:none;padding:12px;pointer-events:none;
+}
+#screenHost.side .screen{
+  pointer-events:auto;width:min(760px,52vw);max-height:calc(100vh - 24px);
+  margin:0;box-shadow:0 26px 70px var(--shade);
+}
+/* Пока правят форму, панель и узкий чертёж не нужны: их содержимое переехало
+   в редактор. Освободившееся место отдаётся модели — она и есть ответ на то,
+   что человек сейчас делает. */
+/* Сетка main позиционная: чертёж уехал в редактор, и колонки съехали бы
+   на одну — модель оказывалась в нулевой. Поэтому на время правки раскладка
+   переключается на «одна вещь во всю ширину». */
+body.editing main{display:flex;}
+/* Модель занимает не весь экран, а свободную от редактора часть: иначе камера
+   вписывает вещь по центру всего окна, и половина уходит под панель. */
+body.editing #viewport{flex:1 1 auto;width:auto;margin-left:min(772px,calc(52vw + 12px));}
+@media (max-width:940px){ body.editing #viewport{margin-left:0;} }
+body.editing #panel,
+body.editing #splitPanel,
+body.editing #splitDraft{display:none;}
+.ed-grid{display:grid;grid-template-columns:minmax(190px,240px) 1fr;gap:var(--gap-3);align-items:start;}
+.ed-side{display:flex;flex-direction:column;gap:var(--gap-2);position:sticky;top:0;}
+.ed-part-list{display:flex;flex-direction:column;gap:4px;}
+.ed-part{
+  display:flex;flex-direction:column;gap:2px;text-align:left;cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:9px 11px;color:var(--text);min-height:44px;
+  transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease);
+}
+.ed-part:hover{border-color:var(--line2);}
+.ed-part.current{border-color:var(--accent);background:color-mix(in oklab, var(--accent) 12%, var(--panel2));}
+.ed-part b{font-size:var(--fs-sm);}
+.ed-part span{font-size:var(--fs-micro);color:var(--muted);}
+.ed-part.add{border-style:dashed;color:var(--muted);}
+.ed-part.add b{color:var(--text);}
+.ed-add{display:flex;flex-wrap:wrap;gap:var(--gap-1);}
+.ed-main{display:flex;flex-direction:column;gap:var(--gap-3);min-width:0;}
+/* Кнопка «Редактор» уезжает в редактор вместе с чертежом — там она лишняя. */
+.ed-draft #editorBtn{display:none;}
+
+/* Чертёж в редакторе крупный: это главный инструмент экрана, а не спутник. */
+.ed-draft #draft{
+  height:min(52vh,460px);border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--sunken);overflow:hidden;
+}
+.ed-slot{display:flex;flex-direction:column;gap:var(--gap-2);}
+/* Внутри редактора у блока прилепов остаётся только правка выбранной детали:
+   список и кнопки добавления уже стоят слева, и второй такой же список
+   заставлял бы выбирать деталь дважды. */
+.ed-slot #partsBox > .btn-row,
+.ed-slot #partsBox > .chip-row,
+.ed-slot #partsBox > .part-list{display:none;}
+.ed-slot .block{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);}
+.ed-presets{
+  margin-top:var(--gap-3);padding-top:var(--gap-3);border-top:1px solid var(--line);
+}
+.ed-presets-head{display:flex;align-items:center;justify-content:space-between;gap:var(--gap-2);
+  margin-bottom:var(--gap-2);}
+.ed-preset-list{display:flex;flex-wrap:wrap;gap:var(--gap-1);}
+.ed-preset{display:inline-flex;align-items:stretch;border:1px solid var(--line2);
+  border-radius:20px;overflow:hidden;background:var(--panel2);}
+.ed-preset-use{
+  cursor:pointer;background:none;border:none;color:var(--text);
+  padding:6px 4px 6px 12px;font-size:var(--fs-xs);min-height:32px;
+}
+.ed-preset-use:hover{color:var(--accent2);}
+.ed-preset-del{
+  cursor:pointer;background:none;border:none;color:var(--muted2);
+  padding:0 9px 0 4px;display:grid;place-items:center;
+}
+.ed-preset-del:hover{color:var(--bad);}
+@media (max-width:940px){
+  #screenHost.side{padding:0;}
+  #screenHost.side .screen{width:100%;max-height:100vh;}
+  .ed-grid{grid-template-columns:1fr;}
+  .ed-side{position:static;}
+  /* На телефоне чертежа в раскладке нет — там правят ползунками и лепкой.
+     В редакторе он нужен: это его главный инструмент, и здесь место под него
+     есть. Поэтому внутри экрана чертёж показывается всегда. */
+  .ed-draft #draft{display:flex !important;height:42vh;}
+  /* Любая кнопка внутри экрана на телефоне — цель под палец, а не под курсор.
+     Чипы и сегменты объявлены компактными для мыши, и это правило их
+     перекрывает там, где мыши нет. */
+  #screenHost .chip-btn,
+  #screenHost .seg button,
+  #screenHost .ed-preset-use,
+  #screenHost .ed-preset-del{min-height:44px;}
+}
+
 /* ---------- панель выбранной точки ---------- */
 .point-bar{
   display:flex;align-items:center;gap:var(--gap-1);flex-wrap:wrap;

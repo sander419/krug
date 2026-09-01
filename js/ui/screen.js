@@ -32,8 +32,8 @@ function host() {
 function render(rec) {
   const box = host();
   box.innerHTML = `
-    <div class="screen${rec.wide ? ' wide' : ''}" role="dialog" aria-modal="true"
-         aria-label="${rec.title}" tabindex="-1">
+    <div class="screen${rec.wide ? ' wide' : ''}${rec.side ? ' side' : ''}" role="dialog"
+         aria-modal="${rec.side ? 'false' : 'true'}" aria-label="${rec.title}" tabindex="-1">
       <div class="screen-head">
         <div class="screen-title">
           <h2>${rec.title}</h2>
@@ -47,6 +47,7 @@ function render(rec) {
         (rec.redraw ? rec.redraw() : rec.html) || ''}</div>
     </div>`;
   box.classList.add('open');
+  box.classList.toggle('side', !!rec.side);
   box.setAttribute('aria-hidden', 'false');
   document.body.classList.add('screen-open');
 
@@ -66,7 +67,9 @@ function render(rec) {
 
 /**
  * Открыть экран.
- * @param opt {id, title, lead, html, redraw, wide, onMount(root), onClose()}
+ * @param opt {id, title, lead, html, redraw, wide, side, onMount(root), onClose()}
+ *   `side` — экран прижат влево и не затемняет сцену: так правят форму,
+ *   не теряя из виду саму вещь.
  */
 export function openScreen(opt) {
   const rec = {...opt, prev: document.activeElement};

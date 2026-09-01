@@ -621,6 +621,19 @@ function removePoint(i){
 }
 
 /** Чем правят профиль: 'points' — тянуть точки, 'draw' — вести линию. */
+/** Масштаб чертежа снаружи: редактору нужен «вписать», иначе в его широком
+    поле профиль показан кусками. */
+export function setDraftScale(next){
+  const want = next === '1:1' ? '1:1' : 'fit';
+  if (mode === want) return;
+  mode = want;
+  modeChosen = true;
+  lastKey = '';
+  drawEditor();
+}
+
+export function draftScale(){ return mode; }
+
 export function setDraftMode(m){
   if(m!=='points'&&m!=='draw')return;
   draftMode=m; stroke=null;

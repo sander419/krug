@@ -75,6 +75,49 @@ export function selectedPart() {
   return (state.parts || []).find(p => p.id === sel) || null;
 }
 
+/** Выбрать деталь снаружи — из редактора изделия. */
+export function selectPart(id) {
+  const has = (state.parts || []).some(p => p.id === id);
+  sel = has ? id : null;
+  syncParts();
+  emit();
+  return sel;
+}
+
+/* Блок деталей перерисовывает себя сам: `syncParts` зовётся из общей
+   синхронизации только после отката и загрузки ДНК, а точечные правки
+   обязаны быть видны сразу. */
+/** Добавить деталь этого вида и сразу её выбрать. */
+export function addPart(kind) {
+  const p = makePart(kind, state.parts);
+  state.parts = [...(state.parts || []), p].slice(0, 8);
+  sel = p.id;
+  state.activePreset = -1;
+  syncParts();
+  emit();
+  return p;
+}
+
+/** Убрать деталь по id. */
+export function removePart(id) {
+  state.parts = (state.parts || []).filter(p => p.id !== id);
+  if (sel === id) sel = (state.parts[0] || {}).id || null;
+  state.activePreset = -1;
+  syncParts();
+  emit();
+}
+
+/** Поставить готовую деталь (из пресета) и выбрать её. */
+export function putPart(part) {
+  const p = sanitizePart({...part, id: 'p' + Math.random().toString(36).slice(2, 8)});
+  state.parts = [...(state.parts || []), p].slice(0, 8);
+  sel = p.id;
+  state.activePreset = -1;
+  syncParts();
+  emit();
+  return p;
+}
+
 export function syncParts() {
   const box = $('partsBox');
   if (!box) return;
