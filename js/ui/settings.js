@@ -9,6 +9,7 @@
 // Теперь в шапке одна подписанная кнопка «Настройки», а здесь — разделы:
 // вид, брендбук мастерской, рабочее место, расчёт и данные. Ничего нового
 // не считается: экран только собирает уже существующие ручки в одном месте.
+import { firstHintHTML, resetHints } from './hints.js';
 import { openScreen, refreshScreen, closeScreen } from './screen.js';
 import { SKINS, currentSkin, setSkin, themeMode, setTheme, THEME_MODES, THEME_LABEL,
          THEME_ICON, UI_STEPS, uiStep, setUiStep, currentTheme } from './theme.js';
@@ -185,7 +186,16 @@ function placeHTML() {
 
     <div class="set-row">
       <div class="set-label"><b>Как здесь работать</b><span>короткий обзор инструмента</span></div>
-      <div class="set-pick"><button class="set-chip" id="setGuide">${icon('circle-help', 15)}Открыть</button></div>
+      <div class="set-pick">
+        <button class="set-chip" id="setGuide">${icon('circle-help', 15)}Открыть</button>
+        <button class="set-chip" id="setTour">${icon('circle-dot', 15)}Провести по инструменту</button>
+      </div>
+    </div>
+
+    <div class="set-row">
+      <div class="set-label"><b>Подсказки</b>
+        <span>карточки «что здесь делают» на экранах, которые вы уже закрывали</span></div>
+      <div class="set-pick"><button class="set-chip" id="setHints">${icon('lightbulb', 15)}Показать заново</button></div>
     </div>`;
 }
 
@@ -255,6 +265,9 @@ let tab = 'view';
 
 function bodyHTML() {
   return `
+    ${firstHintHTML('settings', 'Всё, что настраивают раз и забывают',
+      '«Вид» — тема, цветовая схема, масштаб и окружение сцены. «Брендбук» ставит на инструмент и на документы знак вашей мастерской. «Данные» показывают, что именно лежит в этом браузере.')}
+
     <div class="seg set-nav" role="group" aria-label="Разделы настроек">
       ${SECTIONS.map(s => `<button data-set-tab="${s.id}"${s.id === tab ? ' class="active"' : ''}>
         ${icon(s.ico, 15)}${s.name}</button>`).join('')}
@@ -357,6 +370,8 @@ function mount(box) {
   });
   on('setLayout', () => { resetLayout(); toast('Раскладка сброшена'); });
   on('setGuide', () => { closeScreen(); openGuide(); });
+  on('setTour', async () => { closeScreen(); (await import('./tour.js')).startTour(); });
+  on('setHints', () => { resetHints(); rerender(); toast('Подсказки будут показаны снова'); });
   on('setTune', () => { closeScreen(); openTuning(); });
 
   on('setForget', () => {

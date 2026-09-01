@@ -16,6 +16,7 @@ import { byGlazeId } from '../config/glazes.js';
 import { loadWorks } from '../core/works.js';
 import { kilnNumbers } from './kiln.js';
 import { currentWorkId } from './works.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { $, esc, num, rub, signed } from './dom.js';
 
@@ -98,7 +99,11 @@ function bodyHTML() {
       <td>${r.name}</td><td>${fmt(x)}</td><td>${fmt(y)}</td><td>${d || '—'}</td></tr>`;
   }).join('') : '';
 
-  const head = `<div class="cmp-pick">
+  const head = `
+    ${firstHintHTML('compare', 'Две версии рядом',
+      'Выберите изделия слева и справа — и увидите, чем они отличаются и что из этого '+
+      'выгоднее производить. Разница считается от левого к правому.')}
+    <div class="cmp-pick">
     ${pickHTML('left', left, works)}
     <span class="cmp-vs">против</span>
     ${pickHTML('right', right, works)}

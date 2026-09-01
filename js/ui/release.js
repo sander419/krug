@@ -25,6 +25,7 @@ import { castSubjects } from '../core/mould.js';
 import { kilnNumbers } from './kiln.js';
 import { currentWork } from './works.js';
 import { markExported } from './next.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen } from './screen.js';
 import { $, esc, num, rub } from './dom.js';
 import { icon } from './icons.js';
@@ -131,7 +132,10 @@ function bodyHTML() {
         </button>`).join('')}</div>
     </section>`).join('');
 
-  return `${groups}
+  return `
+    ${firstHintHTML('release', 'Отсюда изделие уходит в работу',
+      'Слева модель для печати и станка, справа документы для мастерской и клиента. Если не знаете, что выбрать, берите пакет производства: в нём всё сразу, одним архивом.')}
+${groups}
     <section class="rel-group rel-pack">
       <h3>Пакет производства</h3>
       <p class="dim">Один архив со всем, что нужно мастерской: модель, крышка и части формы

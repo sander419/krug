@@ -54,7 +54,8 @@ function html() {
       <span><kbd>←</kbd><kbd>→</kbd> по вкладкам</span>
     </p>
     <div class="guide-foot">
-      <button class="btn primary" id="guideStart">Начать с шага «${list[0].name}»</button>
+      <button class="btn primary" id="guideTour">${icon('circle-dot')}Провести по инструменту</button>
+      <button class="btn" id="guideStart">Начать с шага «${list[0].name}»</button>
       <button class="btn" id="guideRoute">${icon(route.ico)}Сменить задачу</button>
       <button class="btn" id="guideLearn">${icon('graduation-cap')}Открыть обучение</button>
       <span class="guide-hint">Кнопка «?» в шапке вернёт эту подсказку, <kbd>Ctrl</kbd>+<kbd>K</kbd> — поиск по инструменту</span>
@@ -77,6 +78,11 @@ export function openGuide() {
   });
   $('guideClose').onclick = closeGuide;
   $('guideStart').onclick = () => { openTab(steps()[0].tab); closeGuide(); };
+  /* Экскурсия водит по живому интерфейсу, поэтому подсказку сначала закрываем. */
+  $('guideTour').onclick = async () => {
+    closeGuide();
+    (await import('./tour.js')).startTour();
+  };
   $('guideRoute').onclick = () => { closeGuide(); openRouteScreen(false); };
   $('guideLearn').onclick = () => { closeGuide(); showOverview(); };
 }

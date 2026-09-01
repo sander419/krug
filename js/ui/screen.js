@@ -10,6 +10,7 @@
 // блокировка прокрутки под слоем и возврат фокуса туда, откуда открыли.
 import { $ } from './dom.js';
 import { icon, paintIcons } from './icons.js';
+import { applyHints, mountFirstHints } from './hints.js';
 
 const stack = [];              // открытые экраны: закрываем верхний
 
@@ -52,7 +53,9 @@ function render(rec) {
   box.querySelector('.screen-close').onclick = () => closeScreen();
   box.onclick = e => { if (e.target === box) closeScreen(); };
   paintIcons(box);
+  applyHints(box);
   if (rec.onMount) rec.onMount(box);
+  mountFirstHints(box);
   /* Фокус уводим внутрь, но на сам диалог, а не на первую кнопку: Tab тогда
      остаётся в слое, а подсказка над кнопкой закрытия не выскакивает первым,
      что человек видит на новом экране. */
@@ -79,8 +82,10 @@ export function refreshScreen(html) {
   body.innerHTML = html;
   body.scrollTop = top;
   paintIcons(body);
+  applyHints(body);
   const rec = stack[stack.length - 1];
   if (rec && rec.onMount) rec.onMount(host());
+  mountFirstHints(body);
   return body;
 }
 

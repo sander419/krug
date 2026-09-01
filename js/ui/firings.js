@@ -22,6 +22,7 @@ import { sanitizeCost } from '../core/cost.js';
 import { byId as materialById } from '../config/materials.js';
 import { loadWorks } from '../core/works.js';
 import { kilnCurrent } from './kiln.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { $, esc, num, rub, plural } from './dom.js';
 import { icon } from './icons.js';
@@ -92,6 +93,9 @@ function bodyHTML() {
        сколько киловатт-часов и во что это обойдётся.</p>`;
 
   return `
+    ${firstHintHTML('firings', 'Что поедет в печь вместе',
+      'Отметьте работы — и увидите, сколько это загрузок, киловатт-часов и денег. ' +
+      'Работы с разной температурой в одну садку не идут, а полка отдаётся одному наименованию.')}
     <section class="pp-sect">
       <h3>Печь</h3>
       <dl class="pp-list">

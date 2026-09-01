@@ -14,6 +14,7 @@ import { processSteps, phaseFromSteps, processBlocked } from '../core/process.js
 import { patchWork, phaseById } from '../core/works.js';
 import { currentWork, saveCurrent } from './works.js';
 import { kilnNumbers } from './kiln.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen, closeScreen } from './screen.js';
 import { openPassport } from './passport.js';
 import { showTab, openBlock } from './panels.js';
@@ -58,6 +59,9 @@ function bodyHTML() {
     </li>`).join('');
 
   return `
+    ${firstHintHTML('process', 'Путь вещи, а не путь по инструменту',
+      'Шаги с галочкой отмечает мастер: инструмент не знает, высохло ли изделие и вышло ли из печи. Остальные проверяются данными — их не отметить руками. Этап в списке изделий считается по пройденному пути.')}
+
     <div class="ps-head">
       <div class="ps-progress"><b>${doneN}</b> из ${list.length} шагов
         ${w ? `· этап: ${phaseById(w.phase).name}` : '· изделие не сохранено'}</div>

@@ -22,6 +22,7 @@ import { initWorks, saveCurrent, savedWorks } from './ui/works.js';
 import { openWorksScreen } from './ui/worksScreen.js';
 import { openSettings } from './ui/settings.js';
 import { initBrand, currentBrand, onBrand } from './ui/brand.js';
+import { applyHints, mountFirstHints } from './ui/hints.js';
 import { openPassport } from './ui/passport.js';
 import { openRelease } from './ui/release.js';
 import { paintIcons } from './ui/icons.js';
@@ -181,7 +182,8 @@ onTheme(repaint);
    обязаны перерисоваться: иначе линия профиля остаётся в цвете прежнего бренда. */
 onBrand(()=>repaint());
 step('тема',()=>initTheme());   // подписка раньше вызова: иначе сцена не узнает тему при запуске
-step('брендбук',()=>initBrand());  // после темы: оттенки фирменного цвета зависят от неё
+step('брендбук',()=>initBrand());
+step('подсказки',()=>{ applyHints(); mountFirstHints(); });  // после темы: оттенки фирменного цвета зависят от неё
 step('иконки',()=>paintIcons());
 step('подсказки',()=>initTips());
 step('поиск',()=>initFinder());

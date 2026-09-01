@@ -19,6 +19,7 @@ import { byId as materialById } from '../config/materials.js';
 import { loadWorks, selectWorks, upsertWork, patchWork, removeWork, duplicateWork,
          blankWork, phaseById, PHASES } from '../core/works.js';
 import { hasFact } from '../core/fact.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen, closeScreen } from './screen.js';
 import { kilnNumbers } from './kiln.js';
 import { openWorkRecord, saveCurrentAs } from './works.js';
@@ -106,6 +107,9 @@ function bodyHTML() {
       : ''}</div>`;
 
   return `
+    ${firstHintHTML('works', 'Это ваш верстак',
+      'Каждая карточка — изделие: рецепт, числа и этап производства. Откройте её, чтобы править форму, или создайте новое. Всё лежит в этом браузере: чтобы работа пережила смену устройства, заберите ссылку-ДНК на экране «Выпуск».')}
+
     <div class="works-bar">
       <label class="works-search">${icon('search', 15)}
         <input type="search" id="wsQ" value="${esc(view.q)}" placeholder="Поиск по названию…"

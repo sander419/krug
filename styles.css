@@ -72,6 +72,53 @@
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
+/* ---------- экскурсия по инструменту ---------- */
+/* Затемняется всё, кроме подсвеченного места: не вырезанной дыркой, а рамкой
+   с тенью наружу на весь экран — так подсветка не разъезжается при прокрутке
+   и не мешает попасть по кнопке под ней. */
+.tour-veil i{
+  position:fixed;z-index:60;pointer-events:none;display:block;
+  /* Затемнение задаётся прямым rgba, а не через color-mix: это единственный
+     цвет в проекте, который не принадлежит теме, — чёрная штора и есть штора. */
+  background:rgba(0,0,0,.58);
+}
+.tour-ring{
+  position:fixed;z-index:61;pointer-events:none;display:block;
+  border:2px solid var(--accent);border-radius:var(--radius);
+  box-shadow:0 0 0 4px var(--glow);
+  transition:left var(--dur-lay) var(--ease),top var(--dur-lay) var(--ease),
+             width var(--dur-lay) var(--ease),height var(--dur-lay) var(--ease);
+}
+.tour-card{
+  position:absolute;z-index:62;width:min(360px,90vw);
+  background:var(--panel);border:1px solid var(--line2);border-radius:var(--radius);
+  box-shadow:0 24px 60px var(--shade);padding:14px 16px;
+}
+.tour-num{font-size:var(--fs-micro);color:var(--muted2);letter-spacing:.06em;margin-bottom:4px;}
+.tour-card b{display:block;font-size:var(--fs-lg);font-family:var(--font-head);margin-bottom:6px;}
+.tour-card p{font-size:var(--fs-sm);color:var(--muted);line-height:1.55;text-wrap:pretty;}
+.tour-acts{display:flex;gap:var(--gap-1);margin-top:12px;flex-wrap:wrap;}
+.tour-acts .btn:last-child{margin-left:auto;}
+body.tour-on{overflow:hidden;}
+@media (max-width:640px){
+  .tour-card{width:calc(100vw - 24px);}
+}
+
+/* ---------- подсказка первого захода ---------- */
+/* Экран человек видит впервые ровно один раз, и объяснение нужно тоже один раз.
+   Карточка закрывается насовсем: подсказка, которую нельзя убрать, через неделю
+   читается как реклама и мешает работать. */
+.hint-first{
+  display:flex;align-items:flex-start;gap:var(--gap-3);
+  border:1px solid color-mix(in oklab, var(--accent) 40%, var(--line));
+  background:color-mix(in oklab, var(--accent) 7%, transparent);
+  border-radius:var(--radius);padding:12px 14px;margin-bottom:var(--gap-3);
+}
+.hint-first-main{flex:1;min-width:0;}
+.hint-first b{display:block;font-size:var(--fs-md);margin-bottom:3px;}
+.hint-first p{font-size:var(--fs-sm);color:var(--muted);line-height:1.5;text-wrap:pretty;}
+.hint-first .btn{flex:none;}
+
 /* ---------- экран «Настройки» ---------- */
 /* Разделы переключаются сегментами, содержимое — строками «подпись слева,
    ручка справа»: так на любой ширине видно, что настраивается, а не только чем. */

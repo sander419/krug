@@ -25,6 +25,7 @@ import { FACT_FIELDS, compareFact, factLevel, hasFact } from '../core/fact.js';
 import { patchWork, phaseById } from '../core/works.js';
 import { currentWork, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent } from './kiln.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { openRelease } from './release.js';
 import { $, esc, num, rub, plural, signed } from './dom.js';
@@ -215,7 +216,10 @@ function bodyHTML() {
     row('Минимальная цена', `<b>${rub(d.per.minPrice)}</b>`, `наценка ${d.opt.marginPct} %, маржа ${rub(d.per.marginRub)}`),
   ].join(''));
 
-  return `${head}
+  return `
+    ${firstHintHTML('passport', 'Паспорт — всё об изделии на одном экране',
+      'Сверху расчёт: размеры до и после обжига, масса, материал, глазурь, печь и деньги. Внизу место для факта — что получилось на самом деле. Разница между обещанием и фактом и есть то, ради чего паспорт заводят.')}
+${head}
     <div class="pp-grid">${sizes}${mass}${material}${glaze}${kiln}${prod}${money}</div>
     <section class="pp-sect pp-wide"><h3>Контроль: расчёт против факта</h3>${factHTML(w, d)}</section>
     <div class="btn-row pp-acts">

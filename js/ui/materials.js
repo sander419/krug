@@ -15,6 +15,7 @@ import { MEASURABLE, getNote, addMeasure, removeMeasure, setNoteText, measureSum
   from '../core/notes.js';
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
+import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen } from './screen.js';
 import { $, esc, num, signed } from './dom.js';
 import { icon } from './icons.js';
@@ -119,6 +120,9 @@ function cardHTML(kind, r) {
 function bodyHTML() {
   const k = KINDS.find(x => x.id === tab);
   return `
+    ${firstHintHTML('materials', 'Паспорт поставщика и ваши замеры',
+      'Числа в карточках — из паспортов со ссылками на источник. Ваши собственные замеры ложатся рядом, подписанные как ваши, и показывают, насколько ваша мастерская отличается от того, что обещает поставщик.')}
+
     <div class="seg" role="group" aria-label="Реестр">
       ${KINDS.map(x => `<button data-kind="${x.id}"${x.id === tab ? ' class="active"' : ''}>
         ${x.name} <i class="dim">${x.list().length}</i></button>`).join('')}
