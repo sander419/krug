@@ -32,8 +32,12 @@ function isSkipped(skip, segments, i, j) {
 /**
  * @param skip прямоугольники параметров, которые не заполняются треугольниками:
  *             на их место кладётся отдельный кусок поверхности с отверстиями.
+ * @param warp рельеф стенки: (phi, point, j) → смещение радиуса в мм. Меняет
+ *             только положение вершин; топология и порядок обхода те же, иначе
+ *             тепловая карта и толщина глазури, которые ходят по индексам,
+ *             стали бы показывать не то место.
  */
-export function buildLathe(points, segments, reuse, skip) {
+export function buildLathe(points, segments, reuse, skip, warp) {
   const n = points.length, rows = segments + 1;
   const vertCount = rows * n;
   let triCount = 0;
@@ -91,18 +95,56 @@ export function buildLathe(points, segments, reuse, skip) {
     const off = i * n;
     for (let j = 0; j < n; j++) {
       const v = (off + j) * 3, p = points[j];
-      pos[v] = p.x * sin; pos[v + 1] = p.y; pos[v + 2] = p.x * cos;
+      const r = warp ? p.x + warp(phi, p, j) : p.x;
+      pos[v] = r * sin; pos[v + 1] = p.y; pos[v + 2] = r * cos;
       nor[v] = nr[j] * sin; nor[v + 1] = ny[j]; nor[v + 2] = nr[j] * cos;
       const t = (off + j) * 2;
       uv[t] = i / segments; uv[t + 1] = j / (n - 1);
     }
   }
+  /* Рельеф сдвинул вершины — аналитическая нормаль контура про него не знает
+     и оставила бы стенку плоской на свету. Считаем по самой сетке: она
+     регулярная, соседи известны, шва на стыке нет, потому что по кругу
+     соседство замкнуто. */
+  if (warp) gridNormals(pos, nor, segments, n);
+
   geo.attributes.position.needsUpdate = true;
   geo.attributes.normal.needsUpdate = true;
   geo.attributes.uv.needsUpdate = true;
   geo.computeBoundingSphere();
   geo.computeBoundingBox();
   return geo;
+}
+
+/* Нормали по регулярной сетке: разность соседей по кругу и по контуру даёт
+   две касательные, их векторное произведение — нормаль. Направление берём
+   от старой нормали: у внутренней стенки она смотрит в полость, и переворот
+   вывернул бы её наизнанку. */
+function gridNormals(pos, nor, segments, n) {
+  const rows = segments + 1;
+  const at = (i, j) => (((i % segments) + segments) % segments) * n + j;
+  const t = new Float64Array(3), u = new Float64Array(3), m = new Float64Array(3);
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < n; j++) {
+      const v = (i * n + j) * 3;
+      const a = at(i + 1, j) * 3, b = at(i - 1, j) * 3;
+      const jp = Math.min(j + 1, n - 1) * 3, jm = Math.max(j - 1, 0) * 3;
+      const ci = ((i % segments) + segments) % segments * n * 3;
+      for (let k = 0; k < 3; k++) {
+        t[k] = pos[a + k] - pos[b + k];
+        u[k] = pos[ci + jp + k] - pos[ci + jm + k];
+      }
+      m[0] = t[1] * u[2] - t[2] * u[1];
+      m[1] = t[2] * u[0] - t[0] * u[2];
+      m[2] = t[0] * u[1] - t[1] * u[0];
+      const len = Math.hypot(m[0], m[1], m[2]);
+      if (!len) continue;
+      const dot = (m[0] * nor[v] + m[1] * nor[v + 1] + m[2] * nor[v + 2]) < 0 ? -1 : 1;
+      nor[v] = m[0] / len * dot;
+      nor[v + 1] = m[1] / len * dot;
+      nor[v + 2] = m[2] / len * dot;
+    }
+  }
 }
 
 /* Оттянутый слив: кромку в секторе отгибают наружу и опускают. Это не отдельное

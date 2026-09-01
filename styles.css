@@ -72,6 +72,55 @@
   --sect-glaze:#2b7a63; --sect-tool:#6553a0; --sect-cast:#2b6a8a;
 }
 
+/* ---------- узор на стенке ---------- */
+/* Узор выбирают глазами, а не по названию: карточка показывает сам рельеф
+   маленькой иконкой-росчерком, нарисованной теми же токенами, что и всё. */
+.pat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:var(--gap-1);}
+.pat-card{
+  display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:9px 6px;color:var(--muted);font-size:var(--fs-micro);text-align:center;
+  transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.pat-card:hover{border-color:var(--line2);color:var(--text);}
+.pat-card.current{border-color:var(--accent);color:var(--text);
+  background:color-mix(in oklab, var(--accent) 12%, var(--panel2));}
+.pat-card b{font-weight:600;font-size:var(--fs-micro);line-height:1.25;}
+.pat-ico{
+  width:100%;height:26px;border-radius:4px;background:var(--sunken);
+  background-image:var(--pat-img);background-size:var(--pat-size,12px 26px);
+  background-repeat:repeat-x;opacity:.9;
+}
+.pat-card.current .pat-ico{background-color:color-mix(in oklab, var(--accent) 18%, var(--sunken));}
+/* Росчерки узоров: каждый — повторяющийся градиент в цвет текста. */
+[data-pat-ico="none"]{--pat-img:none;}
+[data-pat-ico="flute"]{--pat-img:repeating-linear-gradient(90deg,
+  currentColor 0 1px, transparent 1px 6px);}
+[data-pat-ico="facet"]{--pat-img:repeating-linear-gradient(90deg,
+  currentColor 0 2px, transparent 2px 10px);}
+[data-pat-ico="wave"]{--pat-img:repeating-linear-gradient(0deg,
+  currentColor 0 1px, transparent 1px 5px);}
+[data-pat-ico="weave"]{--pat-img:repeating-linear-gradient(45deg,
+  currentColor 0 1px, transparent 1px 7px),
+  repeating-linear-gradient(-45deg, currentColor 0 1px, transparent 1px 7px);}
+[data-pat-ico="bump"]{--pat-img:radial-gradient(currentColor 1.4px, transparent 1.6px);
+  --pat-size:9px 9px;}
+[data-pat-ico="spiral"]{--pat-img:repeating-linear-gradient(70deg,
+  currentColor 0 2px, transparent 2px 12px);}
+[data-pat-ico="window"]{--pat-img:repeating-linear-gradient(90deg,
+  currentColor 0 5px, transparent 5px 11px);--pat-size:11px 13px;}
+.pat-lead{margin:var(--gap-2) 0;line-height:1.5;}
+.pat-nums{margin-top:var(--gap-2);}
+.pat-warns{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:var(--gap-2);}
+.pat-warns li{
+  display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-xs);
+  color:var(--text);line-height:1.45;
+}
+.pat-warns .ico{flex:none;margin-top:1px;}
+.pat-warns li.lvl-bad .ico{color:var(--bad);}
+.pat-warns li.lvl-warn .ico{color:var(--warn);}
+.pat-warns li.lvl-ok .ico{color:var(--ok);}
+
 /* ---------- экскурсия по инструменту ---------- */
 /* Затемняется всё, кроме подсвеченного места: не вырезанной дыркой, а рамкой
    с тенью наружу на весь экран — так подсветка не разъезжается при прокрутке

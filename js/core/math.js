@@ -5,6 +5,7 @@ import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
+import { sanitizePattern, patternVolumeMl } from './pattern.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -105,7 +106,11 @@ export function computeProduction(state){
      в той же садке. В объём изделия она входит, в его вместимость — нет. */
   const lid=sanitizeLid(state.lid);
   const lidMl=lid.on?lidMetrics(out,lid,wall,1,byId(state.mat).shrinkPct).volMl:0;
-  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl + lidMl;  // см³, вместе с прилепами и крышкой
+  /* Рельеф узора считается отдельно и честно: в объём радиус входит квадратом,
+     поэтому «как у гладкой» врало бы на проценты массы даже там, где средний
+     радиус не изменился. */
+  const patMl=patternVolumeMl(sanitizePattern(state.pattern), out);
+  const vPiece=Math.max(0,vOut-vCav-vRec)/1000 + partsMl + lidMl + patMl;  // см³, вместе с прилепами и крышкой
   const massF=vPiece*density(byId(state.mat));               // г
   const massN=massF*(1+state.allow/100);
   let areaSum=0,ySum=0;

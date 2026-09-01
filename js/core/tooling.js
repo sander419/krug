@@ -298,6 +298,7 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
     L.push('');
   }
   L.push(`Процесс: ${n.proc.name}`);
+  if (mouldOpt.pattern) L.push(`Узор на стенке: ${mouldOpt.pattern}`);
   L.push(`Масса: ${n.mat.name} (${n.mat.vendor})`);
   L.push('');
   L.push('## Размеры');

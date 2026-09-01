@@ -40,6 +40,7 @@ import { initMoney, syncMoney } from './ui/money.js';
 import { initNext, syncNext, markExported } from './ui/next.js';
 import { initProduction, syncProduction } from './ui/production.js';
 import { initLid, syncLid } from './ui/lid.js';
+import { initPattern, syncPattern } from './ui/pattern.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
 import { toast, updateStats, updateWarnings, setStageUI, setCinemaSlider, syncPlayIcon, initCinema, initTools } from './ui/overlays.js';
@@ -69,6 +70,7 @@ function refreshNow(){
   syncNext({prod, warnings: warn});   // шаг «дальше» — от замечаний, печи и сметы
   syncProduction();    // список работ считается тем же ядром
   syncLid();           // зазор посадки зависит от массы и стенки
+  syncPattern();       // шаг рельефа считается от диаметра и сопла
   updateMechanics();
   drawEditor();
   scheduleHash();
@@ -166,6 +168,7 @@ step('деньги',()=>initMoney());
 step('дальше',()=>initNext());
 step('производство',()=>initProduction());
 step('крышка',()=>initLid());
+step('узор',()=>initPattern());
 step('оснастка',()=>initTooling());
 step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);

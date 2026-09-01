@@ -34,6 +34,7 @@ const CHECKS = [
   ['Брендбук',     'check-brand.mjs'],
   ['Факт',         'check-fact.mjs'],
   ['Подсказки',    'check-hints.mjs'],
+  ['Узор',         'check-pattern.mjs'],
 ];
 
 let failed = 0;

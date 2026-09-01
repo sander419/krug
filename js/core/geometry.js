@@ -5,6 +5,7 @@ import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
 import { buildLathe, applyLips } from './lathe.js';
 import { strainerSpec } from './strainer.js';
+import { sanitizePattern, patternOn, patternOffset } from './pattern.js';
 
 const R01=Array.from({length:N_SAMP+1},(_,i)=>i/N_SAMP);
 
@@ -37,7 +38,7 @@ export function stageProfile(state,u){
 function buildPath(state,out,{t,open,deep,cut}){
   const H=out[out.length-1].y;
   const P=[];
-  const V=(r,y)=>P.push(new THREE.Vector2(Math.max(r,0.01),y));
+  const V=(r,y)=>{ const v=new THREE.Vector2(Math.max(r,0.01),y); P.push(v); return v; };
   const br=out[0].r, fk=state.footK/100;
   // 0.15 мм остаётся всегда: нулевая ножка слепила бы точки в одну
   const fh=state.footH>0?state.footH*cut+0.15:0;
@@ -49,7 +50,9 @@ function buildPath(state,out,{t,open,deep,cut}){
     V(br*fk,fh*0.5);
     V(br,0.2);
   }
-  for(const o of out) V(o.r,o.y);
+  /* Наружные точки помечаются: узор ложится только на них — полость остаётся
+     гладкой, иначе вещь нечем мыть, а вместимость пришлось бы считать заново. */
+  for(const o of out) V(o.r,o.y).outer=true;
 
   const fhFinal=state.footH>0?state.footH+1.5:0;   // дно считаем по готовой ножке
   const floorFinal=Math.min(Math.max(t,fhFinal),H*.6);
@@ -106,7 +109,17 @@ export function buildPot(state, reuse){
     {i0:sp.box.i0, i1:sp.box.i1, j0:sp.box.jOut0, j1:sp.box.jOut1},
     {i0:sp.box.i0, i1:sp.box.i1, j0:sp.box.jIn0,  j1:sp.box.jIn1},
   ]);
-  const geometry=buildLathe(path,state.segments,reuse,skip);
+  /* Узор — часть формы, а не картинка поверх: тот же рельеф уходит в STL
+     и в G-code. На ранних этапах «Кинотеатра» его ещё нет — узор появляется
+     вместе с готовой стенкой, как и в жизни (его печатает машина). */
+  const pat=sanitizePattern(state.pattern);
+  const patOn=patternOn(pat) && u>=3.5;
+  const Htop=prof[prof.length-1].y;
+  const grow=clamp((u-3.5)/1.2,0,1);
+  const warp=patOn
+    ? (phi,p)=>p.outer?patternOffset(pat,phi,p.y,Htop)*grow:0
+    : null;
+  const geometry=buildLathe(path,state.segments,reuse,skip,warp);
   // слив оттягивают на круге, пока изделие сырое — раньше, чем прилепляют ручки
   const lips=(state.parts||[]).filter(p=>p.kind==='lip');
   if(lips.length){

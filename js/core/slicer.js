@@ -4,7 +4,12 @@ import { userProfileMM, radiusAt } from './math.js';
 import { PRINTERS } from '../config/data.js';
 import { byId, density } from '../config/materials.js';
 import { clamp } from './util.js';
+import { sanitizePattern, patternOn, patternOffset, patternWarnings } from './pattern.js';
 
+
+/* Ширина бусины: сопло раскатывает пасту чуть шире своего диаметра. Наружу —
+   потому что по ней меряют и стенку, и то, различит ли сопло рельеф узора. */
+export const beadWidth = state => (state.pr && +state.pr.nozzle || 4) * 1.05;
 
 export function sliceGCode(state){
   const pr=state.pr, P0=PRINTERS[pr.printer];
@@ -64,13 +69,18 @@ export function sliceGCode(state){
      закончив первый наверху, сопло пришлось бы опустить вниз сквозь только что
      напечатанную стенку. Поэтому от двух периметров переходим на послойный
      обход: все петли слоя, потом подъём. */
-  const rw=(z,p)=>Math.max(radiusAt(out,z)-p*bead*0.95-bead/2,0.6);
+  /* Узор попадает в G-code той же функцией, что и в модель: иначе сопло
+     напечатало бы гладкую вазу, а на экране был бы рельеф. */
+  const pat=sanitizePattern(state.pattern);
+  const patOn=patternOn(pat);
+  const rw=(z,p,ang=0)=>Math.max(radiusAt(out,z)
+    +(patOn&&p===0?patternOffset(pat,ang,z,H):0)-p*bead*0.95-bead/2,0.6);
   if(P===1){
     L.push('; --- стенка: непрерывная спираль ---');
     const stepsW=Math.max(segs,Math.round((H-floor)/pr.lh)*segs);
     for(let k=1;k<=stepsW;k++){
       const q=k/stepsW, ang=q*Math.PI*2*((H-floor)/pr.lh);
-      const z=floor+(H-floor)*q, r=rw(z,0);
+      const z=floor+(H-floor)*q, r=rw(z,0,ang);
       ext(r*Math.cos(ang),r*Math.sin(ang),z);
     }
   }else{
@@ -86,7 +96,8 @@ export function sliceGCode(state){
         lastX=r;lastY=0;lastZ=z;
         for(let k=1;k<=segs;k++){
           const ang=k/segs*Math.PI*2;
-          ext(r*Math.cos(ang),r*Math.sin(ang),z);
+          const rr=p===0?rw(z,0,ang):r;
+          ext(rr*Math.cos(ang),rr*Math.sin(ang),z);
         }
       }
     }
@@ -133,6 +144,11 @@ export function sliceGCode(state){
   const nParts=(state.parts||[]).length;
   if(nParts)
     warns.push({cls:'w',txt:`В G-code только тело: ${nParts===1?'прилеп':'прилепы ('+nParts+')'} спираль не печатает — их лепят и прилепляют отдельно, к подвяленному изделию.`});
+
+  /* Узор проверяется теми же порогами, что и на вкладке формы: сопло, шаг
+     рельефа, свес закрутки. Печатнику это надо знать до запуска, а не после. */
+  for(const w of patternWarnings(pat,{wall:state.wall,D:state.D,H,bead}))
+    if(w.lvl!=='ok') warns.push({cls:w.lvl==='bad'?'e':'w',txt:'Узор: '+w.txt});
 
   const volMM=pathLen*pr.lh*bead;
   const grams=volMM/1000*density(mat);
