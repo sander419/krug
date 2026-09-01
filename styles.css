@@ -2110,6 +2110,12 @@ body.draft-off #splitDraft{background:color-mix(in oklab, var(--accent) 45%, var
 @media (pointer:coarse), (max-width:940px){
   .block-move{opacity:1;}
   .block-move button{width:40px;height:40px;font-size:11px;}
+  /* Цели, которые на мыши достаточны, а пальцем — нет: имя изделия в карточке
+     и галочки состава пакета. Ниже 44 px по ним промахиваются. */
+  .work-name{min-height:44px;display:flex;align-items:center;text-align:left;}
+  .check-row,.check-row input{min-height:44px;}
+  .works-search input{min-height:44px;}
+
   /* пальцем схема выбирается в один столбец: цель нажатия 44 px, как везде */
   .skin-row{grid-template-columns:1fr;}
   .skin-dot,.set-chip,.set-check,.set-env-item{min-height:44px;}
