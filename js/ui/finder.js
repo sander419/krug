@@ -26,6 +26,20 @@ const MAX = 9;                 // больше девяти строк — уж�
    на экран «Настройки») несут `run`. Экран грузится по требованию: поиск
    открывается на первой секунде работы, тянуть ради него настройки незачем. */
 const open_ = section => import('./settings.js').then(m => m.openSettings(section));
+
+/* Узоры ищутся по именам: «витой жгут» человек помнит, а в каком блоке он
+   лежит — нет. Пресет ставится сразу, поиск на то и поиск. */
+const patternPreset = async id => {
+  const [{state}, {emit}, core] = await Promise.all([
+    import('../core/state.js'), import('../core/bus.js'), import('../core/pattern.js'),
+  ]);
+  const pr = core.PATTERN_PRESETS.find(p => p.id === id);
+  if (!pr) return;
+  state.pattern = core.sanitizePattern(pr.pat);
+  emit();
+  const block = document.querySelector('[data-block="pattern"]');
+  if (block) { block.open = true; block.scrollIntoView({block: 'nearest', behavior: 'smooth'}); }
+};
 const ACTIONS = [
   {name: 'Сменить задачу', ico: 'sliders-horizontal', btn: 'routeBtn', keys: 'режим набор вкладок'},
   {name: 'Обвести картинку', ico: 'image', btn: 'photoBtn', keys: 'фото чертёж силуэт обводка'},
@@ -36,6 +50,16 @@ const ACTIONS = [
    keys: 'вид тема схема масштаб окружение данные параметры'},
   {name: 'Тема: светлая или тёмная', ico: 'sun',
    run: () => open_('view'), keys: 'цвет ночь день'},
+  {name: 'Узор на стенке', ico: 'circle-dot', sel: '[data-block="pattern"] > .block-title',
+   keys: 'рельеф каннелюры грани плетёнка чешуя спираль окна просвет литофания'},
+  {name: 'Узор: Витой жгут', ico: 'circle-dot', run: () => patternPreset('twisted'),
+   keys: 'узор закрутка каннелюры спираль'},
+  {name: 'Узор: Огранка', ico: 'circle-dot', run: () => patternPreset('gem'),
+   keys: 'узор грани фасет'},
+  {name: 'Узор: Окна на просвет', ico: 'circle-dot', run: () => patternPreset('lamp'),
+   keys: 'узор светильник литофания просвет окна'},
+  {name: 'Лепить прямо на модели', ico: 'hammer', btn: 'sculptBtn',
+   keys: 'тянуть форму 3d рукой профиль'},
   {name: 'Цветовая схема', ico: 'palette', run: () => open_('view'),
    keys: 'цвет палитра оформление мастерская селадон кобальт графит'},
   {name: 'Логотип и брендбук мастерской', ico: 'palette', run: () => open_('brand'),
@@ -47,7 +71,7 @@ const ACTIONS = [
   {name: 'Снимок вида в PNG', ico: 'camera', btn: 'snapBtn', keys: 'скриншот картинка'},
   {name: 'ДНК формы: ссылка', ico: 'dna', btn: 'dnaBtn', keys: 'поделиться рецепт ссылка'},
   {name: 'Код встраивания', ico: 'code', btn: 'embedBtn', keys: 'iframe витрина сайт'},
-  {name: 'Схема изделия для производства', ico: 'file-text', btn: 'toolSheet',
+  {name: 'Схема изделия для производства', ico: 'file-text', btn: 'sheetBtn',
    keys: 'чертёж виды разрез размеры лист svg передать'},
   {name: 'Техкарта оснастки', ico: 'file-text', btn: 'toolCard', keys: 'документ производство'},
   {name: 'Экспорт STL', ico: 'download', btn: 'stlBtn', keys: 'печать выгрузка модель'},

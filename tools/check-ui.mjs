@@ -126,6 +126,16 @@ if (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/.test(html))
    ни читалка экрана. */
 if (/<div[^>]*\son[cC]lick=/.test(html)) P('<div> с обработчиком клика вместо кнопки');
 
+/* Поиск умеет только то, что есть в разметке: действие с несуществующей
+   кнопкой он молча выбрасывает из выдачи. Так пропала «Схема изделия
+   для производства» — id кнопки поменялся, а реестр действий остался прежним. */
+{
+  const finder = readFileSync(new URL('js/ui/finder.js', root), 'utf-8');
+  for (const m of finder.matchAll(/btn: '([^']+)'/g))
+    if (!new RegExp('id="' + m[1] + '"').test(html))
+      P('поиск зовёт кнопку «' + m[1] + '», которой нет в разметке — пункт не покажется');
+}
+
 console.log('Проверка интерфейса\n');
 {
   const sizes = [...css.matchAll(/--fs-[a-z]+\s*:\s*calc\((\d+(?:\.\d+)?)px/g)].map(m => m[1]);

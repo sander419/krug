@@ -49,6 +49,8 @@ function cardNumbers() {
     mat: materialById(state.mat).name,
     massF: prod.massF, clayKg: prod.massN / 1000,
     cost: per.total, n: opt.n, bad,
+    /* Те же числа под именами, по которым сортирует хранилище. */
+    mass: prod.massF,
   };
 }
 
@@ -97,11 +99,12 @@ function cardHTML(w, n) {
 
 function bodyHTML() {
   const all = loadWorks();
-  const list = selectWorks(all, view);
-  const rows = list.map(w => {
-    const n = withDNA(w.dna, () => cardNumbers());
-    return cardHTML(w, n);
-  }).join('');
+  /* Числа считаем один раз на список: они нужны и карточке, и порядку —
+     сортировать по массе, пересчитывая её дважды, было бы расточительно. */
+  const nums = {};
+  for (const w of all) nums[w.id] = withDNA(w.dna, () => cardNumbers());
+  const list = selectWorks(all, {...view, numbers: nums});
+  const rows = list.map(w => cardHTML(w, nums[w.id])).join('');
 
   const empty = `<div class="screen-empty">
     <p>${view.archived ? 'В архиве пусто.'
@@ -130,6 +133,8 @@ function bodyHTML() {
           <option value="ts"${view.sort === 'ts' ? ' selected' : ''}>по изменению</option>
           <option value="created"${view.sort === 'created' ? ' selected' : ''}>по созданию</option>
           <option value="name"${view.sort === 'name' ? ' selected' : ''}>по названию</option>
+          <option value="mass"${view.sort === 'mass' ? ' selected' : ''}>по массе</option>
+          <option value="cost"${view.sort === 'cost' ? ' selected' : ''}>по себестоимости</option>
         </select></label>
       <button class="btn" id="wsMat">${icon('layers', 15)}Материалы</button>
       <button class="btn" id="wsFire">${icon('flame', 15)}Обжиги</button>

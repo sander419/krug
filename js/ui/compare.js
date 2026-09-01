@@ -44,6 +44,10 @@ function numbersOf() {
       const pt = sanitizePattern(state.pattern);
       return patternOn(pt) ? `${patternById(pt.id).name}, ${pt.depth} мм` : 'без узора';
     })(),
+    patDepth: (() => {
+      const pt = sanitizePattern(state.pattern);
+      return patternOn(pt) ? pt.depth : 0;
+    })(),
     fire: kiln.perItem, cost: per.total, price: per.minPrice,
     margin: per.marginRub, workMin: opt.minPerPiece, n: opt.n,
     batchCost: plan.total, batchMargin: plan.margin, firings: plan.firings, bad,
@@ -61,6 +65,7 @@ const ROWS = [
   {k: 'clayG', name: 'Глины на изделие', unit: 'г', dec: 0, better: 'less'},
   {k: 'massG', name: 'Масса готового', unit: 'г', dec: 0},
   {k: 'shrink', name: 'Усадка', unit: '%', dec: 1},
+  {k: 'patDepth', name: 'Рельеф узора', unit: 'мм', dec: 1},
   {k: 'angle', name: 'Устойчивость', unit: '°', dec: 0, better: 'more'},
   {k: 'sf', name: 'Запас стенки', unit: '×', dec: 1, better: 'more'},
   {k: 'fire', name: 'Обжиг штуки', unit: '₽', dec: 0, better: 'less', money: true},

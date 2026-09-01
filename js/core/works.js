@@ -132,7 +132,9 @@ function nextCopyName(name) {
 
 /**
  * Отбор и порядок для экрана «Мои изделия».
- * @param opt {q, archived, fav, sort:'ts'|'name'|'created'}
+ * @param opt {q, archived, fav, sort:'ts'|'name'|'created'|'mass'|'cost', numbers}
+ *   `numbers` — числа карточек по id: сортировка по массе и цене считается
+ *   не здесь, хранилище математики не знает.
  */
 export function selectWorks(list, opt = {}) {
   const q = String(opt.q || '').trim().toLowerCase();
@@ -140,9 +142,22 @@ export function selectWorks(list, opt = {}) {
   if (opt.fav) out = out.filter(w => w.fav);
   if (q) out = out.filter(w => (w.name + ' ' + (w.note || '')).toLowerCase().includes(q));
   const by = opt.sort || 'ts';
-  out.sort((a, b) => by === 'name'
-    ? a.name.localeCompare(b.name, 'ru')
-    : (b[by] || 0) - (a[by] || 0));
+  /* Порядок по массе и по себестоимости — самое частое «покажи, что тяжелее
+     и что дороже». Считать их здесь нечем: хранилище не знает математики,
+     поэтому числа приносит экран (`numbers`), а порядок наводится тут. */
+  const num = opt.numbers || null;
+  out.sort((a, b) => {
+    if (by === 'name') return a.name.localeCompare(b.name, 'ru');
+    if (by === 'mass' || by === 'cost') {
+      const va = num && num[a.id] ? num[a.id][by] : null;
+      const vb = num && num[b.id] ? num[b.id][by] : null;
+      if (va == null && vb == null) return (b.ts || 0) - (a.ts || 0);
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return vb - va;
+    }
+    return (b[by] || 0) - (a[by] || 0);
+  });
   /* Избранное всегда наверху: его для того и отмечают. */
   return out.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
 }

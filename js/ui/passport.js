@@ -166,6 +166,9 @@ function bodyHTML() {
       if (pat.twist) bits.push(`закрутка ${pat.twist}°`);
       return row('Узор', `<b>${p.name}</b>`, bits.join(' · ') + ' ' + TAG.calc);
     })(),
+    state.rings > 0.15
+      ? row('Следы гончара', `${num(state.rings, 1)} мм`, 'глубина колец от вытяжки ' + TAG.calc)
+      : '',
   ].join(''));
 
   const mass = section('Масса', [
