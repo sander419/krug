@@ -27,7 +27,7 @@ import { userProfileMM } from '../core/math.js';
 import { clamp } from '../core/util.js';
 import { $, num } from './dom.js';
 import { toast } from './overlays.js';
-import { highlightPoint } from './editor.js';
+import { highlightPoint, selectPoint, syncPointBar } from './editor.js';
 
 let on = false, dragIdx = -1, hud = null, canvas = null, lastY = 0;
 
@@ -119,6 +119,7 @@ function onMove(e) {
     showHUD(e.clientX, e.clientY,
       `Ø ${num(p.r * state.D / 10, 1)} см${e.shiftKey ? ' · точно' : ''}`);
     emit();
+    syncPointBar();
     return;
   }
   if (!hit) { hideHUD(); sceneAPI.ring(0, 0, false); highlightPoint(-1); return; }
@@ -137,6 +138,9 @@ function onDown(e) {
   e.preventDefault();
   dragIdx = nearestPoint(hit.y);
   lastY = hit.y;
+  /* Тянут на модели — та же точка выбирается на чертеже: рядом сразу видно
+     её числа, и после грубой тяги можно поставить ровное значение. */
+  selectPoint(dragIdx);
   record();                            // один шаг отмены на всю тягу
   try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
 }

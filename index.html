@@ -531,8 +531,22 @@
       <button class="chip-btn" id="draftScale" title="Переключить масштаб: 1:1 с 3D-видом или вписать в панель">1:1 с моделью</button>
     </div>
     <canvas id="profileCanvas"></canvas>
+    <!-- точная правка выбранной точки: тянуть удобно, но «ровно 12 см» мышью
+         не поставить, а форма мастера часто держится именно на круглом числе -->
+    <div class="point-bar" id="pointBar" hidden>
+      <span class="point-name" id="pointName">точка</span>
+      <label class="field-row"><span>Ø</span>
+        <input type="number" id="pointD" step="0.1" min="0.2" inputmode="decimal"
+               aria-label="Диаметр в этой точке, см"><i class="unit">см</i></label>
+      <label class="field-row"><span>Высота</span>
+        <input type="number" id="pointY" step="0.1" min="0" inputmode="decimal"
+               aria-label="Высота точки, см"><i class="unit">см</i></label>
+      <button class="chip-btn" id="pointSmooth" title="Сгладить кривую вокруг этой точки">Сгладить</button>
+      <button class="chip-btn" id="pointDrop" title="Удалить точку">Убрать</button>
+    </div>
     <p class="draft-hint" id="draftHintPts">
-      <span class="on-mouse"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить</span>
+      <span class="on-mouse"><b>Тяните</b> точки · <b>двойной клик</b> — новая · <b>ПКМ</b> — удалить ·
+        выбранную правят числами и <b>стрелками</b></span>
       <span class="on-touch"><b>Тяните</b> точки · <b>двойное касание</b> — новая · <b>долгое</b> — удалить</span>
     </p>
     <p class="draft-hint" id="draftHintDraw" hidden>

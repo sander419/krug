@@ -20,6 +20,7 @@ import { kindOf, limitOf } from '../config/parts.js';
 import { sanitizePattern, patternOn, patternAmp } from '../core/pattern.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
+let selIdx=-1;                  // выбранная точка: её правят числами и клавишами
 let draftMode='points';         // 'points' — тянуть точки, 'draw' — вести линию
 let stroke=null;                // экранная ломаная, пока её ведут
 let partDrag=-1;                // индекс точки прилепа, которую тянут
@@ -170,6 +171,119 @@ export function highlightPoint(i){
   drawEditor();
 }
 
+/* ---------- точная правка выбранной точки ----------
+   Тянуть удобно, но «ровно 12 см» мышью не поставить, а форма мастера часто
+   держится именно на круглом числе: горловина под крышку, дно под подставку.
+   Поэтому у выбранной точки есть числа, стрелки и две операции над кривой. */
+
+/** Выбрать точку (или снять выбор при -1) и обновить панель. */
+export function selectPoint(i){
+  selIdx=(Number.isInteger(i)&&i>=0&&i<state.points.length)?i:-1;
+  syncPointBar();
+  /* Выбранная на чертеже точка обводится кольцом на модели: связь в обе
+     стороны — глядя на любой из двух видов, человек видит одно и то же место. */
+  if(sceneAPI.ring){
+    if(selIdx>=0){
+      const p=state.points[selIdx];
+      sceneAPI.ring(p.t*state.H, p.r*state.D/2, true);
+    }else sceneAPI.ring(0,0,false);
+  }
+  drawEditor();
+}
+export const selectedPoint=()=>selIdx;
+
+function pointName(i){
+  if(i<=0) return 'дно';
+  if(i>=state.points.length-1) return 'кромка';
+  return `точка ${i+1}`;
+}
+
+export function syncPointBar(){
+  const bar=$('pointBar');
+  if(!bar) return;
+  const has=selIdx>=0&&selIdx<state.points.length;
+  bar.hidden=!has;
+  if(!has) return;
+  const p=state.points[selIdx];
+  $('pointName').textContent=pointName(selIdx);
+  const d=$('pointD'), y=$('pointY');
+  if(document.activeElement!==d) d.value=(p.r*state.D/10).toFixed(1);
+  if(document.activeElement!==y) y.value=(p.t*state.H/10).toFixed(1);
+  /* Дно и кромку по высоте не двигают: они и есть границы формы. */
+  y.disabled=selIdx===0||selIdx===state.points.length-1;
+  $('pointDrop').disabled=selIdx===0||selIdx===state.points.length-1;
+}
+
+/** Сгладить кривую вокруг выбранной точки: среднее с соседями. */
+function smoothAround(i){
+  const pts=state.points;
+  if(i<=0||i>=pts.length-1) return;
+  const a=pts[i-1], p=pts[i], b=pts[i+1];
+  p.r=clamp((a.r+p.r*2+b.r)/4,0.02,1);
+  p.t=clamp((a.t+p.t*2+b.t)/4,a.t+0.02,b.t-0.02);
+  state.activePreset=-1;
+  emit();
+}
+
+/** Сдвинуть выбранную точку клавишами: шаг в миллиметрах рецепта. */
+function nudge(dr,dt,fine){
+  if(selIdx<0) return false;
+  const p=state.points[selIdx];
+  const stepR=(fine?0.2:1)/Math.max(state.D/2,1);      // мм → доли радиуса
+  const stepT=(fine?0.2:1)/Math.max(state.H,1);
+  if(dr) p.r=clamp(p.r+dr*stepR,0.02,1);
+  if(dt&&selIdx>0&&selIdx<state.points.length-1)
+    p.t=clamp(p.t+dt*stepT,state.points[selIdx-1].t+0.02,state.points[selIdx+1].t-0.02);
+  state.activePreset=-1;
+  emit();
+  return true;
+}
+
+export function initPointBar(){
+  const bar=$('pointBar');
+  if(!bar) return;
+  const apply=()=>{
+    if(selIdx<0) return;
+    const p=state.points[selIdx];
+    const d=parseFloat($('pointD').value), y=parseFloat($('pointY').value);
+    if(Number.isFinite(d)) p.r=clamp(d*10/Math.max(state.D,1),0.02,1);
+    if(Number.isFinite(y)&&selIdx>0&&selIdx<state.points.length-1)
+      p.t=clamp(y*10/Math.max(state.H,1),
+        state.points[selIdx-1].t+0.02,state.points[selIdx+1].t-0.02);
+    state.activePreset=-1;
+    emit();
+  };
+  $('pointD').onchange=apply;
+  $('pointY').onchange=apply;
+  $('pointSmooth').onclick=()=>smoothAround(selIdx);
+  $('pointDrop').onclick=()=>{
+    if(selIdx>0&&selIdx<state.points.length-1){
+      state.points.splice(selIdx,1);
+      state.activePreset=-1;
+      selectPoint(-1);
+      emit();
+    }
+  };
+  /* Стрелки двигают точку, Shift — мелким шагом. Клавиатура здесь не роскошь:
+     мышью ровное дно не поставить, а точность формы решает посадку крышки. */
+  addEventListener('keydown',e=>{
+    if(selIdx<0) return;
+    const tag=(document.activeElement&&document.activeElement.tagName)||'';
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+    const fine=e.shiftKey;
+    let used=false;
+    if(e.key==='ArrowRight') used=nudge(1,0,fine);
+    else if(e.key==='ArrowLeft') used=nudge(-1,0,fine);
+    else if(e.key==='ArrowUp') used=nudge(0,1,fine);
+    else if(e.key==='ArrowDown') used=nudge(0,-1,fine);
+    else if(e.key==='Escape'){ selectPoint(-1); used=true; }
+    else if((e.key==='Delete'||e.key==='Backspace')&&selIdx>0&&selIdx<state.points.length-1){
+      state.points.splice(selIdx,1); state.activePreset=-1; selectPoint(-1); emit(); used=true;
+    }
+    if(used) e.preventDefault();
+  });
+}
+
 export function drawEditor(){
   if(!eW||!ectx)return;
   const P=pal();
@@ -296,7 +410,7 @@ export function drawEditor(){
   /* точки рецепта */
   state.points.forEach((p,i)=>{
     const q=ptToPx(p), end=(i===0||i===state.points.length-1);
-    ectx.beginPath();ectx.arc(q.x,q.y,i===hoverIdx?8:6.5,0,Math.PI*2);
+    ectx.beginPath();ectx.arc(q.x,q.y,i===hoverIdx?8:i===selIdx?7.5:6.5,0,Math.PI*2);
     ectx.fillStyle=end?P.text(.92):P.accent();ectx.fill();
     ectx.lineWidth=2;ectx.strokeStyle=P.sunken();ectx.stroke();
     if(i===hoverIdx){
@@ -549,7 +663,13 @@ export function initEditor(canvas, reshaped){
       }
       return;
     }
-    if(idx>=0){dragIdx=idx;try{ec.setPointerCapture(e.pointerId);}catch(_){}}
+    if(idx>=0){
+      dragIdx=idx;
+      selectPoint(idx);
+      try{ec.setPointerCapture(e.pointerId);}catch(_){}
+    }else if(e.button!==2){
+      selectPoint(-1);
+    }
     if(e.pointerType==='mouse')return;
     // на телефоне правой кнопки нет: удаление — долгим нажатием, добавление — двойным касанием
     clearTimeout(pressTimer);
@@ -579,6 +699,8 @@ export function initEditor(canvas, reshaped){
       else if(dragIdx===state.points.length-1)p.t=1;
       else p.t=clamp(c.t,state.points[dragIdx-1].t+.02,state.points[dragIdx+1].t-.02);
       state.activePreset=-1;emit();
+      syncPointBar();
+      if(sceneAPI.ring) sceneAPI.ring(p.t*state.H, p.r*state.D/2, true);
     }else{
       const ph=hitPartPoint(px,py);
       const h=ph>=0?-1:hitPoint(px,py);

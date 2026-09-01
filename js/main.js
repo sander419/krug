@@ -8,7 +8,7 @@ import { computeProduction, computeStrength, computeWarnings } from './core/math
 import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
-import { initEditor, drawEditor, syncEditorScale } from './ui/editor.js';
+import { initEditor, drawEditor, syncEditorScale, initPointBar, syncPointBar } from './ui/editor.js';
 import { initMobile } from './ui/mobile.js';
 import { initLayout } from './ui/layout.js';
 import { initGuide } from './ui/guide.js';
@@ -72,6 +72,7 @@ function refreshNow(){
   syncProduction();    // список работ считается тем же ядром
   syncLid();           // зазор посадки зависит от массы и стенки
   syncPattern();       // шаг рельефа считается от диаметра и сопла
+  syncPointBar();      // числа выбранной точки идут за формой
   updateMechanics();
   drawEditor();
   scheduleHash();
@@ -171,6 +172,7 @@ step('производство',()=>initProduction());
 step('крышка',()=>initLid());
 step('узор',()=>initPattern());
 step('лепка',()=>initSculpt());
+step('точка',()=>initPointBar());
 step('оснастка',()=>initTooling());
 step('глазурь',()=>{initGlazeLab();syncGlaze();});
 sceneAPI.applyMaterial(state);
