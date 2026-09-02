@@ -101,6 +101,17 @@ state.pr.nozzle = 4; state.pr.lh = 2.4; state.pr.feed = 3600;
 const fast = sliceGCode(state);
 if (!(fast.stats.layerSec > 0)) P('время оборота слоя не считается');
 if (!fast.warnings.some(x => /оборот слоя/i.test(x.txt))) P('узкая быстрая форма — нет предупреждения о времени слоя');
+/* Спираль идёт от дна одним ходом и крышку не печатает. Молчать об этом нельзя:
+   в STL крышка уже уехала отдельной деталью, и человек ждёт её и в G-code. */
+{
+  const keep = state.lid;
+  state.lid = {on: false};
+  if (sliceGCode(state).warnings.some(x => /крышк/i.test(x.txt))) P('без крышки слайсер о ней предупреждает');
+  state.lid = {on: true};
+  if (!sliceGCode(state).warnings.some(x => /крышк/i.test(x.txt)))
+    P('крышка есть, а слайсер молчит: в G-code её нет, и об этом надо сказать');
+  state.lid = keep;
+}
 state.pr.feed = 300;
 const slow = sliceGCode(state);
 if (slow.warnings.some(x => /оборот слоя/i.test(x.txt))) P('на медленной подаче предупреждения о времени слоя быть не должно');
