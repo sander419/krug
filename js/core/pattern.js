@@ -590,6 +590,47 @@ export function patternUnderParts(pat, parts, H) {
 }
 
 /**
+ * Числа рельефа для показа и для замечаний — одной формулой.
+ *
+ * Панель и «Контроль мастера» говорят об одном и том же: шаг рельефа
+ * по окружности, период по высоте, сколько срезано в ложбине. Считались они
+ * порознь, и разойтись могли молча — в панели одно число, в замечании другое,
+ * а какое верное, снаружи не видно.
+ *
+ * @param ctx {D, H, bead, layerH, wall, hollow}
+ * @returns {stepMM, periodMM, periodLayers, carve, raise, wallLeft, layers:[…]}
+ */
+export function patternMetrics(pat, ctx = {}) {
+  const p = sanitizePattern(pat);
+  const on = p.layers.filter(layerOn);
+  const R = (+ctx.D || 0) / 2;
+  const H = +ctx.H || 220;
+  const layerH = +ctx.layerH || 0;
+  const wall = ctx.hollow === false ? 0 : (+ctx.wall || 0);
+  const per = on.map(l => {
+    const pp = patternById(l.id);
+    /* Шаг по кругу есть только у слоёв, которые по кругу и повторяются:
+       у колец его нет вовсе, и «—» честнее нуля. */
+    const stepMM = pp.uses.includes('n') && R ? TAU * R / Math.max(1, l.n) : null;
+    const span = (l.to - l.from) * H;
+    const periodMM = pp.uses.includes('m') ? span / Math.max(1, l.m) : null;
+    return {id: l.id, name: pp.name, stepMM, periodMM,
+            periodLayers: periodMM && layerH ? periodMM / layerH : null};
+  });
+  const num = (arr, f) => { const v = arr.map(f).filter(x => x != null); return v.length ? Math.min(...v) : null; };
+  const {carve, raise} = patternRelief(p, H);
+  return {
+    layers: per,
+    /* По самому мелкому слою: рвётся печать там, где тесно, а не в среднем. */
+    stepMM: num(per, x => x.stepMM),
+    periodMM: num(per, x => x.periodMM),
+    periodLayers: num(per, x => x.periodLayers),
+    carve, raise,
+    wallLeft: wall ? Math.max(0, wall - carve) : null,
+  };
+}
+
+/**
  * Замечания по узору: что машина не повторит и что испортит вещь.
  * @param ctx {wall, hollow, D, H, bead, layerH} — стенка, габарит,
  *        ширина бусины и высота слоя принтера
@@ -613,7 +654,8 @@ export function patternWarnings(pat, ctx = {}) {
   /* Сколько рельеф срезает на самом деле — по всей стопке, а не по слою:
      два слоя в одном поясе режут стенку вместе. Наружные слои её не режут
      вовсе, и в переборе это учтено само собой. */
-  const {carve} = patternRelief(p, H);
+  const M = patternMetrics(p, ctx);
+  const carve = M.carve;
   const thin = layers.some(l => patternById(l.id).thin);
   const floor = thin ? 0.5 : 1.2;
   if (wall && carve > 0.01) {
@@ -628,13 +670,13 @@ export function patternWarnings(pat, ctx = {}) {
         'на просвет это красиво, но вещь становится хрупкой.'});
   }
 
-  for (const l of layers) {
+  layers.forEach((l, li) => {
     const pp = patternById(l.id);
 
     /* Шаг узора по окружности. Сопло не нарисует борозду уже своей бусины:
        на модели узор будет, на изделии — гладкая стенка. */
     if (bead && R && pp.uses.includes('n')) {
-      const step = TAU * R / Math.max(1, l.n);
+      const step = M.layers[li].stepMM;
       if (step < bead * 2)
         out.push({lvl: 'bad', area: 'print',
           txt: `${who(l)}шаг узора ${step.toFixed(1)} мм при бусине ${bead.toFixed(1)} мм — ` +
@@ -650,9 +692,9 @@ export function patternWarnings(pat, ctx = {}) {
        на экране кольца, на изделии — ровная стенка. Проверять это на глаз
        нельзя, потому что число слоёв не показано нигде. */
     if (layerH && pp.uses.includes('m')) {
-      const span = (l.to - l.from) * H;
-      const period = span / Math.max(1, l.m);
-      const layers2 = period / layerH;
+      const span = (l.to - l.from) * H;   // для подсказки «уменьшите до …»
+      const period = M.layers[li].periodMM;
+      const layers2 = M.layers[li].periodLayers;
       if (layers2 < 3)
         out.push({lvl: 'bad', area: 'print',
           txt: `${who(l)}по высоте период ${period.toFixed(1)} мм — это ${layers2.toFixed(1)} слоя ` +
@@ -684,7 +726,27 @@ export function patternWarnings(pat, ctx = {}) {
         txt: `В окне остаётся ${left.toFixed(1)} мм стенки. Тоньше 0,8 мм ` +
           'фарфор светится лучше всего, но вещь становится сувенирной: воду в неё не наливают.'});
     }
-  }
+  });
+
+  /* Оснастка. Жёсткая форма (пресс, ролик) снимается вдоль оси, и рельеф,
+     который меняется по высоте, — это поднутрение по направлению съёма:
+     кольца, чешуя, кладка, лунки такой оснасткой не отформовать. Вертикальные
+     борозды сходят по оси, но закрученные превращаются в винт, и вещь
+     не снимется прямым ходом. Печать и литьё в гипс повторяют и то, и другое —
+     поэтому замечание живёт на вкладке оснастки, а не в общем списке. */
+  const upDown = layers.filter(l => patternById(l.id).uses.includes('m') && l.m >= 1);
+  const twisted = layers.filter(l => Math.abs(l.twist) >= 15);
+  if (upDown.length)
+    out.push({lvl: 'warn', area: 'tool', txt:
+      `${upDown.length > 1 ? 'Слои' : 'Слой'} «${upDown.map(l => patternById(l.id).name).join('», «')}» ` +
+      `${upDown.length > 1 ? 'меняются' : 'меняется'} по высоте — для жёсткой оснастки это ` +
+      'поднутрение: съём идёт вдоль оси. Прессом и роликом такую вещь не отформовать, ' +
+      'а печать и литьё в гипс её повторят.'});
+  else if (twisted.length)
+    out.push({lvl: 'warn', area: 'tool', txt:
+      `Закрутка ${Math.round(Math.abs(twisted[0].twist))}° делает борозды винтом — ` +
+      'из жёсткой формы вещь не снимется прямым ходом. Без закрутки вертикальный ' +
+      'рельеф съёму вдоль оси не мешает.'});
 
   /* Пояса, которые не сходятся: слой, целиком уехавший в гашение у дна или
      кромки, крутится ползунками и не даёт ничего. */

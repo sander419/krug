@@ -19,12 +19,13 @@ import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS,
          sanitizePattern, sanitizeLayer, packPattern, patternById, patternOn,
          patternOffset, patternVolumeMl, patternWarnings, patternAmp, patternBand,
          patternRelief, patternMap, patternOutline, patternAreaMM2, patternTitle, patternSummary,
-         patternFn, patternFade, patternUnderParts }
+         patternFn, patternFade, patternUnderParts, patternMetrics }
   from '../js/core/pattern.js';
 import { sliceGCode } from '../js/core/slicer.js';
 import { state } from '../js/core/state.js';
 import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../js/core/math.js';
 import { sanitizePart } from '../js/core/parts.js';
+import { ROUTES } from '../js/config/routes.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -604,6 +605,42 @@ function bedCenter(text) {
   state.pattern = keep.pattern; state.wall = keep.wall;
 }
 
+/* ---------- панель и замечания говорят одно число ---------- */
+/* Шаг рельефа и период по высоте показывает панель и о них же предупреждает
+   «Контроль мастера». Считались они порознь — и разойтись могли молча:
+   в панели одно число, в замечании другое, а какое верное, снаружи не видно.
+   Теперь источник один, и это проверяется сверкой числа в тексте с метрикой. */
+{
+  const c = {wall: 5, D: 160, H: 220, bead: 4.2, layerH: 2.4, hollow: true};
+  const pat = sanitizePattern({layers: [{id: 'flute', n: 40, depth: 1.5}]});
+  const m = patternMetrics(pat, c);
+  const want = 2 * Math.PI * 80 / 40;
+  if (Math.abs(m.stepMM - want) > 1e-9) P(`метрика шага ${m.stepMM.toFixed(2)} вместо ${want.toFixed(2)}`);
+  const said = patternWarnings(pat, c).find(w => /шаг узора/.test(w.txt));
+  if (!said) P('мелкий шаг не вызвал замечания — сверять нечего');
+  else {
+    const inText = +(/шаг узора ([\d.]+) мм/.exec(said.txt) || [])[1];
+    if (Math.abs(inText - m.stepMM) > 0.05)
+      P(`в замечании шаг ${inText} мм, а в панели ${m.stepMM.toFixed(1)} — числа разошлись`);
+  }
+  const rings = sanitizePattern({layers: [{id: 'wave', depth: 1, m: 30}]});
+  const rm = patternMetrics(rings, c);
+  if (rm.stepMM !== null) P('у колец появился шаг по кругу, которого у них нет');
+  const rsaid = patternWarnings(rings, c).find(w => /период/.test(w.txt));
+  if (!rsaid) P('частые кольца не вызвали замечания о высоте слоя');
+  else {
+    const inText = +(/период ([\d.]+) мм/.exec(rsaid.txt) || [])[1];
+    if (Math.abs(inText - rm.periodMM) > 0.05)
+      P(`в замечании период ${inText} мм, а в панели ${rm.periodMM.toFixed(1)} — числа разошлись`);
+  }
+  /* Метрики берут остаток стенки из того же перебора, что и замечание. */
+  const deep = sanitizePattern({layers: [{id: 'flute', n: 12, depth: 4.2}]});
+  const dm = patternMetrics(deep, c);
+  if (Math.abs(dm.wallLeft - Math.max(0, 5 - dm.carve)) > 1e-9) P('остаток стенки в метриках посчитан иначе');
+  if (patternMetrics(deep, {...c, hollow: false}).wallLeft !== null)
+    P('у сплошного тела метрики всё равно считают остаток стенки');
+}
+
 /* ---------- замечания ---------- */
 {
   const c = {wall: 5, D: 160, H: 220, bead: 4.2, layerH: 2.4};
@@ -635,8 +672,26 @@ function bedCenter(text) {
   const fast = sanitizePattern({layers: [{id: 'wave', depth: 1, m: 40}]});
   if (!patternWarnings(fast, c).some(w => w.lvl === 'bad' && /высот/.test(w.txt)))
     P('рельеф мельче высоты слоя печати не помечен красным');
-  if (patternWarnings(sanitizePattern({layers: [{id: 'wave', depth: 1, m: 6}]}), c).length)
+  if (patternWarnings(sanitizePattern({layers: [{id: 'wave', depth: 1, m: 6}]}), c)
+      .some(w => w.area === 'print' && /период/.test(w.txt)))
     P('спокойные кольца ругаются на высоту слоя');
+
+  /* Оснастка: рельеф, меняющийся по высоте, для пресса и ролика — поднутрение.
+     Замечание живёт на вкладке оснастки, потому что печати и литью он не мешает. */
+  const rings = patternWarnings(sanitizePattern({layers: [{id: 'wave', depth: 1, m: 6}]}), c)
+    .filter(w => w.area === 'tool');
+  if (rings.length !== 1) P(`кольца и жёсткая оснастка: замечаний ${rings.length}, а нужно одно`);
+  const vert = patternWarnings(sanitizePattern({layers: [{id: 'flute', n: 12, depth: 1.5}]}), c)
+    .filter(w => w.area === 'tool');
+  if (vert.length) P('вертикальные борозды без закрутки съёму вдоль оси не мешают, а замечание есть');
+  const screw = patternWarnings(sanitizePattern({layers: [{id: 'flute', n: 12, depth: 1.5, twist: 90}]}), c)
+    .filter(w => w.area === 'tool');
+  if (screw.length !== 1 || !/винт/.test(screw[0].txt)) P('закрученный рельеф не помечен как винт для жёсткой формы');
+  /* Замечание обязано попадать на живую вкладку, иначе интерфейс его спрячет
+     и никто его не увидит: `area` сверяется со списком вкладок задач. */
+  const areas = new Set(ROUTES.flatMap(r => r.tabs));
+  for (const w of patternWarnings(sanitizePattern({layers: [{id: 'wave', depth: 1, m: 6}]}), c))
+    if (w.area && !areas.has(w.area)) P(`замечание отправлено на вкладку «${w.area}», которой нет ни в одной задаче`);
 
   /* Пояс, целиком лежащий в зоне гашения, — ползунки крутятся, рельефа нет. */
   const lost = sanitizePattern({layers: [{id: 'flute', n: 12, depth: 2, from: 0, to: 0.05}]});

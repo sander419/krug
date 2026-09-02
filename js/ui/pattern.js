@@ -22,7 +22,7 @@
 //     режут все слои сразу там, где их пояса перекрываются.
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
-import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS,
+import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS, patternMetrics,
          sanitizePattern, sanitizeLayer, patternById, patternOn, patternRelief,
          patternMap, patternVolumeMl, patternWarnings } from '../core/pattern.js';
 import { userProfileMM } from '../core/math.js';
@@ -279,16 +279,12 @@ export function syncPattern() {
 
   const warns = patternWarnings(pat, ctx);
   const extraMl = patternVolumeMl(pat, prof);
-  const {carve, raise} = patternRelief(pat, state.H);
-  /* Шаг рельефа — по самому мелкому слою: рвётся печать там, где тесно,
-     а не в среднем по стопке. */
-  const R = state.D / 2;
-  const steps = pat.layers.filter(l => patternById(l.id).uses.includes('n'))
-    .map(l => 2 * Math.PI * R / Math.max(1, l.n));
-  const step = steps.length ? Math.min(...steps) : 0;
-  const periods = pat.layers.filter(l => patternById(l.id).uses.includes('m'))
-    .map(l => (l.to - l.from) * state.H / Math.max(1, l.m));
-  const period = periods.length ? Math.min(...periods) : 0;
+  /* Числа берутся из ядра теми же формулами, какими считаются замечания:
+     раньше панель считала шаг и период сама, и разойтись они могли молча. */
+  const M = patternMetrics(pat, ctx);
+  const {carve, raise} = M;
+  const step = M.stepMM, period = M.periodMM;
+  const manySteps = M.layers.filter(x => x.stepMM != null).length > 1;
   const thin = pat.layers.some(l => patternById(l.id).thin);
 
   box.innerHTML = `
@@ -311,11 +307,11 @@ export function syncPattern() {
       <dl class="pp-list pat-nums">
         <div class="pp-row"><dt>Шаг рельефа</dt>
           <dd>${step ? `${num(step, 1)} мм по окружности` : '—'}
-            <span class="dim">бусина принтера ${num(bead, 1)} мм${steps.length > 1 ? ', по самому мелкому слою' : ''}</span></dd></div>
+            <span class="dim">бусина принтера ${num(bead, 1)} мм${manySteps ? ', по самому мелкому слою' : ''}</span></dd></div>
         <div class="pp-row"><dt>Период по высоте</dt>
           <dd>${period ? `${num(period, 1)} мм` : '—'}
             <span class="dim">${period && layerH
-              ? `это ${num(period / layerH, 1)} слоя печати по ${num(layerH, 1)} мм`
+              ? `это ${num(M.periodLayers, 1)} слоя печати по ${num(layerH, 1)} мм`
               : 'слои этого узора идут только по кругу'}</span></dd></div>
         ${!state.hollow ? `
         <div class="pp-row"><dt>Стенка</dt>
