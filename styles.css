@@ -269,7 +269,9 @@ body.editing #splitDraft{display:none;}
   border:1px solid var(--line);border-radius:var(--radius-sm);
   background:var(--panel2);padding:var(--gap-2);
 }
-.pat-layer-head{display:flex;gap:8px;align-items:center;}
+.pat-layer.muted{opacity:.55;}
+.pat-layer.muted .pat-ico{filter:grayscale(1);}
+.pat-layer-head{display:flex;gap:6px;align-items:center;}
 .pat-layer-head .pat-ico{width:52px;flex:none;height:22px;}
 .pat-pick{flex:1;min-width:0;}
 .pat-pick select{width:100%;}

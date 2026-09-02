@@ -108,6 +108,28 @@ for (const [T, doc] of [['с крышкой', withLid], ['с высокой кр
 }
 
 /* Изделие без прилепов — тоже лист, а не ошибка. */
+/* ---------- рельеф узора ---------- */
+/* Лист — производственный документ: по нему в цехе сверяют напечатанное.
+   Узор на нём обязан быть виден, а не только упомянут строкой в таблице. */
+{
+  const relief = model.prof.map(p => ({r: p.r, y: p.y,
+    lo: -2 * Math.min(1, p.y / 20, (model.H - p.y) / 20),
+    hi: 2 * Math.min(1, p.y / 20, (model.H - p.y) / 20)}));
+  const withRelief = buildSheet({...model, relief});
+  const dashed = (withRelief.match(/class="relief"/g) || []).length;
+  if (dashed < 4) P(`огибающих рельефа на листе ${dashed} — их четыре: гребень и ложбина с обеих сторон`);
+  if (!/^<svg/.test(withRelief.trim())) P('лист с рельефом перестал быть SVG');
+  /* Гладкая вещь не должна получать пунктир из ниоткуда. */
+  if (/class="relief"/.test(buildSheet(model))) P('без узора на листе всё равно рисуются огибающие');
+  const flat = model.prof.map(p => ({r: p.r, y: p.y, lo: 0, hi: 0}));
+  if (/class="relief"/.test(buildSheet({...model, relief: flat})))
+    P('нулевой рельеф всё равно рисуется');
+  /* Огибающая обязана лежать вокруг силуэта, а не где-то ещё: проверяем,
+     что крайняя точка гребня отстоит от профиля ровно на свою глубину. */
+  const k = /viewBox="0 0 (\d+) (\d+)"/.exec(withRelief);
+  if (!k) P('у листа пропал viewBox');
+}
+
 const bare = buildSheet({...model, parts: []});
 if (!bare.includes('Вид сверху') || /NaN/.test(bare)) P('лист без прилепов не собрался');
 

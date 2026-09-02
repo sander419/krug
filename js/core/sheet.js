@@ -93,6 +93,19 @@ export function buildSheet(m) {
   const lidFront = lid ? `<path d="${path(lidOut.map(q => P(q.r, q.y)))}
       ${path(lidOut.slice().reverse().map(q => P(-q.r, q.y))).replace('M', 'L')} Z"
       fill="none" stroke="${INK}" stroke-width="0.5" stroke-linejoin="round"/>` : '';
+  /* Рельеф узора: сечение проходит по одной точке круга и борозд не показывает,
+     поэтому на лист идут огибающие — гребень и ложбина пунктиром. По ним в цехе
+     и сверяют напечатанное: «размах рельефа» в таблице говорит сколько,
+     а лист — где именно. */
+  const rel = (m.relief || []).filter(r => r.hi - r.lo > 0.05);
+  const reliefFront = rel.length ? ['hi', 'lo'].map(side => {
+    const line = rel.map(r => P(r.r + r[side], r.y));
+    const mirror = rel.slice().reverse().map(r => P(-(r.r + r[side]), r.y));
+    return `<path class="relief" d="${path(line)}" fill="none" stroke="${INK}" stroke-width="0.25"
+        stroke-dasharray="2 1.5" opacity="0.75"/>
+      <path class="relief" d="${path(mirror)}" fill="none" stroke="${INK}" stroke-width="0.25"
+        stroke-dasharray="2 1.5" opacity="0.75"/>`;
+  }).join('') : '';
   const partsFront = m.parts.map(p =>
     `<path d="${path(p.pts.map(q => P(q.x, q.y)))}" fill="none"
        stroke="${INK}" stroke-width="0.5" stroke-linecap="round"/>`).join('');
@@ -191,7 +204,7 @@ export function buildSheet(m) {
   ${frame(x0[0], top, col[0], viewH, 'Вид спереди')}
   ${frame(x0[1], top, col[1], viewH, 'Разрез')}
   ${frame(x0[2], top, col[2], viewH, 'Вид сверху')}
-  ${front}${partsFront}${lidFront}${section}${lidSection}${plan.join('')}${dims}
+  ${front}${reliefFront}${partsFront}${lidFront}${section}${lidSection}${plan.join('')}${dims}
 
   <line x1="${pad}" y1="${tblY}" x2="${SHEET.w - pad}" y2="${tblY}"
     stroke="${INK}" stroke-width="0.4"/>

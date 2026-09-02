@@ -247,6 +247,44 @@ const one = (over = {}) => sanitizePattern({layers: [{id: 'flute', n: 12, depth:
   if (patternFn(sanitizePattern(null)) !== null) P('без узора быстрая функция не пустая');
 }
 
+/* ---------- выключенный слой ---------- */
+/* Выключатель нужен, чтобы сравнить «с этим слоем и без», не теряя его чисел.
+   Значит выключенный слой обязан исчезнуть отовсюду, где рельеф считают,
+   и остаться везде, где его правят. */
+{
+  const a = {id: 'flute', n: 12, depth: 2};
+  const b = {id: 'bump', n: 8, depth: 1.5, m: 5};
+  const both = sanitizePattern({layers: [a, b]});
+  const muted = sanitizePattern({layers: [a, {...b, mute: true}]});
+  const alone = sanitizePattern({layers: [a]});
+  for (const y of [H * 0.25, H * 0.5, H * 0.8])
+    for (const th of [0, 1.1, 3.3])
+      if (Math.abs(patternOffset(muted, th, y, H) - patternOffset(alone, th, y, H)) > 1e-12)
+        P('выключенный слой всё равно попадает в рельеф');
+  /* Разницу ищем перебором, а не в наугад взятой точке: у чешуи бугорки стоят
+     рядами, и между ними её вклад честно равен нулю. */
+  let diff = 0;
+  for (let i = 0; i <= 40; i++)
+    for (let k = 0; k < 24; k++)
+      diff = Math.max(diff, Math.abs(patternOffset(both, k / 24 * Math.PI * 2, i / 40 * H, H)
+                                   - patternOffset(muted, k / 24 * Math.PI * 2, i / 40 * H, H)));
+  if (diff < 1) P(`выключение слоя меняет рельеф всего на ${diff.toFixed(2)} мм — сравнивать нечем`);
+  if (muted.layers.length !== 2) P('выключенный слой выброшен из стопки — его числа потеряны');
+  if (muted.layers[1].depth !== 1.5) P('выключение слоя стёрло его глубину');
+  if (patternTitle(muted) !== 'Каннелюры') P(`в названии «${patternTitle(muted)}» остался выключенный слой`);
+  if (patternSummary(muted).length !== 1) P('выключенный слой попал в описание для цеха');
+  if (patternVolumeMl(muted, prof) !== patternVolumeMl(alone, prof)) P('выключенный слой считается в глине');
+  if (patternWarnings(muted, {wall: 5, D: 160, H, bead: 4.2}).length
+      !== patternWarnings(alone, {wall: 5, D: 160, H, bead: 4.2}).length)
+    P('выключенный слой всё ещё о чём-то предупреждает');
+  /* Стопка целиком из выключенных слоёв — это «без узора», а не «узор есть». */
+  if (patternOn(sanitizePattern({layers: [{...a, mute: true}]}))) P('стопка из выключенных слоёв считается включённой');
+  /* Выключение уезжает в ссылку: иначе у другого человека вещь откроется
+     с рельефом, которого автор не хотел. */
+  const back = sanitizePattern(packPattern(muted));
+  if (!back.layers[1].mute) P('выключение слоя не переживает упаковку в ДНК');
+}
+
 /* ---------- развёртка ---------- */
 /* Лист развёртки — тот же рельеф, а не «похожая картинка»: если он начнёт
    рисоваться по своей формуле, человек будет настраивать одно, а печатать

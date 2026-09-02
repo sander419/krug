@@ -69,16 +69,23 @@ function layerHTML(l, li, ctx) {
   const keys = ['n', 'depth', 'm', 'twist'].filter(k => k === 'depth' || p.uses.includes(k));
   if (p.uses.includes('n')) keys.push('phase');
 
-  return `<div class="pat-layer" data-layer="${li}">
+  return `<div class="pat-layer${l.mute ? ' muted' : ''}" data-layer="${li}">
     <div class="pat-layer-head">
       <i class="pat-ico" data-pat-ico="${l.id}" aria-hidden="true"></i>
       <label class="pat-pick">
         <select data-lay="${li}" data-pat="id" aria-label="Форма рельефа слоя ${li + 1}">
           ${PATTERNS.map(x => `<option value="${x.id}"${x.id === l.id ? ' selected' : ''}>${x.name}</option>`).join('')}
         </select></label>
+      <button class="part-act" data-lay-mute="${li}" aria-pressed="${!!l.mute}"
+              title="${l.mute ? 'Вернуть слой в рельеф' : 'Временно выключить слой'}"
+              aria-label="${l.mute ? 'Включить' : 'Выключить'} слой ${li + 1}"
+              >${icon(l.mute ? 'eye-off' : 'circle-dot', 15)}</button>
+      <button class="part-act" data-lay-copy="${li}" title="Дублировать слой"
+              aria-label="Дублировать слой ${li + 1}">${icon('copy', 15)}</button>
       <button class="part-act" data-lay-del="${li}" title="Убрать слой"
               aria-label="Убрать слой ${li + 1}">${icon('x', 15)}</button>
     </div>
+    ${l.mute ? '<p class="dim pat-what">Слой выключен: числа сохранены, в рельеф не входит.</p>' : ''}
     <p class="dim pat-what">${p.what}${p.outward ? '. Растёт наружу — стенку не режет' : ''}</p>
     <div class="pat-fields">${keys.map(k => fieldHTML(li, k, l[k])).join('')}</div>
     <div class="pat-belt">
@@ -345,6 +352,24 @@ export function syncPattern() {
   });
   box.querySelectorAll('[data-lay-del]').forEach(b => {
     b.onclick = () => setLayers(layers().filter((_, i) => i !== +b.dataset.layDel));
+  });
+  box.querySelectorAll('[data-lay-mute]').forEach(b => {
+    b.onclick = () => {
+      const next = layers(), i = +b.dataset.layMute;
+      if (!next[i]) return;
+      next[i].mute = !next[i].mute;
+      setLayers(next);
+    };
+  });
+  box.querySelectorAll('[data-lay-copy]').forEach(b => {
+    b.onclick = () => {
+      /* Копия садится сразу за оригиналом: её тут же двигают сдвигом по кругу
+         или поясом — так собирают вторую половину рисунка. */
+      const next = layers(), i = +b.dataset.layCopy;
+      if (!next[i] || next.length >= MAX_LAYERS) return;
+      next.splice(i + 1, 0, {...next[i]});
+      setLayers(next);
+    };
   });
   box.querySelectorAll('[data-lay][data-pat]').forEach(inp => {
     const apply = () => {

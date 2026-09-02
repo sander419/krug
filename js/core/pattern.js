@@ -169,11 +169,16 @@ export const LIMITS = {
 /** Умолчания слоя. Ими же заполняются недостающие поля старых записей. */
 export const LAYER_DEFAULTS = {
   id: 'flute', n: 12, depth: 2, twist: 0, m: 8, phase: 0, from: 0, to: 1, edge: 0.08,
+  /* Выключенный слой остаётся в стопке со всеми своими числами, но в рельеф
+     не входит. Иначе сравнить «с ним и без» можно было бы только выставив
+     глубину в ноль и потом вспоминая, какая она была. */
+  mute: false,
 };
 
 /* Короткие имена полей для ДНК: рецепт уезжает ссылкой, и четыре слоя
    полными именами раздували бы её вдвое. */
-const SHORT = {id: 'i', n: 'n', m: 'm', depth: 'd', twist: 't', phase: 'p', from: 'a', to: 'b', edge: 'e'};
+const SHORT = {id: 'i', n: 'n', m: 'm', depth: 'd', twist: 't', phase: 'p', from: 'a', to: 'b',
+               edge: 'e', mute: 'x'};
 
 /* Запись узора считается неизменяемой: её заменяют целиком, а не правят
    по месту. Метка «уже очищено» скрыта за символом — в JSON, в ДНК и в отмену
@@ -191,7 +196,7 @@ export function sanitizeLayer(raw) {
   /* Слой из ДНК приходит короткими именами; из состояния — полными. */
   const src = raw.i !== undefined
     ? {id: raw.i, n: raw.n, m: raw.m, depth: raw.d, twist: raw.t,
-       phase: raw.p, from: raw.a, to: raw.b, edge: raw.e}
+       phase: raw.p, from: raw.a, to: raw.b, edge: raw.e, mute: raw.x}
     : raw;
   const p = patternById(src.id);
   if (!p) return null;                       // «нет такого узора» значит «узора нет»
@@ -209,6 +214,7 @@ export function sanitizeLayer(raw) {
     phase: numIn(src.phase, 'phase', D.phase),
     from, to: Math.min(to, 1),
     edge: numIn(src.edge, 'edge', D.edge),
+    mute: !!src.mute,
   };
 }
 
@@ -254,7 +260,7 @@ export function packPattern(pat) {
 
 export const patternLayers = pat => sanitizePattern(pat).layers;
 
-export const layerOn = l => !!(l && l.depth > 0.01);
+export const layerOn = l => !!(l && l.depth > 0.01 && !l.mute);
 export const patternOn = pat => patternLayers(pat).some(layerOn);
 
 /** Есть ли в стопке слой, который лепится наружу и стенку не режет. */
