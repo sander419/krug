@@ -185,6 +185,41 @@ const vRef = signedVolume(lathe), vOwn = signedVolume(potBuilt.geometry);
 if (Math.abs(vRef - vOwn) / Math.abs(vRef) > 1e-6)
   P(`свой построитель разошёлся с LatheGeometry: ${vOwn.toFixed(0)} против ${vRef.toFixed(0)}`);
 
+/* ---------- масса равна выгруженной сетке ---------- */
+/* Число, которое инструмент называет массой, обязано совпадать с объёмом той
+   самой модели, которая уезжает в STL. Иначе расходятся две правды: на экране
+   одна вещь, у принтера другая, и узнать об этом можно только на весах.
+   Эта проверка однажды уже нашла расхождение в 2,3 % — выемка под ножкой
+   считалась отдельной формулой с множителем «на глаз», а резалась по контуру. */
+{
+  const keep = {pattern: state.pattern, footH: state.footH, footK: state.footK,
+                hollow: state.hollow, lid: state.lid, parts: state.parts, seg: state.segments};
+  state.stage = 6; state.rings = 0; state.parts = []; state.lid = {on: false};
+  state.segments = 96;
+  const cases = [
+    ['гладкая, ножка', {footH: 6, footK: 62, hollow: true, pattern: {layers: []}}],
+    ['гладкая, без ножки', {footH: 0, hollow: true, pattern: {layers: []}}],
+    ['узкая высокая ножка', {footH: 12, footK: 40, hollow: true, pattern: {layers: []}}],
+    ['сплошная с ножкой', {footH: 6, footK: 62, hollow: false, pattern: {layers: []}}],
+    ['каннелюры', {footH: 6, footK: 62, hollow: true, pattern: {layers: [{id: 'flute', n: 16, depth: 2.5}]}}],
+    ['чешуя наружу', {footH: 6, footK: 62, hollow: true, pattern: {layers: [{id: 'bump', n: 14, depth: 2.5, m: 8}]}}],
+    ['окна внутрь', {footH: 6, footK: 62, hollow: true, pattern: {layers: [{id: 'window', n: 10, depth: 3.5, m: 5}]}}],
+  ];
+  for (const [name, over] of cases) {
+    Object.assign(state, over);
+    const mesh = signedVolume(buildPot(state).geometry) / 1000;      // см³
+    const calc = computeProduction(state).volMl;
+    const off = (mesh - calc) / calc * 100;
+    /* Допуск полпроцента: гранёная сетка на 96 сегментах теряет сотые доли,
+       а поправка узора считается численно по кругу. Расхождение крупнее —
+       это уже разные формулы, а не огрубление. */
+    if (Math.abs(off) > 0.5)
+      P(`«${name}»: сетка ${mesh.toFixed(1)} см³ против массы ${calc.toFixed(1)} — расхождение ${off.toFixed(2)} %`);
+  }
+  Object.assign(state, {pattern: keep.pattern, footH: keep.footH, footK: keep.footK,
+                        hollow: keep.hollow, lid: keep.lid, parts: keep.parts, segments: keep.seg});
+}
+
 // «Кинотеатр» не должен дёргаться: ни один шаг этапа не меняет объём рывком
 let prevV = null, worst = 0, worstAt = 0;
 for (let u = 0; u <= 6.0001; u += 0.05) {
@@ -441,7 +476,18 @@ state.wall = 6;
     {kind: 'spout',  len: 20,  bore: 6,  tip: 4,  rise: -10, at: 0.2},
   ]) {
     const p = sanitizePart({az: 0, ...v});
-    if (partSelfOverlap(prof, p)) { P(`образец ${JSON.stringify(v)} оказался узлом — выберите другой`); continue; }
+    /* Часть крайних образцов на этом силуэте входит сама в себя — и это
+       законный исход, а не плохо выбранный образец: формы под такую деталь
+       не существует. Раньше здесь стоял пропуск со словами «выберите другой»,
+       и два образца из семи молча не проверялись вовсе — отчёт этой проверки
+       не печатался. Теперь узел это тоже случай: инструмент обязан сказать
+       замечанием и не выдать ни предпросмотра, ни STL. */
+    if (partSelfOverlap(prof, p)) {
+      const w = partsWarnings({...state, parts: [p]}, prof);
+      if (!w.some(x => x.txt.includes('пересекает сама себя')))
+        P(`образец ${JSON.stringify(v)} в узле, а замечания нет`);
+      continue;
+    }
     for (const half of ['bump', 'socket']) {
       const g = partMouldGeometry(prof, p, 20, {half}).geometry;
       const a = edgeAudit(g);
@@ -450,5 +496,10 @@ state.wall = 6;
       g.dispose();
     }
   }
+}
+if (problems.length) {
+  console.log('\nОШИБКИ:');
+  for (const t of problems) console.log('  ✗ ' + t);
+  process.exit(1);
 }
 console.log('\nГеометрия оснастки в порядке.');

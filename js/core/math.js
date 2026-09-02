@@ -98,6 +98,46 @@ export function ringsVolumeMl(state, out){
   return sum/1000;
 }
 
+/**
+ * Контур подрезанной ножки — те самые точки, по которым строится сетка.
+ *
+ * Ножку подрезают конусом с площадкой: с оси вверх на высоту ножки, наружу
+ * до площадки, вниз по фаске и на пятку. Раньше объём этой выемки считался
+ * отдельной формулой с множителем 0,65 «на глаз» — и расходился с сеткой
+ * на 2,3 % массы там, где ножка есть. Теперь контур один и на модель,
+ * и на массу.
+ *
+ * @param cut доля подрезки: в «Кинотеатре» ножка появляется постепенно
+ */
+export function footContour(baseR, footH, footK, cut=1){
+  if(!(footH>0)) return [];
+  // 0.15 мм остаётся всегда: нулевая ножка слепила бы точки в одну
+  const fh=footH*cut+0.15, fk=footK/100;
+  return [
+    {r:0.01, y:0}, {r:0.01, y:fh},
+    {r:Math.max(baseR*fk*0.85,0.5), y:fh},
+    {r:baseR*fk, y:fh*0.5},
+    {r:baseR, y:0.2},
+  ];
+}
+
+/**
+ * Объём выемки под ножкой, мм³ — по теореме Гульдина над тем же контуром,
+ * которым режется сетка: ∮ r²/2 dy по замкнутому обходу выемки.
+ */
+export function footRecessMM3(baseR, footH, footK){
+  const pts=footContour(baseR, footH, footK);
+  if(!pts.length) return 0;
+  // замыкаем контур по пятке: (baseR,0.2) → (baseR,0) → (0.01,0)
+  const loop=pts.concat([{r:baseR, y:0}]);
+  let v=0;
+  for(let i=0;i<loop.length;i++){
+    const a=loop[i], b=loop[(i+1)%loop.length];
+    v += (a.r*a.r + a.r*b.r + b.r*b.r)/6 * (b.y-a.y);   // точный интеграл r²/2 dy на отрезке
+  }
+  return Math.abs(v*2*Math.PI);
+}
+
 export function computeProduction(state){
   const out=userProfileMM(state);
   const wall=state.wall, footOn=state.footH>0;
@@ -124,7 +164,10 @@ export function computeProduction(state){
       }
     }
   }
-  const vRec = footOn ? Math.PI*Math.pow(baseR*state.footK/100,2)*state.footH*0.65 : 0;
+  /* Выемка под ножкой считается по тому же контуру, по которому она режется
+     в сетке: прежняя формула с множителем 0,65 расходилась с выгруженной
+     моделью на 2,3 % массы. */
+  const vRec = footOn ? footRecessMM3(baseR, state.footH, state.footK) : 0;
   const partsMl=partsVolumeMl(out, state.parts);
   /* Крышка — отдельная деталь, но глину на неё берут из того же куска и обжигают
      в той же садке. В объём изделия она входит, в его вместимость — нет. */

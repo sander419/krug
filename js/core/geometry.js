@@ -1,6 +1,6 @@
 // file: js/core/geometry.js
 import * as THREE from 'three';
-import { userProfileMM, radiusAt, N_SAMP } from './math.js';
+import { userProfileMM, radiusAt, N_SAMP, footContour } from './math.js';
 import { byId } from '../config/materials.js';
 import { clamp, smoothstep as smooth } from './util.js';
 import { buildLathe, applyLips } from './lathe.js';
@@ -39,17 +39,12 @@ function buildPath(state,out,{t,open,deep,cut}){
   const H=out[out.length-1].y;
   const P=[];
   const V=(r,y)=>{ const v=new THREE.Vector2(Math.max(r,0.01),y); P.push(v); return v; };
-  const br=out[0].r, fk=state.footK/100;
-  // 0.15 мм остаётся всегда: нулевая ножка слепила бы точки в одну
-  const fh=state.footH>0?state.footH*cut+0.15:0;
-
-  V(0.01,0);
-  if(fh>0){
-    V(0.01,fh);
-    V(Math.max(br*fk*0.85,0.5),fh);
-    V(br*fk,fh*0.5);
-    V(br,0.2);
-  }
+  const br=out[0].r;
+  /* Контур ножки берётся из ядра — той же функцией, которой считается её
+     объём: две формы одной ножки однажды уже разошлись на 2,3 % массы. */
+  const foot=footContour(br, state.footH, state.footK, cut);
+  if(foot.length) for(const p of foot) V(p.r,p.y);
+  else V(0.01,0);
   /* Наружные точки помечаются: узор ложится только на них — полость остаётся
      гладкой, иначе вещь нечем мыть, а вместимость пришлось бы считать заново. */
   for(const o of out) V(o.r,o.y).outer=true;
