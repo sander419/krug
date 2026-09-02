@@ -24,11 +24,12 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS,
          sanitizePattern, sanitizeLayer, patternById, patternOn, patternRelief,
-         patternVolumeMl, patternWarnings } from '../core/pattern.js';
+         patternMap, patternVolumeMl, patternWarnings } from '../core/pattern.js';
 import { userProfileMM } from '../core/math.js';
 import { byId as materialById } from '../config/materials.js';
 import { beadWidth } from '../core/slicer.js';
 import { $, num } from './dom.js';
+import { pal } from './palette.js';
 import { icon } from './icons.js';
 
 /* Светится не рельеф, а черепок: на красной глине тонкое дно окна остаётся
@@ -99,6 +100,138 @@ function layerHTML(l, li, ctx) {
   </div>`;
 }
 
+/* ---------- развёртка ---------- */
+/* Модель показывает половину вазы и ту в перспективе: пояс на задней стороне,
+   сдвиг слоя по кругу и место, где слои накладываются друг на друга, на ней
+   не видны вовсе. Поэтому под стопкой лежит развёртка — стенка, разрезанная
+   по образующей и разложенная в лист πD × H, в настоящих пропорциях.
+   Рисуется она не «раскраской по глубине», а светом: рельеф читается глазом
+   как рельеф, а не как тепловая карта. */
+let offscreen = null;
+
+function rgbOf(str) {
+  const m = String(str).match(/-?[\d.]+/g);
+  return m ? [+m[0], +m[1], +m[2]] : [128, 128, 128];
+}
+
+export function drawPatternMap() {
+  const cv = $('patMap');
+  if (!cv) return;
+  const wrap = cv.parentElement;
+  const w = wrap.clientWidth;
+  if (w < 60) return;                       // панель ещё не разложена
+  const pat = sanitizePattern(state.pattern);
+  if (!patternOn(pat)) return;
+
+  /* Высота листа — из настоящих пропорций стенки: развёртка, растянутая
+     по вкусу, врёт про наклон гребня и про то, круглый ли бугорок. */
+  const wallW = Math.PI * state.D, wallH = state.H;
+  const h = Math.round(Math.min(280, Math.max(90, w * wallH / wallW)));
+  const dp = Math.min(devicePixelRatio, 2);
+  cv.width = w * dp; cv.height = h * dp;
+  cv.style.height = h + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dp, 0, 0, dp, 0, 0);
+
+  /* Сетка выборки берётся от самого частого слоя: шестьдесят четыре гребня
+     на двухстах отсчётах дают муар, а не узор. */
+  const maxN = Math.max(3, ...pat.layers.map(l => l.n));
+  const maxM = Math.max(1, ...pat.layers.map(l => l.m));
+  const cols = Math.min(420, Math.max(160, 6 * maxN));
+  const rows = Math.min(200, Math.max(80, 6 * maxM));
+  const map = patternMap(pat, {H: state.H, D: state.D, cols, rows});
+  const span = Math.max(map.hi - map.lo, 0.2);
+
+  const P = pal();
+  /* Лист серый, а не глиняный: цветом в интерфейсе говорят разделы и замечания,
+     и оранжевый прямоугольник в полпанели перекрикивал бы их. Рельеф читается
+     светотенью, а цвет остаётся у модели.
+
+     Свет и тень задаются не токенами, а физикой: тень темнее поверхности,
+     блик светлее — в обеих темах одинаково. Пара «фон → текст» на светлой теме
+     переворачивалась, и гребень выходил темнее ложбины. */
+  const surf = rgbOf(P.at('--sunken'));
+  const toward = (t, k) => surf.map((c, i) => c + (t[i] - c) * k);
+  const base = toward([0, 0, 0], 0.5), lit = toward([255, 255, 255], 0.45);
+  if (!offscreen) offscreen = document.createElement('canvas');
+  offscreen.width = cols; offscreen.height = rows;
+  const octx = offscreen.getContext('2d');
+  const img = octx.createImageData(cols, rows);
+  for (let i = 0; i < rows; i++) {
+    const src = (rows - 1 - i) * cols;         // строка 0 карты — дно, а рисуем сверху вниз
+    for (let j = 0; j < cols; j++) {
+      const d = map.mm[src + j];
+      /* Свет слева: яркость даёт наклон стенки по кругу, а не сама глубина.
+         По одной глубине борозда и валик выглядят одинаково. */
+      const dl = map.mm[src + (j - 1 + cols) % cols], dr = map.mm[src + (j + 1) % cols];
+      const slope = (dr - dl) / span;
+      const k = clamp01(0.46 + slope * 2.2 + (d / span) * 0.22);
+      const o = (i * cols + j) * 4;
+      img.data[o] = base[0] + (lit[0] - base[0]) * k;
+      img.data[o + 1] = base[1] + (lit[1] - base[1]) * k;
+      img.data[o + 2] = base[2] + (lit[2] - base[2]) * k;
+      img.data[o + 3] = 255;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(offscreen, 0, 0, w, h);
+
+  const yOf = v => h - v * h;                 // доля высоты → пиксель сверху вниз
+
+  /* Зона гашения у дна и кромки: там рельефа не будет, что бы ни стояло
+     в поясах, и это честнее показать, чем объяснять текстом. */
+  const fadeV = Math.max(3, state.H * 0.06) / state.H;
+  ctx.fillStyle = P.at('--panel', 0.55);
+  ctx.fillRect(0, 0, w, yOf(1 - fadeV));
+  ctx.fillRect(0, yOf(fadeV), w, h - yOf(fadeV));
+
+  /* Границы поясов — там, где человек их и ищет: на самом рисунке. */
+  ctx.lineWidth = 1;
+  ctx.font = '10px Manrope, system-ui, sans-serif';
+  pat.layers.forEach((l, i) => {
+    if (l.from <= 0 && l.to >= 1) return;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = P.accent(0.75);
+    for (const v of [l.from, l.to]) {
+      ctx.beginPath(); ctx.moveTo(0, yOf(v)); ctx.lineTo(w, yOf(v)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.fillStyle = P.accent(0.95);
+    ctx.fillText(String(i + 1), 4, yOf(l.to) + 11);
+  });
+
+  /* Бусина в масштабе листа: если рельеф мельче этого прямоугольника,
+     сопло его не нарисует — и это видно, а не сказано числом. */
+  const bead = beadWidth(state), layerH = (state.pr && +state.pr.lh) || 0;
+  if (bead && layerH) {
+    const bw = bead / wallW * w, bh = layerH / wallH * h;
+    ctx.fillStyle = P.at('--panel', 0.85);
+    ctx.fillRect(w - bw - 10, h - bh - 10, bw, bh);
+    ctx.strokeStyle = P.text(0.75);
+    ctx.strokeRect(w - bw - 10.5, h - bh - 10.5, bw + 1, bh + 1);
+    plate(ctx, P, w - bw - 14 - 42, h - 20, 42, 13);
+    ctx.fillStyle = P.text(0.8);
+    ctx.textAlign = 'right';
+    ctx.fillText('бусина', w - bw - 14, h - 10);
+    ctx.textAlign = 'left';
+  }
+  const cap = `развёртка стенки ${Math.round(wallW / 10)}×${Math.round(wallH / 10)} см`;
+  plate(ctx, P, 4, 4, ctx.measureText(cap).width + 6, 13);
+  ctx.fillStyle = P.text(0.8);
+  ctx.fillText(cap, 7, 14);
+}
+
+/* Подпись поверх рельефа теряется в полосах: под неё кладётся плашка фона.
+   Тот же приём, что у подписей на чертеже. */
+function plate(ctx, P, x, y, w, h) {
+  ctx.fillStyle = P.at('--panel', 0.78);
+  ctx.fillRect(x, y, w, h);
+}
+
+const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+
 export function syncPattern() {
   const box = $('patternBody');
   if (!box) return;
@@ -131,6 +264,7 @@ export function syncPattern() {
     ${on ? `
       <p class="dim pat-lead">Слои складываются: смещение радиуса у каждого своё, машина печатает сумму.
         Рельеф уходит и в модель, и в STL, и в G-code — на экране то же, что напечатает сопло.</p>
+      <div class="pat-map"><canvas id="patMap" aria-label="Развёртка узора на стенке"></canvas></div>
       <div class="pat-stack">${pat.layers.map((l, i) => layerHTML(l, i, ctx)).join('')}</div>
       ${pat.layers.length < MAX_LAYERS
         ? `<button class="chip-btn pat-add" data-pat-add="1">${icon('plus', 14)}Добавить слой</button>`
@@ -187,6 +321,8 @@ export function syncPattern() {
      ссылкой или пресетом, и правка одного поля затёрла бы чужой слой. */
   const layers = () => sanitizePattern(state.pattern).layers.map(l => ({...l}));
 
+  drawPatternMap();
+
   box.querySelectorAll('[data-pat-preset]').forEach(b => {
     b.onclick = () => {
       const p = PATTERN_PRESETS.find(x => x.id === b.dataset.patPreset);
@@ -223,4 +359,17 @@ export function syncPattern() {
   });
 }
 
-export function initPattern() { syncPattern(); }
+export function initPattern() {
+  syncPattern();
+  /* Ширину панели тянут разделителями, а лист развёртки обязан оставаться
+     в настоящих пропорциях. Наблюдаем за блоком, а не за самой канвой:
+     канва пересоздаётся при каждой перерисовке стопки. */
+  const block = document.querySelector('[data-block="pattern"]');
+  if (!block) return;
+  let pending = false;
+  new ResizeObserver(() => {
+    if (pending) return;
+    pending = true;
+    setTimeout(() => { pending = false; drawPatternMap(); }, 0);
+  }).observe(block);
+}

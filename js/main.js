@@ -42,7 +42,7 @@ import { initMoney, syncMoney } from './ui/money.js';
 import { initNext, syncNext, markExported } from './ui/next.js';
 import { initProduction, syncProduction } from './ui/production.js';
 import { initLid, syncLid } from './ui/lid.js';
-import { initPattern, syncPattern } from './ui/pattern.js';
+import { initPattern, syncPattern, drawPatternMap } from './ui/pattern.js';
 import { initSculpt } from './ui/sculpt.js';
 import { initKB, openKB } from './ui/kb.js';
 import { initTooling } from './ui/tooling.js';
@@ -184,6 +184,7 @@ const repaint=t=>{                 // цвета canvas и сцены живут
   resetPalette();
   sceneAPI.applyTheme(t||currentTheme());
   drawEditor();
+  drawPatternMap();     // развёртка узора красится теми же токенами
   syncGlaze();
 };
 onTheme(repaint);

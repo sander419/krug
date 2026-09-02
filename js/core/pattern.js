@@ -454,6 +454,42 @@ export function patternAreaMM2(pat, r, y, H) {
   return sum * (TAU / NA);
 }
 
+/**
+ * Развёртка рельефа: стенка, разрезанная по образующей и разложенная в лист.
+ *
+ * Модель показывает половину вазы и ту в перспективе: пояс на задней стороне,
+ * сдвиг слоя по кругу и место, где два слоя накладываются, на ней просто
+ * не видны. Развёртка показывает всё сразу и в настоящих пропорциях —
+ * лист шириной πD и высотой H.
+ *
+ * Здесь только числа: строка 0 — дно, столбец 0 — угол 0. Как это красить,
+ * знает интерфейс.
+ *
+ * @param opt {H, D, cols, rows}
+ * @returns {cols, rows, H, widthMM, mm: Float32Array, lo, hi}
+ */
+export function patternMap(pat, opt = {}) {
+  const H = +opt.H > 0 ? +opt.H : 220;
+  const D = +opt.D > 0 ? +opt.D : 160;
+  const cols = Math.max(8, Math.round(opt.cols || 200));
+  const rows = Math.max(2, Math.round(opt.rows || 90));
+  const p = sanitizePattern(pat);
+  const mm = new Float32Array(cols * rows);
+  let lo = 0, hi = 0;
+  if (patternOn(p)) {
+    for (let i = 0; i < rows; i++) {
+      const y = i / (rows - 1) * H;
+      for (let j = 0; j < cols; j++) {
+        const d = patternOffset(p, j / cols * TAU, y, H);
+        mm[i * cols + j] = d;
+        if (d < lo) lo = d;
+        if (d > hi) hi = d;
+      }
+    }
+  }
+  return {cols, rows, H, widthMM: Math.PI * D, mm, lo, hi};
+}
+
 /** Название узора: одно имя или стопка через плюс. */
 export function patternTitle(pat) {
   const on = patternLayers(pat).filter(layerOn);

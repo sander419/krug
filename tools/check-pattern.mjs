@@ -18,7 +18,8 @@ import { readFileSync } from 'node:fs';
 import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS,
          sanitizePattern, sanitizeLayer, packPattern, patternById, patternOn,
          patternOffset, patternVolumeMl, patternWarnings, patternAmp, patternBand,
-         patternRelief, patternAreaMM2, patternTitle, patternSummary, patternFn, patternFade }
+         patternRelief, patternMap, patternAreaMM2, patternTitle, patternSummary,
+         patternFn, patternFade }
   from '../js/core/pattern.js';
 import { sliceGCode } from '../js/core/slicer.js';
 import { state } from '../js/core/state.js';
@@ -244,6 +245,51 @@ const one = (over = {}) => sanitizePattern({layers: [{id: 'flute', n: 12, depth:
   }
   if (w2 > 1e-9) P(`на стопке быстрая функция расходится с медленной на ${w2.toFixed(4)} мм`);
   if (patternFn(sanitizePattern(null)) !== null) P('без узора быстрая функция не пустая');
+}
+
+/* ---------- развёртка ---------- */
+/* Лист развёртки — тот же рельеф, а не «похожая картинка»: если он начнёт
+   рисоваться по своей формуле, человек будет настраивать одно, а печатать
+   другое. Проверяем числами, а не глазами. */
+{
+  const pat = sanitizePattern({layers: [
+    {id: 'flute', n: 12, depth: 2, phase: 30},
+    {id: 'bump', n: 8, depth: 1.5, m: 4, from: 0.3, to: 0.7, edge: 0.05}]});
+  const m = patternMap(pat, {H, D: 160, cols: 64, rows: 33});
+  if (m.cols !== 64 || m.rows !== 33 || m.mm.length !== 64 * 33) P('развёртка вернула не ту сетку');
+  if (Math.abs(m.widthMM - Math.PI * 160) > 0.01) P('ширина листа не равна длине окружности');
+  let worst = 0;
+  for (let i = 0; i < m.rows; i++) {
+    const y = i / (m.rows - 1) * H;
+    for (let j = 0; j < m.cols; j++)
+      worst = Math.max(worst, Math.abs(m.mm[i * m.cols + j] - patternOffset(pat, j / m.cols * Math.PI * 2, y, H)));
+  }
+  /* Лист лежит во Float32Array — рисовать его иначе накладно, а точности
+     там семь знаков. Допуск в тысячную микрона это и учитывает. */
+  if (worst > 1e-4) P(`развёртка расходится с рельефом на ${worst.toExponential(1)} мм`);
+  /* Первая строка — дно, последняя — кромка: перевёрнутый лист показывал бы
+     пояс не там, где он на вещи. */
+  if (Math.abs(m.mm[0]) > 0.2 || Math.abs(m.mm[m.mm.length - 1]) > 0.2)
+    P('на краях листа есть рельеф — строки идут не от дна к кромке');
+  const mid = m.mm[Math.floor(m.rows / 2) * m.cols];
+  if (!Number.isFinite(mid) || Math.abs(mid) < 0.01) P('в середине листа рельефа нет');
+  /* Крайние значения листа обязаны сойтись с перебором по всей вещи. */
+  const {carve, raise} = patternRelief(pat, H);
+  const fine = patternMap(pat, {H, D: 160, cols: 288, rows: 200});
+  if (Math.abs(-fine.lo - carve) > 0.05 || Math.abs(fine.hi - raise) > 0.05)
+    P(`лист и перебор расходятся по размаху: ${(-fine.lo).toFixed(2)}/${fine.hi.toFixed(2)} против ${carve.toFixed(2)}/${raise.toFixed(2)}`);
+  const empty = patternMap(sanitizePattern(null), {H, D: 160, cols: 16, rows: 8});
+  if (empty.mm.some(v => v !== 0) || empty.lo !== 0 || empty.hi !== 0) P('без узора лист не пустой');
+  /* Лист рисуют на канве шириной в панель, и стоит он миллисекунды: если
+     развёртка станет дороже пересчёта самой вещи, за ползунок будет не взяться. */
+  const big = sanitizePattern({layers: [
+    {id: 'flute', n: 24, depth: 2}, {id: 'bark', n: 20, depth: 1, m: 12},
+    {id: 'bump', n: 16, depth: 1.5, m: 8, from: 0.2, to: 0.8}]});
+  patternMap(big, {H, D: 160, cols: 200, rows: 120});
+  const t0 = process.hrtime.bigint();
+  for (let i = 0; i < 5; i++) patternMap(big, {H, D: 160, cols: 200, rows: 120});
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6 / 5;
+  if (ms > 25) P(`развёртка считается ${ms.toFixed(1)} мс — за ползунок не взяться`);
 }
 
 /* ---------- объём ---------- */
