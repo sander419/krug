@@ -5,7 +5,7 @@
 // список и текст делили один экран, а порядок статей нигде не был виден.
 //
 // Контент — js/config/kb/, UI ничего не знает про конкретные статьи.
-import { ARTICLES, SECTIONS, LEARN_PATH, bySection, articleById, search, CONTEXT_HELP }
+import { ARTICLES, SECTIONS, LEARN_PATH, bySection, articleById, search, CONTEXT_HELP, helpArticleId }
   from '../config/kb/index.js';
 import { $, esc } from './dom.js';
 import { icon } from './icons.js';
@@ -210,7 +210,9 @@ export function openArticle(id) {
 }
 
 export function openContextHelp(key) {
-  const id = CONTEXT_HELP[key];
+  /* Разрешение ключа живёт в config/kb: им же пользуется проверка.
+     Разрешай они порознь — проверка была бы зелёной при мёртвой кнопке. */
+  const id = helpArticleId(key);
   if (id) openArticle(id);
 }
 

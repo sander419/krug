@@ -38,6 +38,7 @@ const CHECKS = [
   ['Узор',         'check-pattern.mjs'],
   ['Заготовки',    'check-presets.mjs'],
   ['ДНК',          'check-dna.mjs'],
+  ['Замечания',    'check-warnings.mjs'],
   ['Источники',    'check-sources.mjs'],
 ];
 
