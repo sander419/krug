@@ -263,7 +263,7 @@ export function sheetSVG() {
   ];
   const LD = sanitizeLid(state.lid);
   if (LD.on) {
-    const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct);
+    const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct, state.pattern);
     rows.push(['Крышка', LD.type === 'inset' ? 'в горловину' : 'внахлёст'],
       ['Поясок крышки', `⌀${num(lm.seatR * 2, 1)} мм`],
       ['Зазор после обжига', `${num(lm.gapFired, 1)} мм`],
@@ -281,7 +281,7 @@ export function sheetSVG() {
     H: state.H, D: state.D, shrinkPct: mat.shrinkPct,
     parts, rows,
     lid: LD.on ? (() => {
-      const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct);
+      const lm = lidMetrics(prof, LD, state.wall, density(mat), mat.shrinkPct, state.pattern);
       return {pts: lm.pts, outline: lm.outer, seatD: lm.seatR * 2, seatDFired: lm.firedSeatMM,
               gapFired: lm.gapFired, topY: lm.topY, outD: lm.outR * 2};
     })() : null,

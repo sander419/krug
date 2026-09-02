@@ -5,7 +5,7 @@ import { sceneAPI } from './scene.js';
 import { buildPot } from '../core/geometry.js';
 import { buildLathe } from '../core/lathe.js';
 import { partCurve, partSection } from '../core/parts.js';
-import { sanitizeLid, lidProfile } from '../core/lid.js';
+import { sanitizeLid, lidProfile, lidWarpFn } from '../core/lid.js';
 import { sweepGeometry } from './sweep.js';
 import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
@@ -118,7 +118,11 @@ function lidGeo(state){
   const lid=sanitizeLid(state.lid);
   if(!lid.on) return null;
   const L=lidProfile(userProfileMM(state), lid, state.wall);
-  return buildLathe(L.pts.map(p=>({x:Math.max(p.r,0.01),y:p.y})), Math.max(state.segments,48));
+  /* Рельеф купола строится тем же lidWarpFn, что и в сцене: разойдись они —
+     заметить это можно было бы только на принтере. */
+  const lw=lid.pattern ? lidWarpFn(L, state.pattern) : null;
+  return buildLathe(L.pts.map(p=>({x:Math.max(p.r,0.01),y:p.y})), Math.max(state.segments,48),
+    undefined, undefined, lw ? (phi,p,j)=>lw(phi, L.pts[j], j) : undefined);
 }
 
 /**

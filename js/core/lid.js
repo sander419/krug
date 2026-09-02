@@ -14,6 +14,7 @@
 // Здесь чистая математика: профиль крышки в координатах изделия, её объём
 // и масса, зазор после обжига и замечания. Ни DOM, ни three.js.
 import { clamp } from './util.js';
+import { patternFn, sanitizePattern, patternOn, patternRelief } from './pattern.js';
 
 export const LID_DEFAULTS = {
   on: false,
@@ -25,6 +26,11 @@ export const LID_DEFAULTS = {
   knobH: 16,          // высота кнопки
   knobD: 24,          // диаметр кнопки
   over: 6,            // насколько накладная крышка свисает за кромку, мм
+  /* Узор корпуса переходит на купол. По умолчанию да: крышку печатает то же
+     сопло, и гладкая крышка на рельефной вазе выглядит недоделанной. Кому
+     нужна гладкая — выключает, и это единственное поле крышки, которое
+     ничего не меняет в её посадке. */
+  pattern: true,
 };
 
 export const LID_LIMITS = {
@@ -36,6 +42,7 @@ export function sanitizeLid(raw) {
   const o = {...LID_DEFAULTS, ...(raw && typeof raw === 'object' ? raw : {})};
   o.on = !!o.on;
   o.type = o.type === 'over' ? 'over' : 'inset';
+  o.pattern = o.pattern !== false;
   for (const [k, [lo, hi]] of Object.entries(LID_LIMITS)) {
     const v = +o[k];
     o[k] = Number.isFinite(v) ? clamp(v, lo, hi) : LID_DEFAULTS[k];
@@ -115,6 +122,10 @@ export function lidProfile(prof, lid, wallMM) {
     }
   }
   const pts = innPts.concat(outPts);
+  /* Какие точки лежат на наружной поверхности — помечаем сразу: рельеф
+     ложится только на них, а после разворота контура порядок частей
+     меняется, и считать «всё после изнанки» стало бы нельзя. */
+  const outerFlag = pts.map((_, i) => (i >= innPts.length ? 1 : 0));
 
   /* Обход должен идти против часовой в осевом сечении — как у корпуса,
      иначе нормали смотрят внутрь и модель выворачивается в STL. */
@@ -123,14 +134,94 @@ export function lidProfile(prof, lid, wallMM) {
     const p = pts[i], q = pts[(i + 1) % pts.length];
     a += p.r * q.y - q.r * p.y;
   }
-  if (a < 0) pts.reverse();
+  if (a < 0) { pts.reverse(); outerFlag.reverse(); }
 
-  return {pts, outer: outPts, seatR, outR, inner, rim, y0, wall, hIn, kr,
+  return {pts, outer: outPts, outerFlag, seatR, outR, inner, rim, y0, wall, hIn, kr,
           topY: kr > 0 ? kTop : rim.y + lid.h};
 }
 
+/**
+ * Вес рельефа по точкам контура крышки: 0 там, где узор мешает, 1 на открытом
+ * куполе. Умножается на глубину, поэтому переходы плавные — ступенька в рельефе
+ * это шов, по которому крышка и треснет.
+ *
+ * Где узора быть не должно и почему:
+ *   • **изнанка** — как и полость корпуса: её моют, и вместимость считалась бы заново;
+ *   • **посадочный поясок и полка** — крышка обязана сесть, борозда посадку губит;
+ *   • **вершина купола** — на оси сегменты сходятся, и рельеф там сминается
+ *     в кашу; сопло на таком радиусе его тоже не выведет;
+ *   • **кнопка** — за неё берутся пальцами.
+ */
+export function lidReliefWeights(L) {
+  const w = new Float64Array(L.pts.length);
+  const top = L.topY;
+  /* Разгон над кромкой: рельеф начинается не сразу за посадкой, а через
+     несколько миллиметров — там, где купол уже отошёл от горловины. */
+  const rise = Math.max(3, (top - L.rim.y) * 0.12);
+  const axis = Math.max(L.outR * 0.42, L.kr + 2);       // зона у оси и кнопка
+  for (let j = 0; j < L.pts.length; j++) {
+    if (!L.outerFlag[j]) continue;                       // изнанка остаётся гладкой
+    const p = L.pts[j];
+    if (p.y <= L.rim.y) continue;                        // поясок и торец
+    const up = clamp((p.y - L.rim.y) / rise, 0, 1);
+    const side = clamp((p.r - L.kr) / Math.max(axis - L.kr, 0.01), 0, 1);
+    w[j] = up * side;
+  }
+  return w;
+}
+
+/**
+ * Рельеф крышки как функция для токаря: (phi, точка, индекс) → смещение, мм.
+ * Одна и та же и в сцене, и в STL — иначе выгруженная крышка отличалась бы
+ * от показанной, а заметить это можно было бы только на принтере.
+ *
+ * Высота считается **по самой крышке**: она вторая вещь, а не продолжение
+ * стенки. Пояс слоя 35–70 % ложится на 35–70 % высоты крышки.
+ */
+export function lidWarpFn(L, pat) {
+  const pf = patternFn(pat);
+  if (!pf) return null;
+  const w = lidReliefWeights(L);
+  const span = Math.max(L.topY - L.rim.y, 0.01);
+  return (phi, p, j) => (w[j] ? pf(phi, clamp((p.y - L.rim.y) / span, 0, 1), w[j]) : 0);
+}
+
+/**
+ * Сколько глины добавляет рельеф крышке, см³.
+ *
+ * Считается точно, а не «примерно»: объём тела вращения — это ∮ r²/2 dy
+ * по замкнутому контуру, и рельеф меняет в нём только наружную часть.
+ * Отсюда поправка = ∮ ⟨(r+d)² − r²⟩/2 dy по наружному обходу, где угловое
+ * среднее берётся численно.
+ */
+export function lidPatternVolumeMl(L, pat) {
+  const pf = patternFn(pat);
+  if (!pf) return 0;
+  const w = lidReliefWeights(L);
+  const span = Math.max(L.topY - L.rim.y, 0.01);
+  const NA = 72;
+  let sum = 0;
+  for (let j = 0; j < L.pts.length - 1; j++) {
+    const a = L.pts[j], b = L.pts[j + 1];
+    const dy = b.y - a.y;                       // знак важен: контур идёт вверх и обратно
+    if (!dy) continue;
+    const wt = (w[j] + w[j + 1]) / 2;
+    if (!wt) continue;
+    const r = (a.r + b.r) / 2, v = clamp(((a.y + b.y) / 2 - L.rim.y) / span, 0, 1);
+    let ring = 0;
+    for (let k = 0; k < NA; k++) {
+      const d = pf(k / NA * Math.PI * 2, v, wt);
+      ring += ((r + d) * (r + d) - r * r) / 2;
+    }
+    sum += ring / NA * Math.PI * 2 * dy;
+  }
+  /* Знак не выбрасывается: узор, который режет (окна, лунки), глину убирает,
+     и «по модулю» здесь означало бы приписать вещи лишнюю массу. */
+  return sum / 1000;
+}
+
 /** Числа крышки: объём глины, масса, зазор до и после обжига. */
-export function lidMetrics(prof, lid, wallMM, densityGcm3, shrinkPct) {
+export function lidMetrics(prof, lid, wallMM, densityGcm3, shrinkPct, pattern) {
   const L = lidProfile(prof, lid, wallMM);
   /* Объём тела вращения по теореме Гульдина: площадь сечения на путь
      её центра тяжести. Контур замкнут, значит это настоящий объём глины,
@@ -144,11 +235,15 @@ export function lidMetrics(prof, lid, wallMM, densityGcm3, shrinkPct) {
   }
   A /= 2;
   cx = A !== 0 ? cx / (6 * A) : 0;
-  const volMl = Math.abs(2 * Math.PI * A * cx) / 1000;
+  const smoothMl = Math.abs(2 * Math.PI * A * cx) / 1000;
+  /* Рельеф на куполе — это глина, а не картинка: у корпуса поправку считают,
+     и у крышки обязаны считать тем же способом. */
+  const patMl = lid.pattern ? lidPatternVolumeMl(L, pattern) : 0;
+  const volMl = Math.max(0, smoothMl + patMl);
   const k = 1 - shrinkPct / 100;
   return {
     ...L,
-    volMl, massG: volMl * densityGcm3,
+    volMl, smoothMl, patMl, massG: volMl * densityGcm3,
     gapRaw: lid.gap,
     gapFired: lid.gap * k,                              // зазор садится вместе с деталями
     firedSeatMM: 2 * L.seatR * k,
@@ -161,7 +256,7 @@ export function lidWarnings(state, prof, mat) {
   const lid = sanitizeLid(state.lid);
   if (!lid.on) return [];
   const w = [];
-  const m = lidMetrics(prof, lid, state.wall, 1, mat.shrinkPct);
+  const m = lidMetrics(prof, lid, state.wall, 1, mat.shrinkPct, state.pattern);
   if (m.gapFired < 0.4)
     w.push({lvl: 'bad', help: 'shrinkage', txt:
       `Крышка: зазор посадки после обжига ${m.gapFired.toFixed(1)} мм — крышка застрянет. ` +
@@ -172,6 +267,22 @@ export function lidWarnings(state, prof, mat) {
   if (lid.type === 'inset' && m.seatR < 6)
     w.push({lvl: 'bad', help: 'wall-thickness', txt:
       'Крышка: горловина уже посадочного бортика — при такой стенке бортику некуда войти.'});
+  const pat = sanitizePattern(state.pattern);
+  if (lid.pattern && patternOn(pat)) {
+    /* Купол — та же стенка, только своя: рельеф режет её ровно так же,
+       и порог тот же, что у корпуса. */
+    const {carve} = patternRelief(pat, Math.max(m.topY - m.rim.y, 1));
+    const left = lid.wall - carve;
+    if (left < 1.2)
+      w.push({lvl: 'bad', help: 'relief', txt:
+        `Крышка: узор срезает ${carve.toFixed(1)} мм при её стенке ${lid.wall} мм — ` +
+        `останется ${Math.max(0, left).toFixed(1)} мм, купол прорвётся. Утолщите крышку ` +
+        'или уберите узор с неё.'});
+    else if (left < lid.wall * 0.5)
+      w.push({lvl: 'warn', help: 'relief', txt:
+        `Крышка: в ложбине узора остаётся ${left.toFixed(1)} мм из ${lid.wall} мм — ` +
+        'по этой борозде крышка и расколется, если её уронить.'});
+  }
   if (lid.wall < state.wall * 0.6)
     w.push({lvl: 'warn', help: 'drying', txt:
       `Крышка тоньше корпуса (${lid.wall} против ${state.wall} мм): сохнет быстрее и коробится.`});

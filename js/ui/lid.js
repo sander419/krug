@@ -10,6 +10,7 @@ import { emit } from '../core/bus.js';
 import { LID_DEFAULTS, LID_LIMITS, sanitizeLid, lidMetrics } from '../core/lid.js';
 import { userProfileMM } from '../core/math.js';
 import { byId, density } from '../config/materials.js';
+import { sanitizePattern, patternOn } from '../core/pattern.js';
 import { $, num } from './dom.js';
 
 const F = [
@@ -28,7 +29,7 @@ export function syncLid() {
   const lid = sanitizeLid(state.lid);
   const prof = userProfileMM(state);
   const mat = byId(state.mat);
-  const m = lidMetrics(prof, lid, state.wall, density(mat), mat.shrinkPct);
+  const m = lidMetrics(prof, lid, state.wall, density(mat), mat.shrinkPct, state.pattern);
 
   const fields = lid.on ? F.filter(f => !f.only || f.only === lid.type).map(f => {
     const [lo, hi] = LID_LIMITS[f.k];
@@ -48,13 +49,23 @@ export function syncLid() {
       <button data-lid-type="over"${lid.type === 'over' ? ' class="active"' : ''}>Внахлёст</button>
     </div>
     ${fields}
+    ${patternOn(sanitizePattern(state.pattern)) ? `
+    <div class="seg" id="lidPat" role="group" aria-label="Узор на крышке">
+      <button data-lid-pat="1"${lid.pattern ? ' class="active"' : ''}>Узор на куполе</button>
+      <button data-lid-pat="0"${lid.pattern ? '' : ' class="active"'}>Купол гладкий</button>
+    </div>
+    <p class="note">Рельеф корпуса переходит на купол — крышку печатает то же сопло.
+      Считается он по высоте самой крышки: она вторая вещь, а не продолжение стенки.
+      Посадочный поясок, вершина купола и кнопка остаются гладкими: по пояску крышка
+      садится, на оси рельеф сминается, за кнопку берутся пальцами.</p>` : ''}
     <dl class="spec">
       <dt>Посадка</dt><dd>⌀${num(m.seatR * 2, 1)} мм в сыром размере ·
         <b>⌀${num(m.firedSeatMM, 1)} мм</b> после обжига</dd>
       <dt>Зазор</dt><dd>${num(m.gapRaw, 1)} мм заложено ·
         <b>${num(m.gapFired, 1)} мм</b> останется после обжига
         <span class="dim">(садится вместе с деталями, усадка ${mat.shrinkPct} %)</span></dd>
-      <dt>Глина</dt><dd>${num(m.volMl, 0)} см³ · <b>${num(m.massG, 0)} г</b> сверх корпуса</dd>
+      <dt>Глина</dt><dd>${num(m.volMl, 0)} см³ · <b>${num(m.massG, 0)} г</b> сверх корпуса
+        ${m.patMl ? `<span class="dim">(из них ${m.patMl > 0 ? '+' : '−'}${num(Math.abs(m.patMl), 1)} см³ рельеф)</span>` : ''}</dd>
     </dl>
     <p class="note">Посадочный поясок не глазуруют: политая посадка спекается с горловиной,
       и разбивать придётся обе детали. Обжигают крышку на изделии — тогда она садится точно,
@@ -65,6 +76,9 @@ export function syncLid() {
 
   box.querySelectorAll('[data-lid-on]').forEach(b => {
     b.onclick = () => { state.lid = {...lid, on: b.dataset.lidOn === '1'}; emit(); syncLid(); };
+  });
+  box.querySelectorAll('[data-lid-pat]').forEach(b => {
+    b.onclick = () => { state.lid = {...lid, pattern: b.dataset.lidPat === '1'}; emit(); syncLid(); };
   });
   box.querySelectorAll('[data-lid-type]').forEach(b => {
     b.onclick = () => { state.lid = {...lid, type: b.dataset.lidType}; emit(); syncLid(); };

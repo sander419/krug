@@ -129,7 +129,7 @@ export function computeProduction(state){
   /* Крышка — отдельная деталь, но глину на неё берут из того же куска и обжигают
      в той же садке. В объём изделия она входит, в его вместимость — нет. */
   const lid=sanitizeLid(state.lid);
-  const lidMl=lid.on?lidMetrics(out,lid,wall,1,byId(state.mat).shrinkPct).volMl:0;
+  const lidMl=lid.on?lidMetrics(out,lid,wall,1,byId(state.mat).shrinkPct,state.pattern).volMl:0;
   /* Рельеф узора считается отдельно и честно: в объём радиус входит квадратом,
      поэтому «как у гладкой» врало бы на проценты массы даже там, где средний
      радиус не изменился. */

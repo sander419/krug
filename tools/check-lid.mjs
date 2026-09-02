@@ -9,8 +9,10 @@ import { userProfileMM, computeProduction } from '../js/core/math.js';
 import { byId, density } from '../js/config/materials.js';
 import { firedSize } from '../js/core/kiln.js';
 import { articleById } from '../js/config/kb/index.js';
-import { LID_DEFAULTS, LID_LIMITS, sanitizeLid, lidProfile, lidMetrics, lidWarnings, rimOf }
-  from '../js/core/lid.js';
+import { LID_DEFAULTS, LID_LIMITS, sanitizeLid, lidProfile, lidMetrics, lidWarnings, rimOf,
+         lidReliefWeights, lidWarpFn, lidPatternVolumeMl } from '../js/core/lid.js';
+import { sanitizePattern } from '../js/core/pattern.js';
+import { buildLathe } from '../js/core/lathe.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -149,6 +151,121 @@ if (!lidWarnings(state, prof(), mat()).some(w => /тоньше корпуса/.t
   P('тонкая крышка при толстом корпусе не отмечена');
 state.wall = 5;
 state.lid = {on: false};
+
+/* ---------- узор на куполе ---------- */
+/* Крышку печатает то же сопло, и рельеф корпуса переходит на её купол. Но
+   не весь: посадка обязана остаться гладкой, иначе крышка просто не сядет,
+   а на вершине купола сегменты сходятся к оси и рельеф там сминается. */
+{
+  const pat = sanitizePattern({layers: [{id: 'flute', n: 16, depth: 2}]});
+  const lid = sanitizeLid({on: true});
+  const L = lidProfile(prof(), lid, state.wall);
+  const w = lidReliefWeights(L);
+  const rim = rimOf(prof());
+
+  for (let j = 0; j < L.pts.length; j++) {
+    const p = L.pts[j];
+    if (!L.outerFlag[j] && w[j] > 0) P('рельеф попал на изнанку крышки');
+    if (p.y <= rim.y + 0.01 && w[j] > 0) P('рельеф попал на посадочный поясок — крышка не сядет');
+    if (p.r <= L.kr + 0.01 && w[j] > 0.01) P('рельеф попал на кнопку');
+  }
+  const domeW = Math.max(...Array.from(w));
+  if (domeW < 0.99) P(`на куполе рельеф не набирает полной глубины (${domeW.toFixed(2)})`);
+
+  /* Смещение считает та же стопка слоёв, что и у корпуса: разойдись они —
+     на вазе была бы одна каннелюра, на крышке другая. */
+  const warp = lidWarpFn(L, pat);
+  if (!warp) P('узор есть, а рельефа крышки нет');
+  else {
+    let peak = 0;
+    for (let j = 0; j < L.pts.length; j++)
+      peak = Math.max(peak, Math.abs(warp(0, L.pts[j], j)));
+    if (Math.abs(peak - 2) > 0.02) P(`рельеф крышки ${peak.toFixed(2)} мм вместо глубины 2 мм`);
+    /* Повторов по кругу столько же, сколько на корпусе: считаем смены знака
+       на самой рельефной точке купола. */
+    let best = 0;
+    for (let j = 0; j < L.pts.length; j++) if (w[j] > w[best]) best = j;
+    let sign = Math.sign(warp(0, L.pts[best], best)), flips = 0;
+    for (let i = 1; i <= 720; i++) {
+      const v = Math.sign(warp(i / 720 * Math.PI * 2, L.pts[best], best));
+      if (v && v !== sign) { flips++; sign = v; }
+    }
+    if (flips !== 32) P(`на крышке ${flips / 2} каннелюр вместо 16`);
+  }
+  if (lidWarpFn(L, sanitizePattern(null))) P('без узора у крышки всё равно есть рельеф');
+
+  /* Глина на рельеф считается, а не приписывается: наружный узор её добавляет,
+     режущий — убирает. «По модулю» здесь означало бы приписать вещи лишнее. */
+  const up = lidPatternVolumeMl(L, sanitizePattern({layers: [{id: 'bump', n: 14, depth: 2, m: 6}]}));
+  const down = lidPatternVolumeMl(L, sanitizePattern({layers: [{id: 'dimple', n: 14, depth: 2, m: 6}]}));
+  if (!(up > 0)) P(`чешуя на крышке добавляет ${up.toFixed(2)} см³ — должна добавлять`);
+  if (!(down < 0)) P(`лунки на крышке добавляют ${down.toFixed(2)} см³ — должны убирать`);
+  if (Math.abs(up) > 60 || Math.abs(down) > 60) P('поправка объёма крышки неправдоподобно велика');
+
+  /* Та же поправка обязана дойти до массы изделия и до самой крышки. */
+  const keep = {pattern: state.pattern, lid: state.lid};
+  state.lid = sanitizeLid({on: true});
+  state.pattern = sanitizePattern(null);
+  const smooth = computeProduction(state).lidMl;
+  state.pattern = {layers: [{id: 'bump', n: 14, depth: 2, m: 6}]};
+  const patterned = computeProduction(state).lidMl;
+  if (!(patterned > smooth)) P('рельеф крышки не попал в массу изделия');
+  /* Выключатель обязан выключать: гладкая крышка на рельефной вазе — законный выбор. */
+  state.lid = sanitizeLid({on: true, pattern: false});
+  if (Math.abs(computeProduction(state).lidMl - smooth) > 1e-9)
+    P('«узор на крышке» выключен, а глина на него всё равно считается');
+  state.pattern = keep.pattern; state.lid = keep.lid;
+
+  /* Показанное = выгруженное: рельеф обязан дойти до самой сетки, а не остаться
+     в функции. Собираем крышку тем же токарем, что и сцена с экспортом, и меряем
+     разброс радиуса на кольце купола. */
+  {
+    const pts = L.pts.map(p => ({x: Math.max(p.r, 0.01), y: p.y}));
+    /* Двенадцать каннелюр на семидесяти двух сегментах — по шесть отсчётов
+       на период, и гребень с ложбиной попадают ровно на сегменты. При числе,
+       которое не делится, ложбина падает между ними, и «недобор» глубины
+       был бы не ошибкой рельефа, а огрублением сетки. */
+    const wf = lidWarpFn(L, sanitizePattern({layers: [{id: 'flute', n: 12, depth: 3}]}));
+    const geo = buildLathe(pts, 72, undefined, undefined, (phi, p, j) => wf(phi, L.pts[j], j));
+    const flat = buildLathe(pts, 72);
+    const spreadAt = (g, j) => {
+      let lo = Infinity, hi = -Infinity;
+      const A = g.attributes.position.array;
+      for (let i = 0; i <= 72; i++) {
+        const k = (i * L.pts.length + j) * 3;
+        const r = Math.hypot(A[k], A[k + 2]);
+        lo = Math.min(lo, r); hi = Math.max(hi, r);
+      }
+      return hi - lo;
+    };
+    let best = 0, partial = null;
+    for (let j = 0; j < L.pts.length; j++) {
+      if (spreadAt(flat, j) > 0.01) P('гладкая крышка и без узора гуляет по радиусу');
+      const sp = spreadAt(geo, j);
+      /* Там, где веса нет, рельефа в сетке быть не должно вовсе: на посадке
+         борозда губит посадку, а на оси сминается в кашу. */
+      if (!w[j] && sp > 0.01) P(`рельеф ${sp.toFixed(2)} мм там, где вес нулевой (r=${L.pts[j].r.toFixed(1)}, y=${L.pts[j].y.toFixed(1)})`);
+      if (w[j] > 0.99) best = Math.max(best, sp);
+      if (w[j] > 0.15 && w[j] < 0.85) partial = {sp, w: w[j]};
+    }
+    if (Math.abs(best - 6) > 0.15) P(`в сетке крышки рельеф ${best.toFixed(2)} мм вместо 6 мм от гребня до ложбины`);
+    /* На переходе рельеф не обрывается ступенькой, а растёт вместе с весом:
+       ступенька в рельефе — это шов, по которому крышка и треснет. */
+    if (!partial) P('у рельефа крышки нет плавного перехода — только «есть» и «нет»');
+    else if (Math.abs(partial.sp - 6 * partial.w) > 0.2)
+      P(`на переходе рельеф ${partial.sp.toFixed(2)} мм вместо ${(6 * partial.w).toFixed(2)} по весу`);
+  }
+
+  /* Рельеф режет стенку крышки так же, как стенку корпуса, и порог тот же. */
+  const deep = {...state, lid: sanitizeLid({on: true, wall: 3}),
+                pattern: {layers: [{id: 'flute', n: 16, depth: 2.6}]}};
+  if (!lidWarnings(deep, prof(), mat()).some(x => x.lvl === 'bad'))
+    P('рельеф глубже стенки крышки не помечен красным');
+  const calm = {...state, lid: sanitizeLid({on: true, wall: 8}),
+                pattern: {layers: [{id: 'flute', n: 16, depth: 1.5}]}};
+  if (lidWarnings(calm, prof(), mat()).some(x => x.lvl === 'bad'))
+    P('спокойный узор на толстой крышке помечен красным');
+}
 
 /* Кнопка «почему» ведёт в энциклопедию: несуществующая статья — молчащая кнопка. */
 {

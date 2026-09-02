@@ -12,7 +12,7 @@ import { partCurve, partSection } from '../core/parts.js';
 import { sweepGeometry } from './sweep.js';
 import { strainerGeometry } from './strainerMesh.js';
 import { userProfileMM } from '../core/math.js';
-import { lidProfile, sanitizeLid } from '../core/lid.js';
+import { lidProfile, sanitizeLid, lidWarpFn } from '../core/lid.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
 import { byEnvId } from '../config/environments.js';
@@ -165,7 +165,11 @@ function rebuildLid(state){
   }
   // токарь ждёт точки контура как {x, y}: x — радиус
   const pts=L.pts.map(p=>({x:Math.max(p.r,0.01), y:p.y}));
-  const geo=buildLathe(pts, state.segments||72);
+  /* Узор переходит на купол той же функцией, что и в STL: крышку печатает
+     то же сопло, и рельеф на ней — часть формы, а не отделка. */
+  const lw=lid && state.lid.pattern!==false ? lidWarpFn(L, state.pattern) : null;
+  const geo=buildLathe(pts, state.segments||72, undefined, undefined,
+    lw ? (phi,p,j)=>lw(phi, L.pts[j], j) : undefined);
   const n=geo.attributes.position.count;
   geo.setAttribute('aCoat', new THREE.BufferAttribute(new Float32Array(n).fill(1),1));
   lidMesh.geometry.dispose();
@@ -208,17 +212,31 @@ function rebuildParts(state){
   partsGroup.scale.copy(potMesh.scale);
 }
 
-/* Габариты содержимого сцены с учётом усадки. */
+/* Габариты содержимого сцены с учётом усадки.
+   Считаются по всему, что стоит на круге, а не по одному корпусу: крышка
+   поднимается над кромкой, ручка торчит вбок, и по корпусу камера вписывала
+   вещь так, что верх крышки оказывался за кадром. */
 function modelBox(){
-  const g=potMesh.geometry;
-  if(!g.boundingBox) g.computeBoundingBox();
-  const b=g.boundingBox;
-  if(!b) return null;
-  const s=potMesh.scale.x||1;
-  return {
-    minY:b.min.y*s, maxY:b.max.y*s,
-    radius:Math.max(Math.abs(b.min.x),Math.abs(b.max.x),Math.abs(b.min.z),Math.abs(b.max.z))*s,
+  let minY=Infinity, maxY=-Infinity, radius=0;
+  const add=(mesh, scale)=>{
+    if(!mesh || mesh.visible===false) return;
+    const g=mesh.geometry;
+    if(!g) return;
+    if(!g.boundingBox) g.computeBoundingBox();
+    const b=g.boundingBox;
+    if(!b) return;
+    const s=scale||1;
+    minY=Math.min(minY,b.min.y*s);
+    maxY=Math.max(maxY,b.max.y*s);
+    radius=Math.max(radius,
+      Math.max(Math.abs(b.min.x),Math.abs(b.max.x),Math.abs(b.min.z),Math.abs(b.max.z))*s);
   };
+  const s=potMesh.scale.x||1;
+  add(potMesh,s);
+  if(lidMesh) add(lidMesh, lidGroup.scale.x||s);
+  if(partsGroup) for(const m of partsGroup.children) add(m, partsGroup.scale.x||s);
+  if(!(maxY>minY)) return null;
+  return {minY, maxY, radius};
 }
 
 /* Расстояние, с которого модель целиком помещается в кадр: по вертикали с оглядкой
