@@ -339,25 +339,36 @@ const one = (over = {}) => sanitizePattern({layers: [{id: 'flute', n: 12, depth:
   /* Гребень стоит на th=0, ложбина — на половине периода: 360/10/2 = 18°.
      Азимут детали и угол связаны как phi = π/2 − az, значит гребень приходится
      на az = 90°, а ложбина — на az = 72°. */
-  const inGroove = patternUnderParts(pat, [{kind: 'handle', az: 72, top: 80, bot: 35}], H);
-  const onCrest = patternUnderParts(pat, [{kind: 'handle', az: 90, top: 80, bot: 35}], H);
+  /* Детали строим ровно так, как их хранит состояние, — через очистку.
+     Первая версия проверки передавала «top: 80» как проценты, очистка их
+     не видела, и проверка была зелёной при том, что в приложении корень
+     ручки уезжал на дно вазы. Проверка, которая ходит не тем путём, что
+     приложение, не проверяет ничего. */
+  const handleAt = az => [sanitizePart({kind: 'handle', az, top: 0.8, bot: 0.35})];
+  const inGroove = patternUnderParts(pat, handleAt(72), H);
+  const onCrest = patternUnderParts(pat, handleAt(90), H);
   if (!(inGroove[0].d < -2)) P(`ручка в ложбине: рельеф под ней ${inGroove[0].d.toFixed(2)} мм вместо −2,5`);
   if (!(onCrest[0].d > -0.01)) P(`ручка на гребне: под ней ложбина ${onCrest[0].d.toFixed(2)} мм, а её там нет`);
   if (inGroove[0].name !== 'ручка') P('прилеп в замечании назван не своим именем');
   /* Слив не приклеивают — его отгибают, и борозда под ним ничего не значит. */
-  if (patternUnderParts(pat, [{kind: 'lip', az: 72}], H).length) P('слив попал в список приклеенных деталей');
-  if (patternUnderParts(sanitizePattern(null), [{kind: 'handle', az: 72}], H).length)
+  if (patternUnderParts(pat, [sanitizePart({kind: 'lip', az: 72})], H).length)
+    P('слив попал в список приклеенных деталей');
+  if (patternUnderParts(sanitizePattern(null), handleAt(72), H).length)
     P('без узора прилепы всё равно во что-то садятся');
+  /* Корень ручки стоит на своей высоте, а не у дна: проверяем числом, потому
+     что у дна рельеф гасится и «ложбины» там не будет ни при каких углах. */
+  const deep = patternUnderParts(pat, handleAt(72), H)[0].d;
+  if (Math.abs(deep + 2.5) > 0.05) P(`под корнем ручки ${deep.toFixed(2)} мм вместо −2,5: корень взят не на своей высоте`);
 
   /* И это доходит до общего контроля мастера, а не остаётся в модуле. */
   const keep = {pattern: state.pattern, parts: state.parts};
   state.pattern = pat;
   /* Деталь берём через очистку, как её и хранит состояние: у сырой записи нет
      ни вылета, ни сечения, и метрики прилепа на ней падают. */
-  state.parts = [sanitizePart({kind: 'handle', az: 70, top: 80, bot: 35})];
+  state.parts = [sanitizePart({kind: 'handle', az: 72, top: 0.8, bot: 0.35})];
   const said = computeWarnings(state, computeProduction(state), computeStrength(state));
   if (!said.some(x => /ложбину/.test(x.txt))) P('ручка в ложбине — мастер об этом молчит');
-  state.parts = [sanitizePart({kind: 'handle', az: 90, top: 80, bot: 35})];
+  state.parts = [sanitizePart({kind: 'handle', az: 90, top: 0.8, bot: 0.35})];
   if (computeWarnings(state, computeProduction(state), computeStrength(state)).some(x => /ложбину/.test(x.txt)))
     P('ручка на гребне, а замечание всё равно есть');
   state.pattern = keep.pattern; state.parts = keep.parts;

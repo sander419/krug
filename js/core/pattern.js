@@ -572,10 +572,13 @@ export function patternUnderParts(pat, parts, H) {
   for (const part of parts) {
     if (part.kind === 'lip') continue;            // слив не приклеивают, а отгибают
     const th = Math.PI / 2 - (+part.az || 0) * Math.PI / 180;
-    /* У ручки два корня, у носика один: смотрим каждый и берём худший. */
+    /* У ручки два корня, у носика один: смотрим каждый и берём худший.
+       Высота корня хранится долей высоты, а не процентами: проценты стоят
+       только в подписи ползунка, и делить их здесь на сто — верный способ
+       посадить корень на дно вазы. */
     const roots = part.kind === 'handle'
-      ? [(+part.top || 80) / 100, (+part.bot || 35) / 100]
-      : [(+part.at || 62) / 100];
+      ? [+part.top || 0.78, +part.bot || 0.34]
+      : [+part.at || 0.62];
     let worst = 0;
     for (const v of roots) {
       const d = patternOffset(p, th, clamp(v, 0, 1) * H, H);
