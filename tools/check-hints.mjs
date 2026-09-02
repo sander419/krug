@@ -90,7 +90,7 @@ if (TOUR.length < 8) P(`в экскурсии всего ${TOUR.length} оста
    там остаётся стена кнопок. Список — то, ради чего затевался инструмент. */
 const MUST = ['#worksBtn', '#passportBtn', '#releaseBtn', '#settingsBtn', '#kbBtn',
               '#thickSl', '#heightSl', '#matList', '#kilnBody', '.pp-fact',
-              '#sculptBtn', '#pointBar', '.pat-grid'];
+              '#sculptBtn', '#pointBar', '.pat-stack'];
 for (const sel of MUST)
   if (!seen.has(sel)) P(`нет подсказки к ключевому месту ${sel}`);
 

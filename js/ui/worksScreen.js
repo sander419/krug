@@ -19,7 +19,7 @@ import { byId as materialById } from '../config/materials.js';
 import { loadWorks, selectWorks, upsertWork, patchWork, removeWork, duplicateWork,
          blankWork, phaseById, PHASES } from '../core/works.js';
 import { hasFact } from '../core/fact.js';
-import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternTitle } from '../core/pattern.js';
 import { firstHintHTML } from './hints.js';
 import { openScreen, refreshScreen, closeScreen } from './screen.js';
 import { kilnNumbers } from './kiln.js';
@@ -44,7 +44,7 @@ function cardNumbers() {
     mm: `${Math.round(state.H)}×${Math.round(state.D)}`,
     pattern: (() => {
       const pt = sanitizePattern(state.pattern);
-      return patternOn(pt) ? patternById(pt.id).name : '';
+      return patternOn(pt) ? patternTitle(pt) : '';
     })(),
     mat: materialById(state.mat).name,
     massF: prod.massF, clayKg: prod.massN / 1000,

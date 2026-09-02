@@ -32,16 +32,19 @@ const P = t => problems.push(t);
 {
   const state = {
     points: [{t: 0, r: 0.5}, {t: 1, r: 0.4}], H: 200, D: 150, wall: 5, hollow: true,
-    footH: 6, footK: 62, rings: 0.4, segments: 72, pattern: {id: 'flute', depth: 2},
+    footH: 6, footK: 62, rings: 0.4, segments: 72,
+    pattern: {layers: [{id: 'flute', depth: 2}]},
   };
   const snap = bodySnapshot(state);
   /* Слепок обязан быть копией: иначе заготовка начнёт меняться вместе
      с изделием, из которого её сняли, и «сохранил» перестанет значить
      «запомнил». */
   state.points[0].r = 0.9;
-  state.pattern.depth = 9;
+  /* Стопка слоёв — массив объектов: поверхностная копия оставила бы заготовку
+     связанной с изделием, и правка глубины уехала бы в обе стороны. */
+  state.pattern.layers[0].depth = 9;
   if (snap.points[0].r !== 0.5) P('точки в заготовке — ссылка на живой рецепт');
-  if (snap.pattern.depth !== 2) P('узор в заготовке — ссылка на живой рецепт');
+  if (snap.pattern.layers[0].depth !== 2) P('узор в заготовке — ссылка на живой рецепт');
 
   const target = {points: [], H: 300, D: 90, wall: 9, hollow: false,
                   footH: 0, footK: 50, rings: 0, segments: 24, pattern: null};
@@ -49,7 +52,7 @@ const P = t => problems.push(t);
   if (target.H !== 200 || target.D !== 150) P('заготовка не принесла свои размеры');
   if (target.wall !== 5 || target.footH !== 6) P('заготовка не принесла стенку и ножку');
   if (target.hollow !== true) P('полость не восстановилась');
-  if (!target.pattern || target.pattern.id !== 'flute') P('узор не восстановился');
+  if (!target.pattern || (target.pattern.layers[0] || {}).id !== 'flute') P('узор не восстановился');
   if (target.points.length !== 2) P('точки профиля не восстановились');
   if (target.activePreset !== -1) P('после заготовки не сброшен пресет силуэта');
 

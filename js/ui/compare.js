@@ -14,7 +14,7 @@ import { sanitizeCost, pieceCost, batchPlan } from '../core/cost.js';
 import { byId as materialById } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { loadWorks } from '../core/works.js';
-import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternTitle, patternRelief } from '../core/pattern.js';
 import { kilnNumbers } from './kiln.js';
 import { currentWorkId } from './works.js';
 import { firstHintHTML } from './hints.js';
@@ -42,11 +42,17 @@ function numbersOf() {
     mat: mat.name, glaze: byGlazeId(state.glazeId).name,
     pattern: (() => {
       const pt = sanitizePattern(state.pattern);
-      return patternOn(pt) ? `${patternById(pt.id).name}, ${pt.depth} мм` : 'без узора';
+      if (!patternOn(pt)) return 'без узора';
+      const {carve, raise} = patternRelief(pt, state.H);
+      return `${patternTitle(pt)}, ${(carve + raise).toFixed(1)} мм`;
     })(),
+    /* Сравнивается настоящий размах рельефа, а не глубина одного слоя:
+       у стопки слоёв «глубина» — это то, что они делают вместе. */
     patDepth: (() => {
       const pt = sanitizePattern(state.pattern);
-      return patternOn(pt) ? pt.depth : 0;
+      if (!patternOn(pt)) return 0;
+      const {carve, raise} = patternRelief(pt, state.H);
+      return +(carve + raise).toFixed(2);
     })(),
     fire: kiln.perItem, cost: per.total, price: per.minPrice,
     margin: per.marginRub, workMin: opt.minPerPiece, n: opt.n,

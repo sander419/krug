@@ -7,7 +7,7 @@ import { sanitizeTune } from './tuning.js';
 import { sanitizeLid } from './lid.js';
 import { sanitizeCost } from './cost.js';
 import { clamp } from './util.js';
-import { sanitizePattern } from './pattern.js';
+import { sanitizePattern, packPattern } from './pattern.js';
 
 // Единственный источник истины. Все расчёты в мм и граммах.
 export const state = {
@@ -37,9 +37,9 @@ export const state = {
   parts: [],
   // крышка: отдельное изделие, обжигается вместе и обязано сесть на своё
   lid: {on: false},
-  /* Узор на стенке: рельеф, который печатает машина. По умолчанию его нет —
-     на круге руками такого не вытянуть, и вещь по умолчанию гончарная. */
-  pattern: {id: 'none', n: 12, depth: 2, twist: 0, m: 8},
+  /* Узор на стенке: стопка слоёв рельефа, который печатает машина. По умолчанию
+     слоёв нет — на круге руками такого не вытянуть, и вещь по умолчанию гончарная. */
+  pattern: {layers: []},
   // печь: id из реестра или 'own' со своими размерами, и цена киловатт-часа
   kiln: {id: 'studio-60', kwh: 6},
   // литьё: замер набора стенки и свойства шликера — калибровка мастерской
@@ -57,11 +57,11 @@ export const state = {
 
 
 export function encodeDNA(){
-  const d = {v:7, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
+  const d = {v:8, name:state.name, gid:state.glazeId, pt:state.parts, mat:state.mat, pts:state.points, H:state.H, D:state.D,
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune, ld:state.lid,
-    ps:state.plaster, cs:state.cost, pn:state.pattern};
+    ps:state.plaster, cs:state.cost, pn:packPattern(state.pattern)};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -76,7 +76,7 @@ export function applyDNAFromHash(){
 export function applyDNA(code){
   try{
     const d = JSON.parse(decodeURIComponent(escape(atob(String(code).replace(/-/g,'+').replace(/_/g,'/')))));
-    if(d.v > 7 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
+    if(d.v > 8 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));
     // v3 хранит id массы, v2 — индекс из первой версии справочника
@@ -103,7 +103,9 @@ export function applyDNA(code){
     // v6 — список прилепов; в v5 была одна ручка с выключателем
     state.tune = sanitizeTune(d.tn);
     state.lid = sanitizeLid(d.ld);
-    // v6 и старше узора не знали — у них стенка гладкая, и это верно
+    /* v6 и старше узора не знали — у них стенка гладкая, и это верно.
+       v7 знала один узор плоской записью, v8 — стопку слоёв: обе читаются
+       одной функцией, старая ссылка обязана открываться тем же рельефом. */
     state.pattern = sanitizePattern(d.pn);
     if(d.ct&&typeof d.ct==='object') state.cast={...d.ct};
     if(d.cs&&typeof d.cs==='object') state.cost=sanitizeCost(d.cs);

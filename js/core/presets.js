@@ -20,6 +20,8 @@
 // Хранилище — localStorage этого браузера, как и всё остальное. Ни DOM,
 // ни расчёта: сюда передают готовые данные.
 
+import { sanitizePattern } from './pattern.js';
+
 const KEY = 'krug.presets';
 const LIMIT = 120;
 export const PRESET_KINDS = ['body', 'lid', 'part'];
@@ -109,7 +111,9 @@ export function bodySnapshot(state) {
     footH: +state.footH, footK: +state.footK,
     rings: +state.rings || 0,
     segments: +state.segments || 72,
-    pattern: state.pattern ? {...state.pattern} : null,
+    /* Узор копируется через очистку: стопка слоёв — это массив объектов,
+       и поверхностная копия оставила бы заготовку связанной с изделием. */
+    pattern: state.pattern ? {layers: sanitizePattern(state.pattern).layers.map(l => ({...l}))} : null,
   };
 }
 
@@ -129,7 +133,7 @@ export function applyBody(state, data, opt = {}) {
   for (const k of ['wall', 'footH', 'footK', 'rings', 'segments'])
     if (Number.isFinite(+d[k])) state[k] = +d[k];
   if (typeof d.hollow === 'boolean') state.hollow = d.hollow;
-  if (d.pattern && opt.pattern !== false) state.pattern = {...d.pattern};
+  if (d.pattern && opt.pattern !== false) state.pattern = sanitizePattern(d.pattern);
   state.activePreset = -1;
   return state;
 }

@@ -30,7 +30,7 @@ import { openScreen } from './screen.js';
 import { $, esc, num, rub } from './dom.js';
 import { icon } from './icons.js';
 import { toast } from './overlays.js';
-import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternTitle } from '../core/pattern.js';
 
 /* Рецепт в JSON: то же, что в ссылке-ДНК, но читаемое человеком и его
    инструментами. Ссылка удобна для передачи, файл — для архива работы. */
@@ -61,11 +61,14 @@ function recipeJSON() {
     pattern: (() => {
       const pt = sanitizePattern(state.pattern);
       if (!patternOn(pt)) return null;
-      const p = patternById(pt.id);
-      return {id: pt.id, name: p.name, depthMM: pt.depth,
-              repeatsAround: p.uses.includes('n') ? pt.n : null,
-              repeatsUp: p.uses.includes('m') ? pt.m : null,
-              twistDeg: pt.twist || null};
+      /* Слои уходят в рецепт как есть: по ним вещь воспроизводится
+         числами, а не «примерно такой же плетёнкой». */
+      return {name: patternTitle(pt), layers: pt.layers.map(l => ({
+        id: l.id, depthMM: l.depth, repeatsAround: l.n, repeatsUp: l.m,
+        twistDeg: l.twist || null, phaseDeg: l.phase || null,
+        bandPct: (l.from > 0 || l.to < 1)
+          ? [Math.round(l.from * 100), Math.round(l.to * 100)] : null,
+      }))};
     })(),
     cost: {totalRub: Math.round(per.total), minPriceRub: Math.round(per.minPrice),
            batch: opt.n},

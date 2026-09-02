@@ -28,7 +28,7 @@ import { selectedPart, selectPart, addPart, removePart, putPart } from './parts.
 import { PART_KINDS, kindOf } from '../config/parts.js';
 import { sanitizeLid } from '../core/lid.js';
 import { userProfileMM, computeProduction } from '../core/math.js';
-import { patternById, patternOn, sanitizePattern } from '../core/pattern.js';
+import { patternTitle, patternOn, sanitizePattern } from '../core/pattern.js';
 import { presetsOf, addPreset, removePreset, bodySnapshot, applyBody,
          lidSnapshot, partSnapshot, presetKindName } from '../core/presets.js';
 import { firstHintHTML } from './hints.js';
@@ -92,7 +92,7 @@ function partsHTML() {
     <div class="ed-part-list">
       ${row('body', 'Корпус',
         `${Math.round(state.H)}×${Math.round(state.D)} мм · стенка ${num(state.wall, 1)} мм` +
-        (patternOn(pat) ? ` · ${patternById(pat.id).name.toLowerCase()}` : ''),
+        (patternOn(pat) ? ` · ${patternTitle(pat).toLowerCase()}` : ''),
         target === 'body')}
       ${lid.on
         ? row('lid', 'Крышка', `${lid.type === 'inset' ? 'в горловину' : 'внахлёст'} · зазор ${num(lid.gap, 1)} мм`,

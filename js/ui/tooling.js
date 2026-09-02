@@ -31,7 +31,8 @@ import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
 import { currentBrand } from './brand.js';
-import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternTitle, patternSummary, patternRelief }
+  from '../core/pattern.js';
 
 /* Брендбук для документа: галочка «где показывать» решает по каждому месту
    отдельно — лист может уходить со знаком мастерской, а техкарта без него. */
@@ -185,11 +186,9 @@ export function techCardText() {
      brand: brandForDocs('card'), pattern: (() => {
        const pat = sanitizePattern(state.pattern);
        if (!patternOn(pat)) return null;
-       const p = patternById(pat.id);
-       return `${p.name}, глубина ${pat.depth} мм` +
-         (p.uses.includes('n') ? `, ${pat.n} повторов по кругу` : '') +
-         (p.uses.includes('m') ? `, ${pat.m} по высоте` : '') +
-         (pat.twist ? `, закрутка ${pat.twist}°` : '');
+       /* В цех уходит вся стопка: слои складываются, и по одному верхнему
+          напечатанное не сверить. */
+       return patternSummary(pat).join('; ');
      })()});
 }
 
@@ -251,10 +250,9 @@ export function sheetSVG() {
     ...(patternOn(sanitizePattern(state.pattern)) ? [(() => {
       /* Узор попадает и на лист: в цехе по нему сверяют напечатанное. */
       const pat = sanitizePattern(state.pattern);
-      const p = patternById(pat.id);
-      return ['Узор', `${p.name}, ${pat.depth} мм` +
-        (p.uses.includes('n') ? `, ${pat.n} по кругу` : '') +
-        (pat.twist ? `, закрутка ${pat.twist}°` : '')];
+      const {carve, raise} = patternRelief(pat, state.H);
+      return ['Узор', `${patternTitle(pat)}, размах ${(carve + raise).toFixed(1)} мм` +
+        (pat.layers.length > 1 ? `, слоёв ${pat.layers.length}` : '')];
     })()] : []),
     ['Частей формы', String(an.parts)],
     ['Гипса на форму', `${num(mix.plasterKg, 1)} кг`],

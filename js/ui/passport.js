@@ -22,7 +22,7 @@ import { sanitizeCost, pieceCost, batchPlan } from '../core/cost.js';
 import { analyzeFormability, recommendProcess } from '../core/tooling.js';
 import { castMouldNumbers } from '../three/castMould.js';
 import { FACT_FIELDS, compareFact, factLevel, hasFact } from '../core/fact.js';
-import { sanitizePattern, patternOn, patternById } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternTitle, patternSummary } from '../core/pattern.js';
 import { patchWork, phaseById } from '../core/works.js';
 import { currentWork, saveCurrent } from './works.js';
 import { kilnNumbers, kilnCurrent } from './kiln.js';
@@ -159,12 +159,10 @@ function bodyHTML() {
       /* Узор — часть формы, а не отделка: без него по паспорту не повторить вещь. */
       const pat = sanitizePattern(state.pattern);
       if (!patternOn(pat)) return '';
-      const p = patternById(pat.id);
-      const bits = [`${pat.depth} мм`];
-      if (p.uses.includes('n')) bits.push(`${pat.n} по кругу`);
-      if (p.uses.includes('m')) bits.push(`${pat.m} по высоте`);
-      if (pat.twist) bits.push(`закрутка ${pat.twist}°`);
-      return row('Узор', `<b>${p.name}</b>`, bits.join(' · ') + ' ' + TAG.calc);
+      /* Слои перечисляются каждый своей строкой: «каннелюры + чешуя» без
+         чисел по слоям вещь не повторить. */
+      return row('Узор', `<b>${patternTitle(pat)}</b>`,
+        patternSummary(pat).join('; ') + ' ' + TAG.calc);
     })(),
     state.rings > 0.15
       ? row('Следы гончара', `${num(state.rings, 1)} мм`, 'глубина колец от вытяжки ' + TAG.calc)

@@ -216,7 +216,8 @@ export function computeWarnings(state, prod, str){
   /* Узор — часть формы, и его замечания идут в общий список: иначе мастер
      видит «всё чисто» на вещи, у которой в ложбине миллиметр стенки. */
   for(const pw of patternWarnings(sanitizePattern(state.pattern),
-      {wall:state.wall, hollow:state.hollow, D:state.D, H:state.H, bead:(state.pr&&+state.pr.nozzle||4)*1.05}))
+      {wall:state.wall, hollow:state.hollow, D:state.D, H:state.H,
+       bead:(state.pr&&+state.pr.nozzle||4)*1.05, layerH:(state.pr&&+state.pr.lh)||0}))
     if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'relief',
       txt:'Узор: '+pw.txt});
   const pt=sanitizePattern(state.pattern);
@@ -230,7 +231,7 @@ export function computeWarnings(state, prod, str){
           +'копится и течёт. Расчёт толщины считает по гладкому сечению; первую вещь обожгите пробно.'});
     /* Просвет — свойство черепка, а не рельефа: на красной глине тонкое дно
        окна просто станет хрупким местом. */
-    if(pt.id==='window'){
+    if(pt.layers.some(l=>l.id==='window')){
       const m=byId(state.mat);
       const translucent=/фарфор|porcelain/i.test(m.name+' '+(m.id||''));
       if(!translucent)

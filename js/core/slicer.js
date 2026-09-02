@@ -151,7 +151,7 @@ export function sliceGCode(state){
 
   /* Узор проверяется теми же порогами, что и на вкладке формы: сопло, шаг
      рельефа, свес закрутки. Печатнику это надо знать до запуска, а не после. */
-  for(const w of patternWarnings(pat,{wall:state.wall,hollow:state.hollow,D:state.D,H,bead}))
+  for(const w of patternWarnings(pat,{wall:state.wall,hollow:state.hollow,D:state.D,H,bead,layerH:pr.lh}))
     if(w.lvl!=='ok') warns.push({cls:w.lvl==='bad'?'e':'w',txt:'Узор: '+w.txt});
 
   const volMM=pathLen*pr.lh*bead;

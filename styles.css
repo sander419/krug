@@ -237,6 +237,41 @@ body.editing #splitDraft{display:none;}
   currentColor 0 2px, transparent 2px 12px);}
 [data-pat-ico="window"]{--pat-img:repeating-linear-gradient(90deg,
   currentColor 0 5px, transparent 5px 11px);--pat-size:11px 13px;}
+[data-pat-ico="star"]{--pat-img:repeating-linear-gradient(90deg,
+  currentColor 0 1px, transparent 1px 4px, currentColor 4px 6px, transparent 6px 12px);}
+[data-pat-ico="chevron"]{--pat-img:repeating-linear-gradient(60deg,
+  currentColor 0 1px, transparent 1px 7px),
+  repeating-linear-gradient(-60deg, currentColor 0 1px, transparent 1px 7px);
+  --pat-size:14px 13px;}
+[data-pat-ico="brick"]{--pat-img:repeating-linear-gradient(0deg,
+  currentColor 0 1px, transparent 1px 8px),
+  repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 13px);
+  --pat-size:13px 16px;}
+[data-pat-ico="dimple"]{--pat-img:radial-gradient(circle,
+  transparent 0 2px, currentColor 2px 3px, transparent 3px);--pat-size:10px 10px;}
+[data-pat-ico="bark"]{--pat-img:repeating-linear-gradient(83deg,
+  currentColor 0 1px, transparent 1px 5px),
+  repeating-linear-gradient(97deg, currentColor 0 1px, transparent 1px 9px);
+  --pat-size:17px 26px;}
+
+/* Слой узора — карточка с собственным набором ручек: стопка читается сверху
+   вниз, как её и печатает машина. */
+.pat-stack{display:flex;flex-direction:column;gap:var(--gap-2);margin-top:var(--gap-2);}
+.pat-layer{
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--panel2);padding:var(--gap-2);
+}
+.pat-layer-head{display:flex;gap:8px;align-items:center;}
+.pat-layer-head .pat-ico{width:52px;flex:none;height:22px;}
+.pat-pick{flex:1;min-width:0;}
+.pat-pick select{width:100%;}
+.pat-what{margin:6px 0 0;line-height:1.45;font-size:var(--fs-micro);}
+.pat-fields,.pat-belt{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:4px var(--gap-2);margin-top:var(--gap-1);
+}
+.pat-belt{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+.pat-add{margin-top:var(--gap-2);}
 .pat-presets{display:flex;flex-wrap:wrap;gap:var(--gap-1);margin-top:var(--gap-2);}
 .pat-lead{margin:var(--gap-2) 0;line-height:1.5;}
 .pat-nums{margin-top:var(--gap-2);}

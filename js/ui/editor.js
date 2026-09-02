@@ -17,7 +17,7 @@ import { partCurve, partSection, pathFromParams, pathFromStroke, pathPoints,
 import { selectedPart, syncParts } from './parts.js';
 import { strainerHoles } from '../core/strainer.js';
 import { kindOf, limitOf } from '../config/parts.js';
-import { sanitizePattern, patternOn, patternAmp } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternBand } from '../core/pattern.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let selIdx=-1;                  // выбранная точка: её правят числами и клавишами
@@ -363,12 +363,14 @@ export function drawEditor(){
   const pat=sanitizePattern(state.pattern);
   if(patternOn(pat)){
     const Hs=out[out.length-1].y;
+    /* Огибающие несимметричны: чешуя и кладка растут только наружу, лунки
+       и окна — только внутрь. Рисовать их зеркально значило бы обещать
+       борозду там, где её нет. */
     ectx.setLineDash([4,3]);ectx.lineWidth=1.1;ectx.strokeStyle=P.accent(.5);
-    for(const sign of [1,-1]){
+    for(const side of ['hi','lo']){
       ectx.beginPath();
       out.forEach((o,i)=>{
-        const amp=patternAmp(pat,o.y,Hs);
-        const q=mmToPx(Math.max(o.r+sign*amp,0),o.y);
+        const q=mmToPx(Math.max(o.r+patternBand(pat,o.y,Hs)[side],0),o.y);
         i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y);
       });
       ectx.stroke();
