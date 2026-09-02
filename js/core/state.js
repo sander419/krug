@@ -61,7 +61,13 @@ export function encodeDNA(){
     seg:state.segments, ring:state.rings, hol:state.hollow?1:0, wall:state.wall,
     fh:state.footH, fk:state.footK, al:state.allow, seed:state.seed,
     pr:state.pr, gz:state.glaze, kl:state.kiln, ct:state.cast, tn:state.tune, ld:state.lid,
-    ps:state.plaster, cs:state.cost, pn:packPattern(state.pattern)};
+    ps:state.plaster, cs:state.cost, pn:packPattern(state.pattern),
+    /* Этап обжига — часть рецепта, а не вида: от него зависят замечания
+       по глазури и посадке крышки, число обжигов в садке и цена изделия.
+       Без него ссылка показывала другому человеку другие деньги.
+       `go` — правил ли мастер формулу глазури руками: иначе у получателя
+       своя формула выглядит паспортной. */
+    fr:state.firing, go:state.glazeOwn?1:0};
   return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
@@ -103,6 +109,10 @@ export function applyDNA(code){
     // v6 — список прилепов; в v5 была одна ручка с выключателем
     state.tune = sanitizeTune(d.tn);
     state.lid = sanitizeLid(d.ld);
+    /* Этап обжига и «формулу правили руками» старые ссылки не несли —
+       у них остаётся сырой черепок и паспортная формула. */
+    state.firing = ['raw','bisque','glaze'].includes(d.fr) ? d.fr : 'raw';
+    state.glazeOwn = !!d.go;
     /* v6 и старше узора не знали — у них стенка гладкая, и это верно.
        v7 знала один узор плоской записью, v8 — стопку слоёв: обе читаются
        одной функцией, старая ссылка обязана открываться тем же рельефом. */

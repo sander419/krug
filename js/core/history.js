@@ -8,10 +8,14 @@
 // к работе не относятся, и откатывать их вместе с формой было бы неожиданно.
 import { state } from './state.js';
 
-const KEYS = ['name', 'points', 'activePreset', 'H', 'D', 'segments', 'rings',
+/* Что откатывается. Правило одно: **всё, что уезжает в ссылку, обязано быть
+   здесь** — иначе отмена вернёт форму, но оставит чужой этап обжига или
+   чужую пометку «формула своя». Это сверяется проверкой, а не глазами:
+   список ДНК и этот список однажды уже разошлись на прилепах. */
+export const KEYS = ['name', 'points', 'activePreset', 'H', 'D', 'segments', 'rings',
               'hollow', 'wall', 'footH', 'footK', 'allow', 'mat', 'firing',
               'seed', 'pr', 'glaze', 'glazeId', 'parts', 'kiln', 'cast', 'tune', 'lid', 'plaster',
-              'cost', 'pattern'];
+              'cost', 'pattern', 'glazeOwn'];
 
 const LIMIT = 60;          // шагов назад; больше не нужно, а память не резиновая
 const COALESCE = 350;      // мс: тянущийся ползунок — один шаг, а не сорок
