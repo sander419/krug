@@ -9,6 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 
 const CHECKS = [
+  ['Проверки',     'check-checks.mjs'],
   ['Массы',        'check-materials.mjs'],
   ['Процессы',     'check-processes.mjs'],
   ['Гипсы',        'check-plasters.mjs'],
