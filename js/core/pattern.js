@@ -417,9 +417,15 @@ export function patternRelief(pat, H = 220) {
   /* Перебор стоит миллисекунды, а спрашивают его несколько раз за пересчёт:
      панель, замечания, техкарта. Запись узора неизменяемая, поэтому ответ
      кэшируется прямо по ней — правка узора создаёт новую запись, и кэш
-     промахивается сам. */
-  const hit = reliefMemo.get(p);
-  if (hit && hit.H === H) return hit.v;
+     промахивается сам.
+
+     Высот при этом несколько: у корпуса своя, у крышки своя, и спрашивают их
+     вперемешку. Кэш на одну высоту в такой очереди не попадает ни разу —
+     замерено 7,2 мс на пару вместо 0,3. Поэтому здесь маленькая таблица
+     по высотам, а не одно значение. */
+  let by = reliefMemo.get(p);
+  const key = Math.round(H * 10) / 10;
+  if (by && by.has(key)) return by.get(key);
   let carve = 0, raise = 0;
   /* Сетка берётся по самому частому слою, а не круглым числом: у шестнадцати
      каннелюр редкая сетка попадает мимо ложбины и занижает срез на десятые
@@ -436,7 +442,32 @@ export function patternRelief(pat, H = 220) {
     }
   }
   const v = {carve, raise};
-  reliefMemo.set(p, {H, v});
+  if (!by) reliefMemo.set(p, by = new Map());
+  /* Высот у одной вещи единицы — корпус, крышка, разве что предпросмотр.
+     Разрастись таблице не с чего, но потолок держим: неограниченный кэш
+     внутри модуля однажды становится утечкой. */
+  if (by.size > 8) by.clear();
+  by.set(key, v);
+  return v;
+}
+
+/**
+ * Огибающие рельефа по точкам профиля: [{r, y, lo, hi}] в миллиметрах.
+ *
+ * Их спрашивает и чертёж, и лист для производства, а чертёж перерисовывается
+ * на каждое движение камеры: считать по точке на кадр — четыре миллисекунды
+ * на ровном месте. Ответ кэшируется по самой выборке профиля (она тоже живёт
+ * до следующей правки) и по записи узора.
+ */
+const outlineMemo = new WeakMap();
+export function patternOutline(pat, out) {
+  if (!out || !out.length) return [];
+  const p = sanitizePattern(pat);
+  const hit = outlineMemo.get(out);
+  if (hit && hit.pat === p) return hit.v;
+  const H = out[out.length - 1].y;
+  const v = out.map(o => ({r: o.r, y: o.y, ...patternBand(p, o.y, H)}));
+  outlineMemo.set(out, {pat: p, v});
   return v;
 }
 
@@ -519,6 +550,41 @@ export function layerText(l) {
 
 /** Описание всей стопки строками — для паспорта, техкарты и рецепта. */
 export const patternSummary = pat => patternLayers(pat).filter(layerOn).map(layerText);
+
+/**
+ * Рельеф под корнями прилепов, мм: [{name, az, d}].
+ *
+ * Ручку и носик лепят на стенку — и если корень попадает в ложбину, шов
+ * держится на её дне: площадь приклейки меньше, а сохнет такой шов иначе,
+ * чем остальная стенка. Это ровно то, ради чего у слоя есть сдвиг по кругу:
+ * гребень уводят от прилепа, а не наоборот.
+ *
+ * Угол сегмента и азимут детали связаны как phi = π/2 − az — тот же порядок,
+ * в каком прилепы поворачиваются в сцене.
+ *
+ * @param parts [{kind, az, top, bot, at}] — доли высоты, как в конструкторе
+ */
+export function patternUnderParts(pat, parts, H) {
+  const p = sanitizePattern(pat);
+  if (!patternOn(p) || !parts || !parts.length) return [];
+  const NAME = {handle: 'ручка', spout: 'носик', lip: 'слив'};
+  const out = [];
+  for (const part of parts) {
+    if (part.kind === 'lip') continue;            // слив не приклеивают, а отгибают
+    const th = Math.PI / 2 - (+part.az || 0) * Math.PI / 180;
+    /* У ручки два корня, у носика один: смотрим каждый и берём худший. */
+    const roots = part.kind === 'handle'
+      ? [(+part.top || 80) / 100, (+part.bot || 35) / 100]
+      : [(+part.at || 62) / 100];
+    let worst = 0;
+    for (const v of roots) {
+      const d = patternOffset(p, th, clamp(v, 0, 1) * H, H);
+      if (d < worst) worst = d;
+    }
+    out.push({name: NAME[part.kind] || 'деталь', az: +part.az || 0, d: worst});
+  }
+  return out;
+}
 
 /**
  * Замечания по узору: что машина не повторит и что испортит вещь.

@@ -5,8 +5,8 @@ import { byId, density } from '../config/materials.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
-import { sanitizePattern, patternOn, patternVolumeMl, patternWarnings, patternAreaMM2 }
-  from './pattern.js';
+import { sanitizePattern, patternOn, patternVolumeMl, patternWarnings, patternAreaMM2,
+         patternUnderParts } from './pattern.js';
 
 export const N_SAMP = 90;
 const G_N = 1e-6 * 9.81; // плотность г/см³ → Н/мм³
@@ -229,6 +229,16 @@ export function computeWarnings(state, prod, str){
       w.push({lvl:'warn', area:'glaze', help:'glaze-run',
         txt:'Узор и глазурь: на гребнях плёнка тоньше и может пробиться, в ложбинах — '
           +'копится и течёт. Расчёт толщины считает по гладкому сечению; первую вещь обожгите пробно.'});
+    /* Прилеп, севший в ложбину, держится на её дне: площадь шва меньше,
+       и отрывается он первым. Лечится поворотом детали или сдвигом слоя —
+       поэтому в замечании сказано и то, и другое. */
+    for(const u of patternUnderParts(pt, state.parts, state.H)){
+      if(u.d > -0.35) continue;
+      w.push({lvl: u.d < -1.2 ? 'bad' : 'warn', help: 'relief',
+        txt: `Узор и прилепы: ${u.name} на ${u.az}° садится в ложбину глубиной `
+          + `${Math.abs(u.d).toFixed(1)} мм — шов ляжет на её дно и оторвётся первым. `
+          + 'Поверните деталь или сдвиньте слой по кругу.'});
+    }
     /* Просвет — свойство черепка, а не рельефа: на красной глине тонкое дно
        окна просто станет хрупким местом. */
     if(pt.layers.some(l=>l.id==='window')){

@@ -18,12 +18,13 @@ import { readFileSync } from 'node:fs';
 import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS,
          sanitizePattern, sanitizeLayer, packPattern, patternById, patternOn,
          patternOffset, patternVolumeMl, patternWarnings, patternAmp, patternBand,
-         patternRelief, patternMap, patternAreaMM2, patternTitle, patternSummary,
-         patternFn, patternFade }
+         patternRelief, patternMap, patternOutline, patternAreaMM2, patternTitle, patternSummary,
+         patternFn, patternFade, patternUnderParts }
   from '../js/core/pattern.js';
 import { sliceGCode } from '../js/core/slicer.js';
 import { state } from '../js/core/state.js';
-import { computeProduction, userProfileMM } from '../js/core/math.js';
+import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../js/core/math.js';
+import { sanitizePart } from '../js/core/parts.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -206,6 +207,47 @@ const one = (over = {}) => sanitizePattern({layers: [{id: 'flute', n: 12, depth:
   if (out.raise < 2.9) P('чешуя не поднимается на свою глубину');
 }
 
+/* ---------- кэши не врут ---------- */
+/* Рельеф считается перебором, и его ответы кэшируются: по записи узора (она
+   неизменяемая) и по выборке профиля. Кэш, который не промахивается вовремя,
+   опаснее медленного счёта: на экране будет прошлый рельеф, и никто не поймёт
+   почему. Проверяем оба: и что ответ верный, и что после правки он меняется. */
+{
+  const a = sanitizePattern({layers: [{id: 'flute', n: 12, depth: 2}]});
+  const b = sanitizePattern({layers: [{id: 'flute', n: 12, depth: 4}]});
+  const prof2 = prof.map(p => ({r: p.r, y: p.y}));
+
+  /* Высоты спрашивают вперемешку — корпус и крышка, — и на низкой вещи ответ
+     другой: гашение у дна и кромки не меньше трёх миллиметров, и на высоте
+     в три сантиметра оно съедает пояс, который на вазе цел. Кэш обязан помнить
+     обе высоты, а не последнюю; проверяем сверкой со свежей записью, которой
+     кэш ещё не видел. */
+  const belt = {layers: [{id: 'flute', n: 12, depth: 2, from: 0, to: 0.12, edge: 0.03}]};
+  const cached = sanitizePattern(belt);
+  const tall = patternRelief(cached, 220).carve;
+  const low = patternRelief(cached, 30).carve;
+  if (!(low < tall - 0.1)) P(`на низкой вещи срез ${low.toFixed(2)} против ${tall.toFixed(2)} — гашение у дна не сработало`);
+  if (Math.abs(patternRelief(cached, 220).carve - tall) > 1e-12) P('перебор рельефа отвечает по-разному на один вопрос');
+  if (Math.abs(patternRelief(cached, 30).carve - patternRelief(sanitizePattern(belt), 30).carve) > 1e-9)
+    P('кэш рельефа путает высоты: ответ для крышки пришёл от корпуса');
+  const bodyA = patternRelief(a, H);
+  if (Math.abs(bodyA.carve - 2) > 0.02) P(`срез ${bodyA.carve.toFixed(2)} вместо 2 мм`);
+  if (Math.abs(patternRelief(b, H).carve - 4) > 0.02) P('после правки глубины перебор отдал прошлый ответ');
+
+  const outA = patternOutline(a, prof2);
+  if (outA.length !== prof2.length) P('огибающие не по всем точкам профиля');
+  const mid = outA[Math.floor(outA.length / 2)];
+  const direct = patternBand(a, mid.y, prof2[prof2.length - 1].y);
+  if (Math.abs(mid.hi - direct.hi) > 1e-12 || Math.abs(mid.lo - direct.lo) > 1e-12)
+    P('огибающие расходятся с прямым счётом');
+  if (patternOutline(a, prof2) !== outA) P('огибающие пересчитываются на каждый вызов — чертёж будет спотыкаться');
+  if (patternOutline(b, prof2) === outA) P('после правки узора вернулись прошлые огибающие');
+  if (Math.abs(patternOutline(b, prof2)[Math.floor(outA.length / 2)].hi - mid.hi * 2) > 0.05)
+    P('удвоенная глубина не удвоила огибающую');
+  if (patternOutline(sanitizePattern(null), prof2).every(e => e.hi === 0 && e.lo === 0) === false)
+    P('без узора огибающие не нулевые');
+}
+
 /* ---------- быстрая функция = медленная ---------- */
 /* Сцена собирает тело вращения через patternFn (всё, что не зависит от точки,
    посчитано заранее), а слайсер зовёт patternOffset. Это две записи одной
@@ -283,6 +325,42 @@ const one = (over = {}) => sanitizePattern({layers: [{id: 'flute', n: 12, depth:
      с рельефом, которого автор не хотел. */
   const back = sanitizePattern(packPattern(muted));
   if (!back.layers[1].mute) P('выключение слоя не переживает упаковку в ДНК');
+}
+
+/* ---------- прилеп в ложбине ---------- */
+/* Ручку лепят на стенку. Попал корень в борозду — шов держится на её дне,
+   и отрывается такая ручка первой. Это и есть работа сдвига по кругу:
+   гребень уводят от прилепа. Проверяем, что инструмент это видит. */
+{
+  /* Десять каннелюр, а не двенадцать: у двенадцати прямой угол укладывается
+     целым числом периодов, и «az» с «π/2 − az» дают один и тот же ответ —
+     проверка перестаёт различать правильную связь углов и перевёрнутую. */
+  const pat = sanitizePattern({layers: [{id: 'flute', n: 10, depth: 2.5}]});
+  /* Гребень стоит на th=0, ложбина — на половине периода: 360/10/2 = 18°.
+     Азимут детали и угол связаны как phi = π/2 − az, значит гребень приходится
+     на az = 90°, а ложбина — на az = 72°. */
+  const inGroove = patternUnderParts(pat, [{kind: 'handle', az: 72, top: 80, bot: 35}], H);
+  const onCrest = patternUnderParts(pat, [{kind: 'handle', az: 90, top: 80, bot: 35}], H);
+  if (!(inGroove[0].d < -2)) P(`ручка в ложбине: рельеф под ней ${inGroove[0].d.toFixed(2)} мм вместо −2,5`);
+  if (!(onCrest[0].d > -0.01)) P(`ручка на гребне: под ней ложбина ${onCrest[0].d.toFixed(2)} мм, а её там нет`);
+  if (inGroove[0].name !== 'ручка') P('прилеп в замечании назван не своим именем');
+  /* Слив не приклеивают — его отгибают, и борозда под ним ничего не значит. */
+  if (patternUnderParts(pat, [{kind: 'lip', az: 72}], H).length) P('слив попал в список приклеенных деталей');
+  if (patternUnderParts(sanitizePattern(null), [{kind: 'handle', az: 72}], H).length)
+    P('без узора прилепы всё равно во что-то садятся');
+
+  /* И это доходит до общего контроля мастера, а не остаётся в модуле. */
+  const keep = {pattern: state.pattern, parts: state.parts};
+  state.pattern = pat;
+  /* Деталь берём через очистку, как её и хранит состояние: у сырой записи нет
+     ни вылета, ни сечения, и метрики прилепа на ней падают. */
+  state.parts = [sanitizePart({kind: 'handle', az: 70, top: 80, bot: 35})];
+  const said = computeWarnings(state, computeProduction(state), computeStrength(state));
+  if (!said.some(x => /ложбину/.test(x.txt))) P('ручка в ложбине — мастер об этом молчит');
+  state.parts = [sanitizePart({kind: 'handle', az: 90, top: 80, bot: 35})];
+  if (computeWarnings(state, computeProduction(state), computeStrength(state)).some(x => /ложбину/.test(x.txt)))
+    P('ручка на гребне, а замечание всё равно есть');
+  state.pattern = keep.pattern; state.parts = keep.parts;
 }
 
 /* ---------- развёртка ---------- */

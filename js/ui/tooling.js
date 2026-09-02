@@ -31,7 +31,7 @@ import { download, fileName } from '../core/files.js';
 import { toast } from './overlays.js';
 import { openArticle } from './kb.js';
 import { currentBrand } from './brand.js';
-import { sanitizePattern, patternOn, patternTitle, patternSummary, patternRelief, patternBand }
+import { sanitizePattern, patternOn, patternTitle, patternSummary, patternRelief, patternOutline }
   from '../core/pattern.js';
 
 /* Брендбук для документа: галочка «где показывать» решает по каждому месту
@@ -279,12 +279,7 @@ export function sheetSVG() {
     prof: prof.map(q => ({r: q.r, y: q.y})),
     /* Огибающие рельефа для вида спереди: между ними гуляет стенка. Считает их
        то же ядро, что и модель, — лист не должен показывать свой рельеф. */
-    relief: (() => {
-      const pt = sanitizePattern(state.pattern);
-      if (!patternOn(pt)) return [];
-      const Hs = prof[prof.length - 1].y;
-      return prof.map(q => ({r: q.r, y: q.y, ...patternBand(pt, q.y, Hs)}));
-    })(),
+    relief: patternOn(sanitizePattern(state.pattern)) ? patternOutline(state.pattern, prof) : [],
     wall: state.wall, footH: state.footH, footR: state.D / 2 * state.footK / 100,
     H: state.H, D: state.D, shrinkPct: mat.shrinkPct,
     parts, rows,

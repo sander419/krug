@@ -17,7 +17,7 @@ import { partCurve, partSection, pathFromParams, pathFromStroke, pathPoints,
 import { selectedPart, syncParts } from './parts.js';
 import { strainerHoles } from '../core/strainer.js';
 import { kindOf, limitOf } from '../config/parts.js';
-import { sanitizePattern, patternOn, patternBand } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternOutline } from '../core/pattern.js';
 
 let ec, ectx, eW=0, eH=0, dpr=1, hoverIdx=-1, dragIdx=-1;
 let selIdx=-1;                  // выбранная точка: её правят числами и клавишами
@@ -367,10 +367,14 @@ export function drawEditor(){
        и окна — только внутрь. Рисовать их зеркально значило бы обещать
        борозду там, где её нет. */
     ectx.setLineDash([4,3]);ectx.lineWidth=1.1;ectx.strokeStyle=P.accent(.5);
+    /* Огибающие берутся готовым списком: чертёж перерисовывается на каждое
+       движение камеры, а считать их по точке на кадр — четыре миллисекунды
+       на ровном месте. */
+    const env=patternOutline(pat,out);
     for(const side of ['hi','lo']){
       ectx.beginPath();
-      out.forEach((o,i)=>{
-        const q=mmToPx(Math.max(o.r+patternBand(pat,o.y,Hs)[side],0),o.y);
+      env.forEach((e,i)=>{
+        const q=mmToPx(Math.max(e.r+e[side],0),e.y);
         i?ectx.lineTo(q.x,q.y):ectx.moveTo(q.x,q.y);
       });
       ectx.stroke();

@@ -209,6 +209,30 @@ export function drawPatternMap() {
     ctx.fillText(String(i + 1), 4, yOf(l.to) + 11);
   });
 
+  /* Где на этом листе стоят ручка и носик. Сдвиг по кругу затем и нужен, чтобы
+     увести гребень от прилепа: борозда под ручкой — это шов, по которому она
+     и отрывается. Угол сегмента и азимут детали связаны как phi = π/2 − az,
+     тот же порядок, в каком прилепы поворачиваются в сцене. */
+  const parts = (state.parts || []).filter(p => p.kind !== 'lip' || p.deform !== false);
+  if (parts.length) {
+    ctx.font = '10px Manrope, system-ui, sans-serif';
+    for (const part of parts) {
+      const phi = (Math.PI / 2 - (+part.az || 0) * Math.PI / 180 + Math.PI * 4) % (Math.PI * 2);
+      const x = phi / (Math.PI * 2) * w;
+      ctx.strokeStyle = P.accent2 ? P.accent2(0.9) : P.accent(0.9);
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([2, 2]);
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      ctx.setLineDash([]);
+      const name = PART_NAME[part.kind] || 'деталь';
+      const tw = ctx.measureText(name).width + 6;
+      const tx = Math.min(Math.max(x + 3, 0), w - tw);
+      plate(ctx, P, tx, h - 34, tw, 13);
+      ctx.fillStyle = P.accent2 ? P.accent2(1) : P.accent(1);
+      ctx.fillText(name, tx + 3, h - 24);
+    }
+  }
+
   /* Бусина в масштабе листа: если рельеф мельче этого прямоугольника,
      сопло его не нарисует — и это видно, а не сказано числом. */
   const bead = beadWidth(state), layerH = (state.pr && +state.pr.lh) || 0;
@@ -238,6 +262,10 @@ function plate(ctx, P, x, y, w, h) {
 }
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/* Короткие имена для отметок на развёртке: полное «оттянутый слив» в лист
+   не влезает, а «слив» понятно и так. */
+const PART_NAME = {handle: 'ручка', spout: 'носик', lip: 'слив'};
 
 export function syncPattern() {
   const box = $('patternBody');
