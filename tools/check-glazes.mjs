@@ -4,6 +4,7 @@
 import { state as DEFAULTS } from '../js/core/state.js';   // модуль отдаёт умолчания до правок
 import { GLAZES, GLAZES_SCHEMA, GLAZE_FAMILIES, CONE_C, byGlazeId, firingFit } from '../js/config/glazes.js';
 import { coatProfile, coatWarnings, reliefCoat } from '../js/core/glazeCoat.js';
+import { sanitizePattern, patternCurvature } from '../js/core/pattern.js';
 import { checkContract } from './registry-contract.mjs';
 import { MATERIALS } from '../js/config/materials.js';
 
@@ -112,47 +113,84 @@ if (lowMat && highGlaze) {
   const fit = firingFit(highGlaze, lowMat);
   if (!fit || fit.ok) problems.push('высокая глазурь на низкой массе обязана давать несовпадение обжига');
 }
-
 /* ---------- глазурь на рельефе узора ---------- */
 /* Борозда узора — то же ребро и та же канавка, что на профиле: на гребне
    плёнка утоньшается до пробоя, в ложбине набирается. Считает это reliefCoat
    теми же константами, что и модель сечения, — иначе на экране была бы одна
    физика, а в замечаниях другая.
 
-   Что здесь чем является: радиус гребня — геометрия (ρ = L²/4π²A), множители
-   плёнки — оценка по параметрам семейства, толщина в миллиметрах — unknown. */
+   Что здесь чем является: радиусы кривизны сняты с самой поверхности рельефа
+   (геометрия), множители плёнки — оценка по параметрам семейства, толщина
+   в миллиметрах — unknown. */
 {
   const look = byGlazeId('tenmoku').look;
-  /* Геометрия: вдвое мельче шаг — вчетверо острее гребень. */
-  const wide = reliefCoat(look, {stepMM: 40, depth: 2});
-  const fine = reliefCoat(look, {stepMM: 20, depth: 2});
-  if (!wide || !fine) problems.push('рельеф есть, а плёнка на нём не посчиталась');
-  else {
-    if (Math.abs(wide.radiusMM / fine.radiusMM - 4) > 0.01)
-      problems.push(`вдвое мельче шаг дал ${(wide.radiusMM / fine.radiusMM).toFixed(2)}× по радиусу вместо четырёх`);
-    if (!(fine.crest < wide.crest)) problems.push('на более остром гребне плёнка не стала тоньше');
-    if (!(fine.valley > wide.valley)) problems.push('в более глубокой ложбине плёнка не набралась');
-    if (!(fine.crest < 1 && fine.valley > 1)) problems.push('гребень и ложбина ушли не в те стороны');
-  }
-  /* Глубже борозда — острее гребень при том же шаге. */
-  const deep = reliefCoat(look, {stepMM: 30, depth: 4}), shallow = reliefCoat(look, {stepMM: 30, depth: 1});
-  if (!(deep.radiusMM < shallow.radiusMM)) problems.push('глубина не влияет на радиус гребня');
-  /* Нет рельефа — нет и ответа: «единица» вместо null означала бы, что плёнка
-     посчитана, хотя считать было нечего. */
-  if (reliefCoat(look, {stepMM: 30, depth: 0}) !== null) problems.push('без рельефа плёнка на нём всё равно посчиталась');
-  if (reliefCoat(look, {depth: 2}) !== null) problems.push('без шага и периода радиус гребня взялся из ниоткуда');
-  /* Спокойная глазурь на том же рельефе даёт меньше и пробоя, и набора:
-     множители обязаны зависеть от семейства, а не быть общей константой. */
-  const calm = reliefCoat(byGlazeId('clear-gloss').look, {stepMM: 20, depth: 2});
-  if (!(calm.crest > fine.crest)) problems.push('у спокойной глазури пробой на гребне не меньше, чем у тенмоку');
-  /* Пределы: множители не уходят в отрицательные и не превышают потолок модели. */
+  const ctx = {D: 160, H: 220, bead: 4.2};
+  const curv = layers => patternCurvature(sanitizePattern({layers}), ctx);
+
+  /* Синусоида — единственный случай с известным ответом: у волны с шагом L
+     и амплитудой A радиус гребня ρ = L²/4π²A. Численная кривизна обязана
+     совпасть с ним, иначе она измеряет что-то своё. */
+  const sine = curv([{id: 'flute', n: 16, depth: 2}]);
+  const L = Math.PI * 160 / 16, want = L * L / (4 * Math.PI * Math.PI * 2);
+  if (Math.abs(sine.crestR - want) / want > 0.05)
+    problems.push(`кривизна синусоиды ${sine.crestR.toFixed(2)} против аналитических ${want.toFixed(2)} мм`);
+
+  /* Форма рельефа обязана менять остроту: у «Граней» и «Кладки» край ломаный,
+     и глазурь пробивает там раньше, чем на мягкой волне. Первая версия считала
+     всё синусоидой и всем формам давала один радиус. */
+  const facet = curv([{id: 'facet', n: 16, depth: 2}]);
+  const brick = curv([{id: 'brick', n: 16, depth: 2, m: 8}]);
+  if (!(facet.crestR < sine.crestR * 0.5))
+    problems.push(`грани острее синуса, а радиус тот же: ${facet.crestR.toFixed(2)} против ${sine.crestR.toFixed(2)}`);
+  if (!(brick.crestR < sine.crestR * 0.6))
+    problems.push(`кладка острее синуса, а радиус ${brick.crestR.toFixed(2)}`);
+
+  /* Стопка: мелкая рябь поверх крупной волны. Острота берётся от ряби,
+     но амплитуда — её собственная, а не крупного слоя. Первая версия брала
+     глубину крупного слоя с шагом мелкого и завышала остроту втрое. */
+  const stack = curv([{id: 'flute', n: 8, depth: 3}, {id: 'flute', n: 40, depth: 0.5}]);
+  const ripple = curv([{id: 'flute', n: 40, depth: 0.5}]);
+  const big = curv([{id: 'flute', n: 8, depth: 3}]);
+  if (!(stack.crestR < big.crestR)) problems.push('рябь поверх волны не сделала гребень острее');
+  if (!(stack.crestR > ripple.crestR * 0.5))
+    problems.push(`стопка вышла острее самой ряби: ${stack.crestR.toFixed(2)} против ${ripple.crestR.toFixed(2)}`);
+
+  /* Острее собственной бусины машина край не сделает: радиус не опускается
+     ниже половины бусины, иначе «Кладка» обещала бы бесконечную остроту. */
+  /* Предел по бусине проверяется на заведомо запредельном рельефе: шестьдесят
+     четыре грани глубиной 14 мм — угол, которого в глине не бывает. Численная
+     кривизна там уходит в доли миллиметра, и без предела инструмент обещал бы
+     остроту, которой сопло не сделает. */
+  const sharp = patternCurvature(sanitizePattern({layers: [{id: 'facet', n: 64, depth: 14}]}),
+                                 {D: 160, H: 220, bead: 4.2});
+  if (sharp.crestR < 4.2 / 2 - 1e-9) problems.push(`радиус гребня ${sharp.crestR.toFixed(2)} мм — острее бусины сопла`);
+  const fine = patternCurvature(sanitizePattern({layers: [{id: 'facet', n: 64, depth: 14}]}),
+                                {D: 160, H: 220, bead: 0.8});
+  if (!(fine.crestR < sharp.crestR)) problems.push('тонкое сопло не позволило рельефу стать острее — предел не от бусины');
+
+  /* Множители: острее гребень — тоньше плёнка; глубже ложбина — больше набор. */
+  const rcSine = reliefCoat(look, sine), rcFacet = reliefCoat(look, facet);
+  if (!(rcFacet.crest < rcSine.crest)) problems.push('на остром гребне плёнка не стала тоньше');
+  if (!(rcSine.crest < 1 && rcSine.valley > 1)) problems.push('гребень и ложбина ушли не в те стороны');
+  const calm = reliefCoat(byGlazeId('clear-gloss').look, facet);
+  if (!(calm.crest > rcFacet.crest)) problems.push('у спокойной глазури пробой не меньше, чем у тенмоку');
+
+  /* Нет рельефа — нет ответа: «единица» означала бы, что плёнка посчитана,
+     хотя считать было нечего. */
+  if (patternCurvature(sanitizePattern(null), ctx) !== null) problems.push('без узора кривизна всё равно посчиталась');
+  if (reliefCoat(look, {}) !== null) problems.push('без радиусов плёнка на рельефе всё равно посчиталась');
+  const flat = curv([{id: 'flute', n: 4, depth: 0.05}]);
+  if (reliefCoat(look, flat) !== null && reliefCoat(look, flat).crest < 0.995)
+    problems.push('едва заметный рельеф дал заметный пробой');
+
+  /* Пределы: множители не уходят за потолок модели ни у одной глазури. */
   for (const g of GLAZES) {
-    const r = reliefCoat(g.look, {stepMM: 8, depth: 6});
+    const r = reliefCoat(g.look, brick);
     if (!(r.crest >= 0 && r.crest <= 2.6 && r.valley >= 0 && r.valley <= 2.6))
       problems.push(`«${g.name}»: множители плёнки вышли за пределы (${r.crest.toFixed(2)}, ${r.valley.toFixed(2)})`);
-    if (!Number.isFinite(r.radiusMM)) problems.push(`«${g.name}»: радиус гребня не число`);
   }
 }
+
 
 
 console.log(`Реестр глазурей: схема v${GLAZES_SCHEMA}, записей ${GLAZES.length}, семейств ${Object.keys(GLAZE_FAMILIES).length}`);

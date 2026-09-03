@@ -16,7 +16,7 @@ import { lidProfile, sanitizeLid, lidWarpFn } from '../core/lid.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
 import { byEnvId } from '../config/environments.js';
-import { sanitizePattern, patternOn, patternFn, patternFade, patternMetrics }
+import { sanitizePattern, patternOn, patternFn, patternFade, patternMetrics, patternCurvature }
   from '../core/pattern.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
@@ -122,8 +122,8 @@ function applyCoat(geo, path, state){
   const pat=sanitizePattern(state.pattern);
   const pf=(!state.playing&&patternOn(pat))?patternFn(pat):null;
   const M=pf?patternMetrics(pat,{D:state.D,H:state.H}):null;
-  let rc=pf?reliefCoat(g.look,{stepMM:M.stepMM, periodMM:M.periodMM,
-                               depth:Math.max(M.carve,M.raise)}):null;
+  let rc=pf?reliefCoat(g.look, patternCurvature(pat,{D:state.D,H:state.H,
+                                                    bead:(state.pr&&+state.pr.nozzle||4)*1.05})||{}):null;
   if(rc&&rc.crest>0.95&&rc.valley<1.05) rc=null;
   const H=path.length?Math.max(...path.map(p=>p.y)):0;
   const amp=rc?Math.max(M.carve,M.raise):0;

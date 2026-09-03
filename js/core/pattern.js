@@ -558,6 +558,59 @@ export function layerText(l) {
 export const patternSummary = pat => patternLayers(pat).filter(layerOn).map(layerText);
 
 /**
+ * Кривизна рельефа: радиус гребня и радиус ложбины в миллиметрах.
+ *
+ * Зачем численно, а не формулой. У синусоиды кривизна на гребне считается
+ * в одну строку (κ = 4π²A/L²), и первая версия так и делала — но рельеф здесь
+ * бывает какой угодно: у «Граней» гребень ломаный, у «Звезды» заострён
+ * намеренно, у «Кладки» край площадки почти отвесный, а стопка из двух слоёв
+ * даёт мелкую рябь поверх крупной волны. Синусоида про всё это врёт в обе
+ * стороны: у звезды занижает остроту, а у стопки берёт глубину крупного слоя
+ * с шагом мелкого и завышает её втрое.
+ *
+ * Поэтому кривизна снимается с самой поверхности: r(θ) на нескольких высотах,
+ * вторая производная по дуге, κ = r'' / (1 + r'²)^{3/2}. Это геометрия,
+ * а не модель: считается ровно то, что напечатает сопло.
+ *
+ * **Предел снизу — сопло.** Острее собственной бусины машина край не сделает,
+ * поэтому радиус не опускается ниже половины бусины: без этого «Кладка»
+ * давала бы нулевой радиус и бесконечную остроту, которой в глине не бывает.
+ *
+ * @param ctx {D, H, bead}
+ * @returns {crestR, valleyR} | null, если рельефа нет
+ */
+export function patternCurvature(pat, ctx = {}) {
+  const p = sanitizePattern(pat);
+  if (!patternOn(p)) return null;
+  const R = (+ctx.D || 160) / 2;
+  const H = +ctx.H || 220;
+  const floor = Math.max((+ctx.bead || 4) / 2, 0.2);   // острее бусины край не выйдет
+  const NA = 720, NY = 9;
+  const ds = TAU * R / NA;                             // шаг по дуге, мм
+  let kMax = 0, kMin = 0;                              // выпуклость и вогнутость
+  for (let iy = 1; iy < NY; iy++) {
+    const y = H * iy / NY;
+    let prev = R + patternOffset(p, -ds / R, y, H);
+    let cur = R + patternOffset(p, 0, y, H);
+    for (let i = 1; i <= NA; i++) {
+      const next = R + patternOffset(p, i * ds / R, y, H);
+      const d1 = (next - prev) / (2 * ds);
+      const d2 = (next - 2 * cur + prev) / (ds * ds);
+      const k = d2 / Math.pow(1 + d1 * d1, 1.5);
+      /* Знак: вторая производная радиуса вниз — это выпуклость наружу,
+         то есть гребень; вверх — канавка. */
+      if (-k > kMax) kMax = -k;
+      if (k > kMin) kMin = k;
+      prev = cur; cur = next;
+    }
+  }
+  return {
+    crestR: kMax > 1e-9 ? Math.max(1 / kMax, floor) : Infinity,
+    valleyR: kMin > 1e-9 ? Math.max(1 / kMin, floor) : Infinity,
+  };
+}
+
+/**
  * Рельеф под корнями прилепов, мм: [{name, az, d}].
  *
  * Ручку и носик лепят на стенку — и если корень попадает в ложбину, шов
@@ -750,8 +803,7 @@ export function patternWarnings(pat, ctx = {}) {
      модуля узора. Множители помечены как оценка: они опираются на параметры
      семейства, подобранные по виду образцов, а не измеренные. */
   if (ctx.look) {
-    const rc = reliefCoat(ctx.look, {stepMM: M.stepMM, periodMM: M.periodMM,
-                                     depth: Math.max(M.carve, M.raise)});
+    const rc = reliefCoat(ctx.look, patternCurvature(p, ctx) || {});
     if (rc && rc.crest < 0.75)
       out.push({lvl: rc.crest < 0.45 ? 'bad' : 'warn', area: 'glaze', help: 'glaze-relief', txt:
         `глазурь на гребне радиусом ${rc.radiusMM.toFixed(1)} мм — плёнка ` +

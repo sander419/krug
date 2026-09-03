@@ -121,34 +121,37 @@ export function coatProfile(path, look, opts = {}) {
  * утоньшается до пробоя, в канавке набирается. Поэтому здесь та же формула
  * и те же константы, что и для профиля выше: одна физика, два входа.
  *
- * **Что здесь расчёт, а что оценка.** Радиус гребня — геометрия: у волны
- * с шагом L и амплитудой A кривизна на гребне κ = 4π²A/L², то есть
- * ρ = L²/(4π²A). Множители плёнки — оценка (`est`): они берут те же
+ * **Что здесь расчёт, а что оценка.** Радиусы гребня и ложбины приходят
+ * готовыми из `patternCurvature` — они сняты с самой поверхности рельефа,
+ * это геометрия. Множители плёнки — оценка (`est`): они берут те же
  * `breakEdge` и `pool` семейства глазури, что и модель профиля, а те подобраны
  * по виду обожжённых образцов, а не измерены. Толщина в миллиметрах остаётся
  * неизвестной (`unknown`): она зависит от времени макания, плотности шликера
  * и пористости утиля — ничего этого инструмент не знает.
  *
+ * Первая версия считала радиус гребня по синусоиде (ρ = L²/4π²A) и врала
+ * в обе стороны: у «Граней» и «Кладки» занижала остроту вчетверо, а у стопки
+ * из крупной волны и мелкой ряби брала глубину крупного слоя с шагом мелкого.
+ *
  * @param look  параметры семейства глазури {breakEdge, pool}
- * @param geo   {stepMM, periodMM, depth} — шаг по кругу, период по высоте, глубина
+ * @param geo   {crestR, valleyR} — радиусы кривизны рельефа, мм
  * @returns {radiusMM, sharp, crest, valley} | null, если рельефа нет
  */
 export function reliefCoat(look, geo = {}) {
-  const A = +geo.depth || 0;
-  if (!(A > 0.01)) return null;
-  /* Радиус гребня берётся по самому мелкому шагу: где чаще борозды, там острее
-     гребень, и пробивает глазурь именно там. Шаг бывает только по кругу
-     (каннелюры), только по высоте (кольца) или по обоим (чешуя, плетёнка). */
-  const steps = [+geo.stepMM || 0, +geo.periodMM || 0].filter(v => v > 0.01);
-  if (!steps.length) return null;
-  const L = Math.min(...steps);
-  const radiusMM = (L * L) / (4 * Math.PI * Math.PI * A);
-  const sharp = clamp(SHARP_MM / radiusMM, 0, 1);
+  const crestR = +geo.crestR, valleyR = +geo.valleyR;
+  if (!Number.isFinite(crestR) && !Number.isFinite(valleyR)) return null;
   const brk = look.breakEdge ?? 0, pool = look.pool ?? 0;
+  /* Та же мера остроты, что у профиля: ребро радиусом SHARP_MM и острее
+     считается острым, пологое — нет. */
+  const sharpC = Number.isFinite(crestR) ? clamp(SHARP_MM / crestR, 0, 1) : 0;
+  const sharpV = Number.isFinite(valleyR) ? clamp(SHARP_MM / valleyR, 0, 1) : 0;
+  if (sharpC <= 0 && sharpV <= 0) return null;
   return {
-    radiusMM, sharp,
-    crest: clamp(1 - brk * sharp * 0.85, 0, 2.6),
-    valley: clamp(1 + pool * sharp * 0.8, 0, 2.6),
+    radiusMM: Number.isFinite(crestR) ? crestR : valleyR,
+    valleyRadiusMM: Number.isFinite(valleyR) ? valleyR : crestR,
+    sharp: sharpC,
+    crest: clamp(1 - brk * sharpC * 0.85, 0, 2.6),
+    valley: clamp(1 + pool * sharpV * 0.8, 0, 2.6),
   };
 }
 

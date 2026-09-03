@@ -9,7 +9,8 @@ import { sceneAPI } from '../three/scene.js';
 import { hookSlider } from './panels.js';
 import { $, esc, hex } from './dom.js';
 import { pal } from './palette.js';
-import { sanitizePattern, patternOn, patternMetrics } from '../core/pattern.js';
+import { sanitizePattern, patternOn, patternCurvature } from '../core/pattern.js';
+import { beadWidth } from '../core/slicer.js';
 import { reliefCoat } from '../core/glazeCoat.js';
 
 let stull, sctx, R={}, filterFamily='all';
@@ -154,12 +155,11 @@ export function updateCoatPanel(){
      она зависит от макания, шликера и пористости утиля. */
   const pat=sanitizePattern(state.pattern);
   if(patternOn(pat)){
-    const M=patternMetrics(pat,{D:state.D,H:state.H,wall:state.wall,hollow:state.hollow});
-    const rc=reliefCoat(g.look,{stepMM:M.stepMM,periodMM:M.periodMM,
-                                depth:Math.max(M.carve,M.raise)});
+    const rc=reliefCoat(g.look, patternCurvature(pat,{D:state.D,H:state.H,bead:beadWidth(state)})||{});
     if(rc) rows.push(
-      ['Гребень узора', `радиус <b>${rc.radiusMM.toFixed(1)} мм</b>
-        <span class="dim">геометрия рельефа</span>`],
+      ['Гребень узора', `радиус <b>${rc.radiusMM.toFixed(1)} мм</b>, ложбина
+        <b>${rc.valleyRadiusMM.toFixed(1)} мм</b>
+        <span class="dim">снято с поверхности рельефа</span>`],
       ['Плёнка на узоре', `на гребне <b>${rc.crest.toFixed(2)}×</b>, в ложбине
         <b>${rc.valley.toFixed(2)}×</b> <span class="est">оценка</span>
         <span class="dim">толщина в мм — unknown: зависит от макания и утиля</span>`]);
