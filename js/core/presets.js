@@ -24,10 +24,10 @@ import { sanitizePattern } from './pattern.js';
 
 const KEY = 'krug.presets';
 const LIMIT = 120;
-export const PRESET_KINDS = ['body', 'lid', 'part'];
+export const PRESET_KINDS = ['body', 'lid', 'part', 'pattern'];
 export const NAME_LIMIT = 40;
 
-const KIND_NAME = {body: 'корпус', lid: 'крышка', part: 'прилеп'};
+const KIND_NAME = {body: 'корпус', lid: 'крышка', part: 'прилеп', pattern: 'узор'};
 export const presetKindName = k => KIND_NAME[k] || k;
 
 /** Пустая запись: у пресета всегда есть вид, имя и данные. */
@@ -137,6 +137,20 @@ export function applyBody(state, data, opt = {}) {
   state.activePreset = -1;
   return state;
 }
+
+/**
+ * Слепок узора: только стопка слоёв, без размеров изделия.
+ *
+ * Пресеты инструмента задают числа под свою вазу, а мастерской нужен свой
+ * набор — «наша ёлочка», «наш пояс под кромкой», — который ставят на любую
+ * вещь. Слои копируются через очистку: массив объектов поверхностной копией
+ * остался бы связан с открытым изделием, и правка узора меняла бы заготовку.
+ *
+ * Размеры сюда не входят намеренно: повторы задаются числом, а не долей
+ * окружности, и на вазу другого диаметра тот же набор ложится с другим шагом.
+ * Об этом инструмент говорит числом шага, когда набор поставлен.
+ */
+export const patternSnapshot = pat => ({layers: sanitizePattern(pat).layers.map(l => ({...l}))});
 
 export const lidSnapshot = lid => ({...(lid || {})});
 export const partSnapshot = part => JSON.parse(JSON.stringify(part || {}));

@@ -24,11 +24,13 @@ import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { PATTERNS, PATTERN_PRESETS, LIMITS, MAX_LAYERS, LAYER_DEFAULTS, patternMetrics,
          sanitizePattern, sanitizeLayer, patternById, patternOn, patternRelief,
-         patternMap, patternVolumeMl, patternWarnings } from '../core/pattern.js';
+         patternMap, patternVolumeMl, patternWarnings, patternTitle } from '../core/pattern.js';
 import { userProfileMM } from '../core/math.js';
 import { byId as materialById } from '../config/materials.js';
 import { beadWidth } from '../core/slicer.js';
-import { $, num } from './dom.js';
+import { sanitizeLid, lidProfile, lidWarpFn, lidReliefWeights } from '../core/lid.js';
+import { $, num, esc } from './dom.js';
+import { presetsOf, addPreset, removePreset, patternSnapshot } from '../core/presets.js';
 import { pal } from './palette.js';
 import { icon } from './icons.js';
 
@@ -107,6 +109,24 @@ function layerHTML(l, li, ctx) {
   </div>`;
 }
 
+/* ---------- свои наборы рельефа ---------- */
+/* Пресеты инструмента задают числа под свою вазу, а у мастерской свой набор,
+   который ставят на любую вещь: «наша ёлочка», «наш пояс под кромкой».
+   Хранится он там же, где заготовки корпуса и прилепов, — одна полка. */
+function myPatternsHTML(on) {
+  const list = presetsOf('pattern');
+  return `<div class="pat-sets">
+    ${list.map(p => `<span class="ed-preset">
+      <button class="ed-preset-use" data-set-use="${p.id}"
+              title="Поставить набор на это изделие">${esc(p.name)}</button>
+      <button class="ed-preset-del" data-set-copy="${p.id}" title="Дублировать набор">${icon('copy', 12)}</button>
+      <button class="ed-preset-del" data-set-drop="${p.id}" title="Убрать набор">${icon('x', 12)}</button>
+    </span>`).join('')}
+    ${on ? `<button class="chip-btn" id="patSaveSet" title="Сохранить эту стопку как свой набор">
+      ${icon('save', 13)}Сохранить набор</button>` : ''}
+  </div>`;
+}
+
 /* ---------- развёртка ---------- */
 /* Модель показывает половину вазы и ту в перспективе: пояс на задней стороне,
    сдвиг слоя по кругу и место, где слои накладываются друг на друга, на ней
@@ -133,7 +153,14 @@ export function drawPatternMap() {
   /* Высота листа — из настоящих пропорций стенки: развёртка, растянутая
      по вкусу, врёт про наклон гребня и про то, круглый ли бугорок. */
   const wallW = Math.PI * state.D, wallH = state.H;
-  const h = Math.round(Math.min(280, Math.max(90, w * wallH / wallW)));
+  const hWall = Math.round(Math.min(280, Math.max(90, w * wallH / wallW)));
+  /* Крышка идёт отдельной полосой над стенкой и в том же масштабе: купол
+     это своя развёртка (πD крышки на её собственную высоту), а не продолжение
+     стенки. Настраивать рельеф купола вслепую человеку больше не нужно. */
+  const L = lidStrip();
+  const gap = L ? 10 : 0;
+  const hLid = L ? Math.max(24, Math.round(w * L.hMM / wallW)) : 0;
+  const h = hWall + gap + hLid;
   const dp = Math.min(devicePixelRatio, 2);
   cv.width = w * dp; cv.height = h * dp;
   cv.style.height = h + 'px';
@@ -183,16 +210,16 @@ export function drawPatternMap() {
   octx.putImageData(img, 0, 0);
   ctx.clearRect(0, 0, w, h);
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(offscreen, 0, 0, w, h);
+  ctx.drawImage(offscreen, 0, hLid + gap, w, hWall);
 
-  const yOf = v => h - v * h;                 // доля высоты → пиксель сверху вниз
+  const yOf = v => hLid + gap + hWall - v * hWall;   // доля высоты стенки → пиксель
 
   /* Зона гашения у дна и кромки: там рельефа не будет, что бы ни стояло
      в поясах, и это честнее показать, чем объяснять текстом. */
   const fadeV = Math.max(3, state.H * 0.06) / state.H;
   ctx.fillStyle = P.at('--panel', 0.55);
-  ctx.fillRect(0, 0, w, yOf(1 - fadeV));
-  ctx.fillRect(0, yOf(fadeV), w, h - yOf(fadeV));
+  ctx.fillRect(0, hLid + gap, w, yOf(1 - fadeV) - (hLid + gap));
+  ctx.fillRect(0, yOf(fadeV), w, hLid + gap + hWall - yOf(fadeV));
 
   /* Границы поясов — там, где человек их и ищет: на самом рисунке. */
   ctx.lineWidth = 1;
@@ -222,14 +249,14 @@ export function drawPatternMap() {
       ctx.strokeStyle = P.accent2 ? P.accent2(0.9) : P.accent(0.9);
       ctx.lineWidth = 1.2;
       ctx.setLineDash([2, 2]);
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, hLid + gap); ctx.lineTo(x, hLid + gap + hWall); ctx.stroke();
       ctx.setLineDash([]);
       const name = PART_NAME[part.kind] || 'деталь';
       const tw = ctx.measureText(name).width + 6;
       const tx = Math.min(Math.max(x + 3, 0), w - tw);
-      plate(ctx, P, tx, h - 34, tw, 13);
+      plate(ctx, P, tx, hLid + gap + hWall - 34, tw, 13);
       ctx.fillStyle = P.accent2 ? P.accent2(1) : P.accent(1);
-      ctx.fillText(name, tx + 3, h - 24);
+      ctx.fillText(name, tx + 3, hLid + gap + hWall - 24);
     }
   }
 
@@ -239,19 +266,53 @@ export function drawPatternMap() {
   if (bead && layerH) {
     const bw = bead / wallW * w, bh = layerH / wallH * h;
     ctx.fillStyle = P.at('--panel', 0.85);
-    ctx.fillRect(w - bw - 10, h - bh - 10, bw, bh);
+    ctx.fillRect(w - bw - 10, hLid + gap + hWall - bh - 10, bw, bh);
     ctx.strokeStyle = P.text(0.75);
-    ctx.strokeRect(w - bw - 10.5, h - bh - 10.5, bw + 1, bh + 1);
-    plate(ctx, P, w - bw - 14 - 42, h - 20, 42, 13);
+    ctx.strokeRect(w - bw - 10.5, hLid + gap + hWall - bh - 10.5, bw + 1, bh + 1);
+    plate(ctx, P, w - bw - 14 - 42, hLid + gap + hWall - 20, 42, 13);
     ctx.fillStyle = P.text(0.8);
     ctx.textAlign = 'right';
-    ctx.fillText('бусина', w - bw - 14, h - 10);
+    ctx.fillText('бусина', w - bw - 14, hLid + gap + hWall - 10);
     ctx.textAlign = 'left';
   }
+  /* Полоса крышки: тот же лист, только шириной πD купола и высотой самой
+     крышки. Рельеф на ней считается ровно как в модели — своей высотой
+     и своими весами (посадка, вершина и кнопка остаются гладкими), поэтому
+     видно и то, где узор гаснет. */
+  if (L) {
+    const lw = Math.round(w * L.wMM / wallW);
+    const img2 = octx.createImageData(Math.max(8, Math.round(lw)), Math.max(8, hLid));
+    const c2 = img2.width, r2 = img2.height;
+    for (let i2 = 0; i2 < r2; i2++) {
+      const v = 1 - i2 / (r2 - 1);
+      for (let j2 = 0; j2 < c2; j2++) {
+        const th = j2 / c2 * Math.PI * 2;
+        const d = L.at(th, v);
+        const dl = L.at(th - Math.PI * 2 / c2, v), dr = L.at(th + Math.PI * 2 / c2, v);
+        const k = clamp01(0.46 + (dr - dl) / span * 2.2 + (d / span) * 0.22);
+        const o = (i2 * c2 + j2) * 4;
+        img2.data[o] = base[0] + (lit[0] - base[0]) * k;
+        img2.data[o + 1] = base[1] + (lit[1] - base[1]) * k;
+        img2.data[o + 2] = base[2] + (lit[2] - base[2]) * k;
+        img2.data[o + 3] = 255;
+      }
+    }
+    offscreen.width = c2; offscreen.height = r2;
+    octx.putImageData(img2, 0, 0);
+    ctx.drawImage(offscreen, 0, 0, lw, hLid);
+    ctx.strokeStyle = P.line(0.9);
+    ctx.strokeRect(0.5, 0.5, lw - 1, hLid - 1);
+    const capL = `крышка ${Math.round(L.wMM / 10)}×${Math.round(L.hMM / 10)} см`;
+    plate(ctx, P, 4, 4, ctx.measureText(capL).width + 6, 13);
+    ctx.fillStyle = P.text(0.8);
+    ctx.fillText(capL, 7, 14);
+  }
+
+
   const cap = `развёртка стенки ${Math.round(wallW / 10)}×${Math.round(wallH / 10)} см`;
-  plate(ctx, P, 4, 4, ctx.measureText(cap).width + 6, 13);
+  plate(ctx, P, 4, hLid + gap + 4, ctx.measureText(cap).width + 6, 13);
   ctx.fillStyle = P.text(0.8);
-  ctx.fillText(cap, 7, 14);
+  ctx.fillText(cap, 7, hLid + gap + 14);
 }
 
 /* Подпись поверх рельефа теряется в полосах: под неё кладётся плашка фона.
@@ -266,6 +327,46 @@ const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
 /* Короткие имена для отметок на развёртке: полное «оттянутый слив» в лист
    не влезает, а «слив» понятно и так. */
 const PART_NAME = {handle: 'ручка', spout: 'носик', lip: 'слив'};
+
+/**
+ * Данные для полосы крышки на развёртке: ширина и высота её листа в мм
+ * и функция рельефа (угол, доля высоты) → смещение.
+ *
+ * Считается тем же `lidWarpFn`, что строит купол в сцене и в STL: развёртка,
+ * рисующая рельеф по своей формуле, показывала бы не ту крышку.
+ * Возвращает null, если крышки нет или узор на неё не переносят.
+ */
+function lidStrip() {
+  const lid = sanitizeLid(state.lid);
+  const pat = sanitizePattern(state.pattern);
+  if (!lid.on || !lid.pattern || !patternOn(pat)) return null;
+  const prof = userProfileMM(state);
+  const L = lidProfile(prof, lid, state.wall);
+  const warp = lidWarpFn(L, pat);
+  if (!warp) return null;
+  /* Веса рельефа заданы по точкам контура; для листа их берут по высоте —
+     ближайшая наружная точка купола. Так на полосе видно и то, где узор
+     гаснет: у посадки, у вершины и на кнопке. */
+  const outer = [];
+  const wts = lidReliefWeights(L);
+  for (let j = 0; j < L.pts.length; j++)
+    if (L.outerFlag[j] && L.pts[j].y >= L.rim.y) outer.push({y: L.pts[j].y, j});
+  outer.sort((a, b) => a.y - b.y);
+  if (!outer.length) return null;
+  const span = Math.max(L.topY - L.rim.y, 0.01);
+  const near = v => {
+    const y = L.rim.y + v * span;
+    let best = outer[0];
+    for (const o of outer) if (Math.abs(o.y - y) < Math.abs(best.y - y)) best = o;
+    return best;
+  };
+  return {
+    wMM: Math.PI * L.outR * 2,
+    hMM: span,
+    at: (th, v) => { const o = near(v); return warp(th, L.pts[o.j], o.j); },
+    weights: wts,
+  };
+}
 
 export function syncPattern() {
   const box = $('patternBody');
@@ -292,6 +393,7 @@ export function syncPattern() {
       <button class="chip-btn" data-pat-preset="${x.id}" title="${x.what}">${x.name}</button>`).join('')}
       ${on ? '<button class="chip-btn" data-pat-clear="1" title="Гладкая стенка, как на круге">Без узора</button>' : ''}
     </div>
+    ${myPatternsHTML(on)}
     ${on ? `
       <p class="dim pat-lead">Слои складываются: смещение радиуса у каждого своё, машина печатает сумму.
         Рельеф уходит и в модель, и в STL, и в G-code — на экране то же, что напечатает сопло.</p>
@@ -354,6 +456,37 @@ export function syncPattern() {
   const layers = () => sanitizePattern(state.pattern).layers.map(l => ({...l}));
 
   drawPatternMap();
+
+  /* Свои наборы: та же полка заготовок, что у корпуса, крышки и прилепов,
+     только для стопки слоёв. Набор ставится на любое изделие — но повторы
+     заданы числом, а не долей окружности, поэтому на вазе другого диаметра
+     шаг выйдет другой. Инструмент говорит об этом числом шага рядом. */
+  const myBtn = box.querySelector('#patSaveSet');
+  if (myBtn) myBtn.onclick = () => {
+    const name = prompt('Имя набора рельефа', patternTitle(pat).slice(0, 30));
+    if (name === null) return;
+    addPreset('pattern', name.trim(), patternSnapshot(pat));
+    syncPattern();
+  };
+  box.querySelectorAll('[data-set-use]').forEach(b => {
+    b.onclick = () => {
+      const rec = presetsOf('pattern').find(x => x.id === b.dataset.setUse);
+      if (!rec) return;
+      state.pattern = sanitizePattern(rec.data);
+      emit();
+    };
+  });
+  box.querySelectorAll('[data-set-copy]').forEach(b => {
+    b.onclick = () => {
+      const rec = presetsOf('pattern').find(x => x.id === b.dataset.setCopy);
+      if (!rec) return;
+      addPreset('pattern', (rec.name + ' — копия').slice(0, 40), patternSnapshot(rec.data));
+      syncPattern();
+    };
+  });
+  box.querySelectorAll('[data-set-drop]').forEach(b => {
+    b.onclick = () => { removePreset(b.dataset.setDrop); syncPattern(); };
+  });
 
   box.querySelectorAll('[data-pat-preset]').forEach(b => {
     b.onclick = () => {

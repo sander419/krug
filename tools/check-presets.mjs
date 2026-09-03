@@ -7,7 +7,9 @@
 // Отдельно проверяется главное свойство корпуса: заготовку можно поставить
 // «как есть» или взять только силуэт, оставив свои высоту и диаметр.
 import { blankPreset, sanitizePreset, bodySnapshot, applyBody, lidSnapshot,
-         partSnapshot, presetKindName, PRESET_KINDS, NAME_LIMIT } from '../js/core/presets.js';
+         partSnapshot, presetKindName, PRESET_KINDS, NAME_LIMIT, patternSnapshot }
+  from '../js/core/presets.js';
+import { sanitizePattern } from '../js/core/pattern.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -84,6 +86,37 @@ const P = t => problems.push(t);
   part.path[1].d = 99;
   if (ps.path[1].d !== 20) P('слепок прилепа — ссылка на живую деталь');
 }
+
+/* ---------- свои наборы рельефа ---------- */
+/* Набор — четвёртый вид заготовки, и требования к нему те же: он переживает
+   запись и чтение, не остаётся связанным с открытым изделием и не тащит
+   за собой размеры вазы, на которой его сняли. */
+{
+  const pat = sanitizePattern({layers: [
+    {id: 'chevron', n: 14, depth: 2.2, m: 5, phase: 30, from: 0.2, to: 0.9, edge: 0.06},
+    {id: 'wave', depth: 0.8, m: 3, mute: true}]});
+  const snap = patternSnapshot(pat);
+  if (!Array.isArray(snap.layers) || snap.layers.length !== 2)
+    problems.push(`в наборе ${snap.layers && snap.layers.length} слоя вместо двух`);
+  /* Слепок обязан быть независимым: правка узора в изделии не должна менять
+     сохранённый набор — иначе заготовка «портится» сама собой. */
+  pat.layers[0].depth = 9;
+  if (snap.layers[0].depth === 9) problems.push('набор остался связан с изделием — правка изделия его меняет');
+  if (snap.layers[1].mute !== true) problems.push('выключенный слой в наборе включился');
+  /* Размеры вазы в набор не входят: повторы заданы числом, и на другой вазе
+     шаг будет другим — но это её шаг, а не чужая высота. */
+  for (const k of ['H', 'D', 'wall', 'points'])
+    if (k in snap) problems.push(`в наборе рельефа лежит «${k}» — размеры изделия туда не входят`);
+  /* Запись переживает очистку хранилища: вид «pattern» законный. */
+  const rec = sanitizePreset({kind: 'pattern', name: 'Наша ёлочка', data: snap});
+  if (rec.kind !== 'pattern') problems.push('вид «узор» не пережил очистку записи');
+  if (!PRESET_KINDS.includes('pattern')) problems.push('вид «узор» не значится среди видов заготовок');
+  if (presetKindName('pattern') === 'pattern') problems.push('у вида «узор» нет человеческого имени');
+  /* Битые данные не должны ронять применение: набор из мусора — это «без узора». */
+  const junk = sanitizePattern(sanitizePreset({kind: 'pattern', data: {layers: 'ерунда'}}).data);
+  if (junk.layers.length) problems.push('мусорный набор притворился рельефом');
+}
+
 
 console.log('\nПроверка своих заготовок');
 console.log(`  видов: ${PRESET_KINDS.map(presetKindName).join(', ')}`);

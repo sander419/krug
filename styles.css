@@ -269,6 +269,7 @@ body.editing #splitDraft{display:none;}
   border:1px solid var(--line);border-radius:var(--radius-sm);
   background:var(--panel2);padding:var(--gap-2);
 }
+.pat-sets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:var(--gap-1);}
 .pat-layer.muted{opacity:.55;}
 .pat-layer.muted .pat-ico{filter:grayscale(1);}
 .pat-layer-head{display:flex;gap:6px;align-items:center;}
