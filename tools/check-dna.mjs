@@ -15,7 +15,7 @@
 //      обжига. Такое уже случалось с прилепами.
 //   3. **Старые ссылки открываются.** Выпущенные ДНК прежних версий обязаны
 //      читаться — и не «примерно», а тем же изделием.
-import { state, encodeDNA, applyDNA, withDNA } from '../js/core/state.js';
+import { state, encodeDNA, applyDNA, withDNA, lastDNANotes } from '../js/core/state.js';
 import { KEYS as HISTORY_KEYS } from '../js/core/history.js';
 import { sanitizePart } from '../js/core/parts.js';
 import { computeProduction } from '../js/core/math.js';
@@ -160,6 +160,43 @@ const dna = encodeDNA();
   if (withDNA('мусор', () => 1) !== null) P('битая ДНК притворилась рабочей');
   if (j(state) !== snap) P('битая ДНК оставила состояние сбитым');
 }
+
+/* ---------- повреждённая ссылка не чинится молча ---------- */
+/* Ссылка приходит от другого человека или из старой переписки, и в ней бывает
+   мусор: высота в километр, отрицательная стенка, неизвестная масса. Привести
+   такое к пределам и промолчать — значит показать человеку **другое изделие**
+   под тем же именем, и заметить он этого не сможет. */
+{
+  const b64 = o => Buffer.from(JSON.stringify(o), 'utf8').toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const pts = [{t: 0, r: 0.45}, {t: 1, r: 0.6}];
+
+  applyDNA(b64({v: 8, pts, H: 220, D: 160, wall: 5, mat: 'gzhel-red'}));
+  if (lastDNANotes().length) P(`цельная ссылка вызвала правки: ${lastDNANotes()[0]}`);
+
+  const broken = b64({v: 8, pts, H: 99999, D: -5, wall: 0.1, mat: 'нет-такой',
+                      gid: 'нет-такой', pt: new Array(20).fill({kind: 'handle', az: 0})});
+  if (!applyDNA(broken)) P('битую ссылку не открыли вовсе — форма в ней всё-таки есть');
+  const notes = lastDNANotes();
+  for (const [what, re] of [['высоту', /высот/i], ['диаметр', /диаметр/i], ['стенку', /стенк/i],
+                            ['массу', /масс/i], ['глазурь', /глазур/i], ['прилепы', /прилеп/i]])
+    if (!notes.some(n => re.test(n))) P(`ссылка испортила ${what}, а инструмент об этом молчит`);
+  for (const n of notes) {
+    if (n.length < 20) P(`сообщение о правке «${n}» ничего не объясняет`);
+    /* В сообщении обязано быть и то, что пришло, и то, что допустимо: иначе
+       человек не поймёт, чинить ли ему ссылку или инструмент. */
+    if (/допустимо/.test(n) && !/\d/.test(n)) P(`в сообщении «${n}» нет чисел`);
+  }
+  /* Числа при этом всё равно приведены к пределам: показывать заведомо
+     невозможное изделие тоже нельзя. */
+  if (!(state.H >= 50 && state.H <= 400)) P(`после битой ссылки высота ${state.H}`);
+  if (!(state.wall >= 2 && state.wall <= 12)) P(`после битой ссылки стенка ${state.wall}`);
+  if (state.parts.length > 8) P(`после битой ссылки прилепов ${state.parts.length}`);
+  /* И список правок не тянется в следующую ссылку. */
+  applyDNA(b64({v: 8, pts, H: 200, D: 150, wall: 5, mat: 'gzhel-red'}));
+  if (lastDNANotes().length) P('правки от прошлой ссылки остались в списке');
+}
+
 
 console.log('\nПроверка ДНК и отмены');
 console.log(`  полей рецепта: ${Object.keys(RICH).length + 3} · длина ссылки: ${dna.length} знаков`);

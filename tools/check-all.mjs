@@ -43,6 +43,7 @@ const CHECKS = [
   ['Пределы',      'check-limits.mjs'],
   ['Одна правда',  'check-truth.mjs'],
   ['Готовность',   'check-readiness.mjs'],
+  ['Журнал глазури','check-glazelog.mjs'],
   ['Источники',    'check-sources.mjs'],
 ];
 

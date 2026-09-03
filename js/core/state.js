@@ -78,11 +78,41 @@ export function applyDNAFromHash(){
   return m ? applyDNA(m[1]) : false;
 }
 
+/* Что пришлось поправить в последней прочитанной ссылке. Пустой список —
+   ссылка была цельной.
+
+   Зачем это вообще. Ссылка приходит от другого человека или из старой
+   переписки, и в ней бывает мусор: высота в километр, отрицательная стенка,
+   неизвестная масса. Молча привести такое к пределам — значит показать
+   человеку **другое изделие** под тем же именем, и он этого не заметит.
+   Поэтому правки запоминаются и показываются: «ссылку открыли, но вот это
+   в ней пришлось поправить». */
+let dnaNotes = [];
+export const lastDNANotes = () => dnaNotes.slice();
+
 // Применяет ДНК из строки (ссылка или автосохранение). true, если получилось.
 export function applyDNA(code){
   try{
+    dnaNotes = [];
     const d = JSON.parse(decodeURIComponent(escape(atob(String(code).replace(/-/g,'+').replace(/_/g,'/')))));
     if(d.v > 8 || !Array.isArray(d.pts) || d.pts.length < 2) return false;
+    /* Число вне пределов — не «почти то же самое»: это другая вещь. Каждую
+       такую правку запоминаем поимённо, чтобы сказать о ней человеку. */
+    const clamped = (name, raw, lo, hi, unit) => {
+      const v = +raw;
+      if (!Number.isFinite(v) || v < lo || v > hi)
+        dnaNotes.push(`${name}: в ссылке ${Number.isFinite(v) ? v + (unit || '') : 'не число'}, ` +
+          `допустимо ${lo}–${hi}${unit || ''}`);
+    };
+    clamped('Высота', d.H, 50, 400, ' мм');
+    clamped('Диаметр', d.D, 50, 400, ' мм');
+    clamped('Стенка', d.wall, 2, 12, ' мм');
+    if (d.mat && !MATERIALS.some(x => x.id === d.mat))
+      dnaNotes.push(`Масса «${d.mat}» этому КРУГу неизвестна — взята первая из списка`);
+    if (d.gid && !GLAZES.some(g => g.id === d.gid))
+      dnaNotes.push(`Глазурь «${d.gid}» неизвестна — осталась прежняя`);
+    if (Array.isArray(d.pt) && d.pt.length > 8)
+      dnaNotes.push(`Прилепов в ссылке ${d.pt.length}, взято 8 — больше инструмент не считает`);
     state.name = d.name || state.name;
     state.points = d.pts.map(p=>({t:clamp(+p.t||0,0,1), r:clamp(+p.r||0,0,1)}));
     // v3 хранит id массы, v2 — индекс из первой версии справочника

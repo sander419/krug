@@ -11,9 +11,11 @@ import { openSheet } from './mobile.js';
 
 let worstHelp=null;   // статья, которую открывает бейдж вердикта
 
-export function toast(msg){
+/* Второй аргумент — сколько держать. Сообщение о починенной ссылке длиннее
+   обычного и читается дольше: три секунды на него не хватает. */
+export function toast(msg, ms){
   const t=$('toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3000);
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'), ms||3000);
 }
 
 export function updateStats(prod,str,tris){

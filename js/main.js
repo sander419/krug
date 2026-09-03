@@ -1,7 +1,7 @@
 // file: js/main.js
 // Точка сборки: инициализация, пакетная пересборка, цикл рендера, ДНК.
 import * as THREE from 'three';
-import { state, encodeDNA, applyDNAFromHash, applyDNA } from './core/state.js';
+import { state, encodeDNA, applyDNAFromHash, applyDNA, lastDNANotes } from './core/state.js';
 import { onChange, emit } from './core/bus.js';
 import { initHistory, record, undo, redo, canUndo, canRedo } from './core/history.js';
 import { computeProduction, computeStrength, computeWarnings, userProfileMM } from './core/math.js';
@@ -134,6 +134,17 @@ function restoreWork(){
   try{ saved=localStorage.getItem(AUTOSAVE); }catch(_){}
   return saved && applyDNA(saved) ? 'автосохранение' : 'умолчание';
 }
+
+/* Ссылку, которую пришлось чинить, человек обязан увидеть чинёной.
+   Молча привести чужие числа к пределам — значит показать другое изделие
+   под тем же именем, и заметить это невозможно. */
+function reportDNANotes(){
+  const notes=lastDNANotes();
+  if(!notes.length) return;
+  toast('Ссылку открыли, но кое-что в ней пришлось поправить: '+notes[0]
+    +(notes.length>1?` (и ещё ${notes.length-1})`:''), 9000);
+  console.warn('КРУГ · правки при чтении ссылки:', notes);
+}
 async function copyText(s){
   try{await navigator.clipboard.writeText(s);}
   catch(e){
@@ -154,7 +165,7 @@ function step(name,fn){
 
 step('сцена',()=>sceneAPI.init($('viewport')));
 let restoredFrom='умолчание';
-step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;});
+step('восстановление работы',()=>{restoredFrom=restoreWork();$('nameInput').value=state.name;reportDNANotes();});
 
 step('чертёж',()=>initEditor($('profileCanvas'),(info,target)=>{
   // линия переопределяет высоту и диаметр: ползунки обязаны это показать

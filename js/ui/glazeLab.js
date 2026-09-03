@@ -7,11 +7,13 @@ import { byId } from '../config/materials.js';
 import { GLAZES, GLAZE_FAMILIES, byGlazeId, firingFit } from '../config/glazes.js';
 import { sceneAPI } from '../three/scene.js';
 import { hookSlider } from './panels.js';
-import { $, esc, hex } from './dom.js';
+import { icon } from './icons.js';
+import { $, esc, hex, num } from './dom.js';
 import { pal } from './palette.js';
 import { sanitizePattern, patternOn, patternCurvature } from '../core/pattern.js';
 import { beadWidth } from '../core/slicer.js';
 import { reliefCoat } from '../core/glazeCoat.js';
+import { loadLog, addEntry, summarize, APPLY_WAYS, OUTCOMES } from '../core/glazeLog.js';
 
 let stull, sctx, R={}, filterFamily='all';
 
@@ -164,9 +166,42 @@ export function updateCoatPanel(){
         <b>${rc.valley.toFixed(2)}×</b> <span class="est">оценка</span>
         <span class="dim">толщина в мм — unknown: зависит от макания и утиля</span>`]);
   }
+  /* Журнал замеров: единственный источник миллиметров. Пока он пуст, толщина
+     остаётся неизвестной — и так и написано. Подставить сюда «примерно 0,4 мм»
+     значило бы выдать оценку за измерение. */
+  const log=loadLog();
+  const sum=summarize(log,{matId:state.mat, glazeId:state.glazeId});
+  const logRow = sum
+    ? `<dt>Толщина по вашим замерам</dt><dd><b>${num(sum.firedMM,2)} мм</b> после обжига
+        <span class="dim">замеров ${sum.n}${sum.spread!=null?`, разброс ${num(sum.spread,2)} мм`:''}
+        · это измерение, не расчёт</span></dd>`
+    : `<dt>Толщина в миллиметрах</dt><dd><span class="est">unknown</span>
+        <span class="dim">инструмент её не считает: зависит от макания, шликера и утиля.
+        Запишите замер — считать станет по чему</span></dd>`;
+
+  const bindLog = () => {
+    const b = $('glzLogAdd');
+    if (!b) return;
+    /* Форма из трёх вопросов, а не CRM: толщина, способ, исход. Всё остальное
+       журнал берёт из открытого изделия — масса, глазурь, температура обжига. */
+    b.onclick = () => {
+      const mm = prompt('Толщина глазури после обжига, мм (замер по срезу):', '');
+      if (mm === null || mm.trim() === '') return;
+      const way = prompt(`Как наносили? ${APPLY_WAYS.map(w=>w.id+' — '+w.name).join(', ')}`, 'dip');
+      if (way === null) return;
+      const out = prompt(`Чем кончилось? ${OUTCOMES.map(o=>o.id+' — '+o.name).join(', ')}`, 'good');
+      if (out === null) return;
+      addEntry({matId: state.mat, glazeId: state.glazeId, glazeName: byGlazeId(state.glazeId).name,
+                way: way.trim(), firedMM: +String(mm).replace(',', '.'), outcome: out.trim(),
+                tempC: byGlazeId(state.glazeId).tempC ? byGlazeId(state.glazeId).tempC[1] : null});
+      updateCoatPanel();
+    };
+  };
+
   $('glzCoat').innerHTML=
     `<p class="mat-note">${esc(g.note)}</p>`+
-    `<dl class="spec">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`+
+    `<dl class="spec">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}${logRow}</dl>`+
+    `<button class="chip-btn" id="glzLogAdd">${icon('plus',13)}Записать замер</button>`+
     (fit?`<div class="tool-verdict ${fit.lvl}"><b>${esc(fit.txt)}</b>
        <span>${esc(body.name)} · ${esc(g.name)}</span></div>`:'')+
     (na?'<p class="note">Это не глазурь: стеклофазы нет, формулу Зегера считать не к чему.</p>':'')+
@@ -175,6 +210,7 @@ export function updateCoatPanel(){
     risk+
     `<p class="note src-list">Источники: ${g.src.map(sc=>
       `<a href="${esc(sc.u)}" target="_blank" rel="noopener">${esc(sc.t)}</a>`).join(' · ')}</p>`;
+  bindLog();
 }
 
 function updateGlaze(){
