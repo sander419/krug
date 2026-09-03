@@ -11,6 +11,7 @@
 // упаковка кругов — оптимальную никто и не выкладывает у горячей печи.
 
 import { tune } from './tuning.js';
+import { sanitizePattern, patternOn, patternOutline, patternRelief } from './pattern.js';
 
 /* Зазоры и режим печи — из настроек расчёта; умолчания те же, что в реестре. */
 const gap = () => ({item: tune('gapItem'), wall: tune('gapWall'), tier: tune('gapTier')});
@@ -18,12 +19,26 @@ const gap = () => ({item: tune('gapItem'), wall: tune('gapWall'), tier: tune('ga
 /** Габарит изделия после обжига: диаметр с прилепами и высота, мм.
     Крышку обжигают на изделии — она поднимает высоту садки и может быть шире
     кромки. Забыть её значит недосчитаться яруса на полке. */
-export function firedSize(prof, parts, shrinkPct, lidPts) {
+export function firedSize(prof, parts, shrinkPct, lidPts, opt = {}) {
   const k = 1 - shrinkPct / 100;
   let r = 0, h = 0;
-  for (const p of prof) { r = Math.max(r, p.r); h = Math.max(h, p.y); }
+  /* Рельеф, растущий наружу (чешуя, кладка, жгут), делает вещь шире гладкого
+     профиля — а по этому числу считают, влезет ли она в печь и сколько штук
+     станет на полку. Считать садку «как у гладкой» значит недосчитаться
+     зазора и поставить соседние изделия впритык. Берётся гребень в каждой
+     точке профиля, а не средний размах: касаются друг друга именно гребни. */
+  const pat = sanitizePattern(opt.pattern);
+  const band = patternOn(pat) ? patternOutline(pat, prof) : null;
+  prof.forEach((p, i) => {
+    r = Math.max(r, p.r + (band ? Math.max(0, band[i].hi) : 0));
+    h = Math.max(h, p.y);
+  });
   for (const q of parts || []) r = Math.max(r, q.reach || 0);   // ручка торчит за габарит
-  for (const p of lidPts || []) { r = Math.max(r, p.r); h = Math.max(h, p.y); }
+  /* У крышки рельеф считается по её собственной высоте, и точный максимум
+     по кругу здесь не нужен: для габарита берётся верхняя оценка — гребень
+     стопки. Занизить габарит хуже, чем завысить: занижение ставит вещи впритык. */
+  const lidHi = opt.lidPattern && patternOn(pat) ? patternRelief(pat, 100).raise : 0;
+  for (const p of lidPts || []) { r = Math.max(r, p.r + lidHi); h = Math.max(h, p.y); }
   return {d: 2 * r * k, h: h * k};
 }
 

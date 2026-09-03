@@ -298,7 +298,14 @@ export function techCard(state, prod, an, procId, pieces, econOpt = {}, mouldOpt
     L.push('');
   }
   L.push(`Процесс: ${n.proc.name}`);
-  if (mouldOpt.pattern) L.push(`Узор на стенке: ${mouldOpt.pattern}`);
+  if (mouldOpt.pattern) {
+    L.push(`Узор на стенке: ${mouldOpt.pattern}`);
+    /* Техкарта уходит в цех, и по ней делают оснастку. Умолчать здесь —
+       значит отдать в работу гладкую форму под рельефное изделие. */
+    L.push('  ВНИМАНИЕ: рельеф в гипсовую форму не заложен — полость строится');
+    L.push('  по гладкому профилю. Рельеф даёт только печать; на мастер-модель');
+    L.push('  его переносят вручную.');
+  }
   L.push(`Масса: ${n.mat.name} (${n.mat.vendor})`);
   L.push('');
   L.push('## Размеры');

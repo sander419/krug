@@ -7,7 +7,7 @@ import { buildLathe } from '../core/lathe.js';
 import { computeStrength } from '../core/math.js';
 import { MATERIALS, byId } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
-import { coatProfile } from '../core/glazeCoat.js';
+import { coatProfile, reliefCoat } from '../core/glazeCoat.js';
 import { partCurve, partSection } from '../core/parts.js';
 import { sweepGeometry } from './sweep.js';
 import { strainerGeometry } from './strainerMesh.js';
@@ -16,6 +16,8 @@ import { lidProfile, sanitizeLid, lidWarpFn } from '../core/lid.js';
 import { createGlazeMaterial, applyGlazeLook } from './glazeMaterial.js';
 import { createDome, setDomeColors } from './dome.js';
 import { byEnvId } from '../config/environments.js';
+import { sanitizePattern, patternOn, patternFn, patternFade, patternMetrics }
+  from '../core/pattern.js';
 
 let container, renderer, scene, camera, controls, wheelGroup, potMesh, clayMat, glazeMat, platen;
 let ringMesh=null;
@@ -109,7 +111,33 @@ function applyCoat(geo, path, state){
   const {coat, runMax, sharpest}=coatProfile(path.map(p=>({r:p.x,y:p.y})), g.look);
   const n=path.length, cnt=geo.attributes.position.count;
   const a=ensureAttr(geo,'aCoat',1).array;
-  for(let v=0;v<cnt;v++) a[v]=coat[v%n];
+  /* Узор — тот же рельеф: на гребне плёнка тоньше, в ложбине набирается.
+     Сечение этого не видит (оно проходит по одной точке круга), поэтому
+     множитель считается по вершинам: у каждой свой угол, а значит своё
+     положение на борозде. Числа те же, что показывает панель глазури. */
+  /* Считается это по вершинам и стоит 2,2 мс на восемнадцати тысячах, поэтому
+     два условия. Первое: во время «Кинотеатра» модуляция не считается — там
+     важен рост формы, а не плёнка, и кадр дороже. Второе: если множители почти
+     единичны (спокойная глазурь, мягкий рельеф), считать нечего. */
+  const pat=sanitizePattern(state.pattern);
+  const pf=(!state.playing&&patternOn(pat))?patternFn(pat):null;
+  const M=pf?patternMetrics(pat,{D:state.D,H:state.H}):null;
+  let rc=pf?reliefCoat(g.look,{stepMM:M.stepMM, periodMM:M.periodMM,
+                               depth:Math.max(M.carve,M.raise)}):null;
+  if(rc&&rc.crest>0.95&&rc.valley<1.05) rc=null;
+  const H=path.length?Math.max(...path.map(p=>p.y)):0;
+  const amp=rc?Math.max(M.carve,M.raise):0;
+  const segs=n>0?Math.max(1,Math.round(cnt/n)-1):1;
+  for(let v=0;v<cnt;v++){
+    const j=v%n;
+    let c=coat[j];
+    if(rc&&amp>0.01&&path[j]&&path[j].outer&&H>0){
+      const th=(Math.floor(v/n)/segs)*Math.PI*2;
+      const t=pf(th, path[j].y/H, patternFade(path[j].y,H))/amp;   // −1…1 по борозде
+      c*= t>=0 ? 1+(rc.crest-1)*Math.min(t,1) : 1+(rc.valley-1)*Math.min(-t,1);
+    }
+    a[v]=c;
+  }
   return {runMax, sharpest};
 }
 

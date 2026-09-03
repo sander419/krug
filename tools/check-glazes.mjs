@@ -3,7 +3,7 @@
 // (резолвер three нужен из-за умолчаний состояния: они тянут ядро целиком)
 import { state as DEFAULTS } from '../js/core/state.js';   // модуль отдаёт умолчания до правок
 import { GLAZES, GLAZES_SCHEMA, GLAZE_FAMILIES, CONE_C, byGlazeId, firingFit } from '../js/config/glazes.js';
-import { coatProfile, coatWarnings } from '../js/core/glazeCoat.js';
+import { coatProfile, coatWarnings, reliefCoat } from '../js/core/glazeCoat.js';
 import { checkContract } from './registry-contract.mjs';
 import { MATERIALS } from '../js/config/materials.js';
 
@@ -112,6 +112,48 @@ if (lowMat && highGlaze) {
   const fit = firingFit(highGlaze, lowMat);
   if (!fit || fit.ok) problems.push('высокая глазурь на низкой массе обязана давать несовпадение обжига');
 }
+
+/* ---------- глазурь на рельефе узора ---------- */
+/* Борозда узора — то же ребро и та же канавка, что на профиле: на гребне
+   плёнка утоньшается до пробоя, в ложбине набирается. Считает это reliefCoat
+   теми же константами, что и модель сечения, — иначе на экране была бы одна
+   физика, а в замечаниях другая.
+
+   Что здесь чем является: радиус гребня — геометрия (ρ = L²/4π²A), множители
+   плёнки — оценка по параметрам семейства, толщина в миллиметрах — unknown. */
+{
+  const look = byGlazeId('tenmoku').look;
+  /* Геометрия: вдвое мельче шаг — вчетверо острее гребень. */
+  const wide = reliefCoat(look, {stepMM: 40, depth: 2});
+  const fine = reliefCoat(look, {stepMM: 20, depth: 2});
+  if (!wide || !fine) problems.push('рельеф есть, а плёнка на нём не посчиталась');
+  else {
+    if (Math.abs(wide.radiusMM / fine.radiusMM - 4) > 0.01)
+      problems.push(`вдвое мельче шаг дал ${(wide.radiusMM / fine.radiusMM).toFixed(2)}× по радиусу вместо четырёх`);
+    if (!(fine.crest < wide.crest)) problems.push('на более остром гребне плёнка не стала тоньше');
+    if (!(fine.valley > wide.valley)) problems.push('в более глубокой ложбине плёнка не набралась');
+    if (!(fine.crest < 1 && fine.valley > 1)) problems.push('гребень и ложбина ушли не в те стороны');
+  }
+  /* Глубже борозда — острее гребень при том же шаге. */
+  const deep = reliefCoat(look, {stepMM: 30, depth: 4}), shallow = reliefCoat(look, {stepMM: 30, depth: 1});
+  if (!(deep.radiusMM < shallow.radiusMM)) problems.push('глубина не влияет на радиус гребня');
+  /* Нет рельефа — нет и ответа: «единица» вместо null означала бы, что плёнка
+     посчитана, хотя считать было нечего. */
+  if (reliefCoat(look, {stepMM: 30, depth: 0}) !== null) problems.push('без рельефа плёнка на нём всё равно посчиталась');
+  if (reliefCoat(look, {depth: 2}) !== null) problems.push('без шага и периода радиус гребня взялся из ниоткуда');
+  /* Спокойная глазурь на том же рельефе даёт меньше и пробоя, и набора:
+     множители обязаны зависеть от семейства, а не быть общей константой. */
+  const calm = reliefCoat(byGlazeId('clear-gloss').look, {stepMM: 20, depth: 2});
+  if (!(calm.crest > fine.crest)) problems.push('у спокойной глазури пробой на гребне не меньше, чем у тенмоку');
+  /* Пределы: множители не уходят в отрицательные и не превышают потолок модели. */
+  for (const g of GLAZES) {
+    const r = reliefCoat(g.look, {stepMM: 8, depth: 6});
+    if (!(r.crest >= 0 && r.crest <= 2.6 && r.valley >= 0 && r.valley <= 2.6))
+      problems.push(`«${g.name}»: множители плёнки вышли за пределы (${r.crest.toFixed(2)}, ${r.valley.toFixed(2)})`);
+    if (!Number.isFinite(r.radiusMM)) problems.push(`«${g.name}»: радиус гребня не число`);
+  }
+}
+
 
 console.log(`Реестр глазурей: схема v${GLAZES_SCHEMA}, записей ${GLAZES.length}, семейств ${Object.keys(GLAZE_FAMILIES).length}`);
 for (const g of GLAZES) {

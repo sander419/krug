@@ -38,7 +38,8 @@ function itemOf() {
   const lidPts = lid.on ? lidProfile(prof, lid, state.wall).pts : null;
   const mat = materialById(state.mat);
   const f = mat.firing || {};
-  const size = firedSize(prof, parts, mat.shrinkPct, lidPts);
+  const size = firedSize(prof, parts, mat.shrinkPct, lidPts,
+                         {pattern: state.pattern, lidPattern: lid.on && lid.pattern});
   return {
     d: size.d, h: size.h,
     n: sanitizeCost(state.cost).n,

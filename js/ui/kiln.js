@@ -31,7 +31,8 @@ function itemNow() {
   const parts = (state.parts || []).map(p => partMetrics(prof, p));
   const lid = sanitizeLid(state.lid);
   const lidPts = lid.on ? lidProfile(prof, lid, state.wall).pts : null;
-  return firedSize(prof, parts, byId(state.mat).shrinkPct, lidPts);
+  return firedSize(prof, parts, byId(state.mat).shrinkPct, lidPts,
+                   {pattern: state.pattern, lidPattern: lid.on && lid.pattern});
 }
 
 function shelfSVG(load, itemD) {

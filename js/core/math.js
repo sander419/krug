@@ -2,6 +2,7 @@
 // Чистое математическое ядро. Единицы: мм, граммы.
 import * as THREE from 'three';
 import { byId, density } from '../config/materials.js';
+import { byGlazeId } from '../config/glazes.js';
 import { revision } from './bus.js';
 import { partsVolumeMl, partsWarnings, fillLevelY, fillLimitedBy } from './parts.js';
 import { sanitizeLid, lidMetrics, lidWarnings } from './lid.js';
@@ -260,18 +261,22 @@ export function computeWarnings(state, prod, str){
      видит «всё чисто» на вещи, у которой в ложбине миллиметр стенки. */
   for(const pw of patternWarnings(sanitizePattern(state.pattern),
       {wall:state.wall, hollow:state.hollow, D:state.D, H:state.H,
-       bead:(state.pr&&+state.pr.nozzle||4)*1.05, layerH:(state.pr&&+state.pr.lh)||0}))
+       bead:(state.pr&&+state.pr.nozzle||4)*1.05, layerH:(state.pr&&+state.pr.lh)||0,
+       /* Глазурь считается там же, где остальной рельеф: семейство приходит
+          сюда, потому что реестр глазурей — не дело модуля узора. */
+       look:byGlazeId(state.glazeId).look}))
     if(pw.lvl!=='ok') w.push({lvl:pw.lvl, ...(pw.area?{area:pw.area}:{}), help:'relief',
       txt:'Узор: '+pw.txt});
   const pt=sanitizePattern(state.pattern);
   if(patternOn(pt)){
-    /* Глазурь на рельефе ведёт себя иначе, чем на гладкой стенке, а наш расчёт
-       плёнки считает по сечению и про борозды не знает. Молчать об этом нельзя:
-       на пробу уходит обжиг. */
+    /* Плёнка на гребнях и в ложбинах теперь считается (reliefCoat в ядре
+       глазури), и замечание об этом приходит из patternWarnings вместе с
+       числами. Здесь остаётся то, что числами не считается: на политом обжиге
+       первую вещь всё равно жгут пробно — расчёт даёт оценку, а не паспорт. */
     if(state.firing==='glaze')
-      w.push({lvl:'warn', area:'glaze', help:'glaze-run',
-        txt:'Узор и глазурь: на гребнях плёнка тоньше и может пробиться, в ложбинах — '
-          +'копится и течёт. Расчёт толщины считает по гладкому сечению; первую вещь обожгите пробно.'});
+      w.push({lvl:'warn', area:'glaze', help:'glaze-thickness',
+        txt:'Узор и глазурь: множители плёнки на гребне и в ложбине — оценка по семейству '
+          +'глазури, а не измеренная толщина. Первую вещь обожгите пробно.'});
     /* Прилеп, севший в ложбину, держится на её дне: площадь шва меньше,
        и отрывается он первым. Лечится поворотом детали или сдвигом слоя —
        поэтому в замечании сказано и то, и другое. */

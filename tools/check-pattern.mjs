@@ -645,7 +645,10 @@ function bedCenter(text) {
 {
   const c = {wall: 5, D: 160, H: 220, bead: 4.2, layerH: 2.4};
   const ok = patternWarnings(one({depth: 1.5}), c);
-  if (ok.length) P('спокойный узор вызывает замечания: ' + ok[0].txt);
+  /* Замечание об отливке стоит всегда, пока узор включён: полость гипса гладкая
+     при любом рельефе. «Спокойный узор» здесь про поводы, зависящие от чисел. */
+  const own = ok.filter(w => w.area !== 'cast');
+  if (own.length) P('спокойный узор вызывает замечания: ' + ok[0].txt);
   if (!patternWarnings(one({depth: 4.5}), c).some(w => w.lvl === 'bad'))
     P('рельеф глубже стенки не помечен красным');
   if (!patternWarnings(one({n: 60, depth: 2}), c).some(w => w.lvl === 'bad'))
@@ -684,6 +687,22 @@ function bedCenter(text) {
   const vert = patternWarnings(sanitizePattern({layers: [{id: 'flute', n: 12, depth: 1.5}]}), c)
     .filter(w => w.area === 'tool');
   if (vert.length) P('вертикальные борозды без закрутки съёму вдоль оси не мешают, а замечание есть');
+
+  /* Отливка: полость гипса гладкая при любом рельефе, и об этом обязано
+     говориться всегда — иначе человек закажет форму и получит гладкую вещь.
+     Обещать обратное тоже нельзя: слово «повторит» здесь уже стояло. */
+  for (const layers of [[{id: 'flute', n: 12, depth: 1.5}], [{id: 'bump', n: 10, depth: 2, m: 5}],
+                        [{id: 'window', n: 8, depth: 3, m: 4}]]) {
+    const all = patternWarnings(sanitizePattern({layers}), c);
+    const cast = all.filter(w => w.area === 'cast');
+    if (cast.length !== 1) P(`форма для отливки: замечаний ${cast.length}, а нужно одно`);
+    else if (!/гладк/.test(cast[0].txt)) P('замечание об отливке не говорит, что полость гладкая');
+    for (const w of all)
+      if (/лить[её] в гипс (её |)повтор|форма (её |)повтор/.test(w.txt))
+        P(`замечание обещает, что гипс повторит рельеф: «${w.txt.slice(0, 60)}…»`);
+  }
+  if (patternWarnings(sanitizePattern({layers: []}), c).some(w => w.area === 'cast'))
+    P('без узора инструмент всё равно говорит про рельеф в форме');
   const screw = patternWarnings(sanitizePattern({layers: [{id: 'flute', n: 12, depth: 1.5, twist: 90}]}), c)
     .filter(w => w.area === 'tool');
   if (screw.length !== 1 || !/винт/.test(screw[0].txt)) P('закрученный рельеф не помечен как винт для жёсткой формы');

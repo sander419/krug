@@ -9,6 +9,8 @@ import { sceneAPI } from '../three/scene.js';
 import { hookSlider } from './panels.js';
 import { $, esc, hex } from './dom.js';
 import { pal } from './palette.js';
+import { sanitizePattern, patternOn, patternMetrics } from '../core/pattern.js';
+import { reliefCoat } from '../core/glazeCoat.js';
 
 let stull, sctx, R={}, filterFamily='all';
 
@@ -146,6 +148,22 @@ export function updateCoatPanel(){
     ['Рельеф формы', st.sharpest>0.45?'острый — есть за что зацепиться'
       :st.sharpest>0.2?'мягкий':'гладкая, глазури нечего подчеркнуть'],
   ];
+  /* Узор — тоже рельеф, и плёнка ведёт себя на нём так же, как на ребре
+     профиля. Числа помечены как оценка: множители берут параметры семейства,
+     подобранные по виду образцов, а сама толщина в миллиметрах неизвестна —
+     она зависит от макания, шликера и пористости утиля. */
+  const pat=sanitizePattern(state.pattern);
+  if(patternOn(pat)){
+    const M=patternMetrics(pat,{D:state.D,H:state.H,wall:state.wall,hollow:state.hollow});
+    const rc=reliefCoat(g.look,{stepMM:M.stepMM,periodMM:M.periodMM,
+                                depth:Math.max(M.carve,M.raise)});
+    if(rc) rows.push(
+      ['Гребень узора', `радиус <b>${rc.radiusMM.toFixed(1)} мм</b>
+        <span class="dim">геометрия рельефа</span>`],
+      ['Плёнка на узоре', `на гребне <b>${rc.crest.toFixed(2)}×</b>, в ложбине
+        <b>${rc.valley.toFixed(2)}×</b> <span class="est">оценка</span>
+        <span class="dim">толщина в мм — unknown: зависит от макания и утиля</span>`]);
+  }
   $('glzCoat').innerHTML=
     `<p class="mat-note">${esc(g.note)}</p>`+
     `<dl class="spec">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`+
