@@ -219,6 +219,38 @@ const EVIL = [NaN, Infinity, -Infinity, undefined, null, '', 'ерунда', -1,
   }
 }
 
+/* ---------- цена кадра ---------- */
+/* «Кинотеатр» пересобирает форму каждый кадр, и рельеф считается по вершинам.
+   Замерено: гладкая 0,7 мс, один слой 1,4, четыре слоя на 96 сегментах 3,7,
+   худший мыслимый набор на 128 сегментах 5,1. Потолок в 9 мс держит запас
+   до кадра в 16 мс: перешагнём — «Кинотеатр» начнёт дёргаться, и виноват
+   будет не браузер. */
+{
+  const frame = (segments, layers) => {
+    Object.assign(state, {
+      points: PRESETS[1].pts.map(p => ({...p})), H: 220, D: 160, segments,
+      wall: 5, hollow: true, footH: 6, footK: 62, stage: 6, rings: 0.4,
+      parts: [], lid: {on: false}, pattern: {layers},
+    });
+    let g = null;
+    const once = () => { g = buildPot(state, g).geometry; };
+    once();
+    const t0 = process.hrtime.bigint();
+    for (let i = 0; i < 30; i++) once();
+    return Number(process.hrtime.bigint() - t0) / 1e6 / 30;
+  };
+  const plain = frame(72, []);
+  if (plain > 3) P(`гладкая форма собирается ${plain.toFixed(2)} мс за кадр — это уже заметно`);
+  const heavy = frame(128, [
+    {id: 'bark', n: 40, depth: 2, m: 30}, {id: 'weave', n: 40, depth: 2, m: 30},
+    {id: 'chevron', n: 40, depth: 2, m: 30}, {id: 'brick', n: 40, depth: 2, m: 30}]);
+  if (heavy > 9) P(`худший узор собирается ${heavy.toFixed(2)} мс за кадр — «Кинотеатр» будет дёргаться`);
+  /* И не должно быть так, что рельеф дороже самой формы на порядок: это
+     означало бы, что где-то потерялся кэш. */
+  if (heavy > plain * 20) P(`рельеф дороже гладкой формы в ${(heavy / plain).toFixed(0)} раз — похоже, кэш не сработал`);
+}
+
+
 console.log('\nКрайние значения');
 console.log(`  злых входов: ${EVIL.length} · форм рельефа: ${PATTERNS.length} · видов прилепов: ${Object.keys(PART_KINDS).length}`);
 if (problems.length) {
