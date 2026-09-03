@@ -44,7 +44,10 @@ export function sanitizeLid(raw) {
   o.type = o.type === 'over' ? 'over' : 'inset';
   o.pattern = o.pattern !== false;
   for (const [k, [lo, hi]] of Object.entries(LID_LIMITS)) {
-    const v = +o[k];
+    /* Пустое поле — «не задано», а не ноль: `+null` и `+''` дают ноль,
+       и стёртый зазор посадки молча становился нулевым. */
+    const raw0 = o[k];
+    const v = (raw0 === null || raw0 === undefined || raw0 === '') ? NaN : +raw0;
     o[k] = Number.isFinite(v) ? clamp(v, lo, hi) : LID_DEFAULTS[k];
   }
   return o;

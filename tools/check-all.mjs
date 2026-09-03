@@ -39,6 +39,8 @@ const CHECKS = [
   ['Заготовки',    'check-presets.mjs'],
   ['ДНК',          'check-dna.mjs'],
   ['Замечания',    'check-warnings.mjs'],
+  ['Сценарии',     'check-scenarios.mjs'],
+  ['Пределы',      'check-limits.mjs'],
   ['Источники',    'check-sources.mjs'],
 ];
 

@@ -18,7 +18,7 @@ export const KEYS = ['name', 'points', 'activePreset', 'H', 'D', 'segments', 'ri
               'cost', 'pattern', 'glazeOwn'];
 
 const LIMIT = 60;          // шагов назад; больше не нужно, а память не резиновая
-const COALESCE = 350;      // мс: тянущийся ползунок — один шаг, а не сорок
+export const COALESCE = 350;   // мс: тянущийся ползунок — один шаг, а не сорок
 
 const past = [];
 const future = [];
