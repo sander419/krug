@@ -62,8 +62,12 @@ export function readiness(state, ctx = {}) {
   let level = 'ready';
   const add = (lvl, txt, where) => { reasons.push({lvl, txt, where}); level = worse(level, lvl); };
 
-  /* 1. Замечания мастера — те же, что в панели. Красное значит «не выйдет». */
+  /* 1. Замечания мастера — те же, что в панели. Красное значит «не выйдет».
+        Оговорки о точности модели (`note`) сюда не идут: «вещь не готова,
+        потому что наш расчёт приблизителен» — это не про вещь, а про нас,
+        и в списке причин такая строка только разбавляет настоящие. */
   for (const w of ctx.warnings || []) {
+    if (w.note) continue;
     if (w.lvl === 'bad') add('blocked', w.txt, 'Контроль мастера');
     else if (w.lvl === 'warn') add('warn', w.txt, 'Контроль мастера');
   }

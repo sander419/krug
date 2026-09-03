@@ -122,6 +122,14 @@ function status(over, tabs = PRINT_TABS) {
   if (fake.level !== 'blocked') P('красное замечание не сделало статус отказом');
   if (!fake.reasons.some(r => /Выдуманное/.test(r.txt))) P('статус не взял причину из показанных замечаний');
 
+  /* Оговорка о точности модели — не причина, по которой вещь не готова.
+     Она остаётся в «Контроле мастера», но статус ею не желтеет: иначе
+     любое изделие с глазурью навсегда «с замечаниями». */
+  const withNote = readiness(state, {prod, str, gcode: {warnings: []}, prof, tabs: PRINT_TABS,
+    warnings: [{lvl: 'warn', note: true, txt: 'Наша модель приблизительна, и мы об этом говорим.'}]});
+  if (withNote.level !== 'ready') P(`оговорка о точности сделала статус «${withNote.level}»`);
+  if (withNote.reasons.length) P('оговорка о точности попала в причины готовности');
+
   /* Подпись читается по-русски при любом числе причин. */
   for (const n of [1, 2, 5, 11, 21, 22]) {
     const r = {level: 'warn', reasons: Array(n).fill({lvl: 'warn', txt: 'x', where: 'y'})};
