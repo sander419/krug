@@ -42,6 +42,7 @@ const CHECKS = [
   ['Сценарии',     'check-scenarios.mjs'],
   ['Пределы',      'check-limits.mjs'],
   ['Одна правда',  'check-truth.mjs'],
+  ['Готовность',   'check-readiness.mjs'],
   ['Источники',    'check-sources.mjs'],
 ];
 

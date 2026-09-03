@@ -8,7 +8,11 @@
 //
 // Каждое правило тут стоит потому, что мы уже на нём спотыкались или потому,
 // что нарушение не видно на экране — а видно только пользователю.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { join, dirname, sep as sep2 } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = new URL('..', import.meta.url);
 const css = readFileSync(new URL('styles.css', root), 'utf-8');
@@ -135,6 +139,47 @@ if (/<div[^>]*\son[cC]lick=/.test(html)) P('<div> с обработчиком к
     if (!new RegExp('id="' + m[1] + '"').test(html))
       P('поиск зовёт кнопку «' + m[1] + '», которой нет в разметке — пункт не покажется');
 }
+
+/* ---------- всё вообще разбирается ---------- */
+/* Синтаксическая ошибка в любом файле интерфейса кладёт приложение целиком:
+   модуль не загружается, вкладка пустая. Проверки этого не видели — они
+   импортируют ядро, а не интерфейс, и оставались зелёными при мёртвом экране.
+   Случилось ровно это: скрипт правки превратил «\n» в настоящий перевод
+   строки внутри строкового литерала.
+
+   Поэтому каждый файл проекта проверяется разбором — тем же node --check,
+   которым его прочитает браузер. */
+{
+  const files = [];
+  const walk = dir => {
+    for (const e of readdirSync(dir, {withFileTypes: true})) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.js')) files.push(full);
+    }
+  };
+  const rootDir = fileURLToPath(root);
+  walk(join(rootDir, 'js'));
+  let broken = 0;
+  /* `node --check` на файле с расширением .js разбирает его как CommonJS
+     и молча проглатывает даже «const x = ;» — проверка выглядела рабочей
+     и не ловила ничего. Браузер читает эти файлы как модули, поэтому и здесь
+     они разбираются как модули: содержимое кладётся во временный .mjs. */
+  const tmp = join(tmpdir(), 'krug-parse-' + process.pid + '.mjs');
+  for (const f of files) {
+    writeFileSync(tmp, readFileSync(f));
+    const r = spawnSync(process.execPath, ['--check', tmp], {encoding: 'utf8'});
+    if (r.status !== 0) {
+      broken++;
+      const msg = String(r.stderr || '').split('\n').find(l => /Error|error/.test(l)) || 'не разбирается';
+      problems.push(`${f.replace(fileURLToPath(root), '')}: ${msg.trim()}`);
+    }
+  }
+  try { rmSync(tmp, {force: true}); } catch (_) {}
+  if (files.length < 40) problems.push(`файлов проекта нашлось ${files.length} — похоже, искали не там`);
+  if (!broken) console.log(`  разбор: ${files.length} файлов, все читаются браузером`);
+}
+
 
 console.log('Проверка интерфейса\n');
 {

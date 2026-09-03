@@ -5,7 +5,7 @@ import { STAGES } from '../config/data.js';
 import { byId } from '../config/materials.js';
 import { openContextHelp } from './kb.js';
 import { atLevel } from '../core/math.js';
-import { $, hintScroll, plural } from './dom.js';
+import { $, hintScroll, plural, esc } from './dom.js';
 import { icon, paintIcons } from './icons.js';
 import { openSheet } from './mobile.js';
 
@@ -50,7 +50,14 @@ export function updateStats(prod,str,tris){
     <div class="chip" data-adv title="Обрезки от подрезки ножки: их размалывают и возвращают в массу"><span class="k">Возврат в шамот</span><b>${fmtG(prod.waste)}</b></div>
     <div class="chip" data-adv title="Сколько треугольников в модели: на вес STL влияет напрямую, на расчёт — нет"><span class="k">Полигоны</span><b>${Math.round(tris).toLocaleString('ru')}</b></div>`;
 }
-export function updateWarnings(list){
+/**
+ * Список замечаний и готовность изделия.
+ *
+ * Готовность — не украшение и не пересчёт: она собрана из этого же списка,
+ * ответа слайсера и габарита после обжига. Поэтому здесь она только
+ * показывается, а считается в ядре (`core/readiness.js`).
+ */
+export function updateWarnings(list, ready){
   $('warnList').innerHTML=list.map(w=>
     `<div class="warn-item ${w.lvl}">${icon(w.lvl==='ok'?'circle-check':'circle-alert',16)}<span>${w.txt}</span>`+
     (w.help?`<button class="why" data-help="${w.help}" title="Открыть статью">почему</button>`:'')+
@@ -75,6 +82,19 @@ export function updateWarnings(list){
     const k=list.filter(w=>w.lvl!=='ok').length;
     c.textContent = k ? `${k} ${plural(k,'замечание','замечания','замечаний')}` : 'всё чисто';
     c.className='foot-count '+(bad?'bad':k?'warn':'ok');
+  }
+  /* Статус готовности говорит то, чего не скажет счётчик замечаний: можно ли
+     это отдавать в работу. Причины он не выдумывает — они те же, что в списке
+     ниже, поэтому нажатие просто открывает список. */
+  const st=$('readyBadge');
+  if(st&&ready){
+    st.className='ready-badge '+ready.tone;
+    st.innerHTML=icon(ready.tone==='ok'?'circle-check':ready.tone==='bad'?'circle-alert':'info',15)
+      +`<span>${esc(ready.name)}</span>`
+      +(ready.reasons.length?`<i>${ready.reasons.length}</i>`:'');
+    st.title=ready.what+(ready.reasons.length?'\n\n'+ready.reasons.slice(0,4)
+      .map(r=>`• ${r.where}: ${r.txt}`).join('\n'):'');
+    st.setAttribute('aria-label',ready.name+'. '+ready.what);
   }
   const cnt=list.filter(w=>w.lvl!=='ok').length;
   const label = !cnt ? 'Мастер одобряет'

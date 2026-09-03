@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { state, encodeDNA, applyDNAFromHash, applyDNA } from './core/state.js';
 import { onChange, emit } from './core/bus.js';
 import { initHistory, record, undo, redo, canUndo, canRedo } from './core/history.js';
-import { computeProduction, computeStrength, computeWarnings } from './core/math.js';
+import { computeProduction, computeStrength, computeWarnings, userProfileMM } from './core/math.js';
 import { byId } from './config/materials.js';
 import { sceneAPI } from './three/scene.js';
 import { exportSTL, exportOBJ, exportGLB, snapshot } from './three/exporters.js';
@@ -35,6 +35,8 @@ import { initPanels, initTabs, initBlocks, panelsAPI, onLeaveForm } from './ui/p
 import { initParts, updateMechanics } from './ui/parts.js';
 import { initGlazeLab, syncGlaze, updateCoatPanel } from './ui/glazeLab.js';
 import { coatWarnings } from './core/glazeCoat.js';
+import { readiness } from './core/readiness.js';
+import { sliceGCode } from './core/slicer.js';
 import { byGlazeId } from './config/glazes.js';
 import { initLibrary, syncLibrary } from './ui/library.js';
 import { initKiln, syncKiln } from './ui/kiln.js';
@@ -52,6 +54,12 @@ import { $ } from './ui/dom.js';
 
 /* ---------- пакетная пересборка (один rAF на серию изменений) ---------- */
 let rafPending=false;
+/* G-code режется только ради замечаний: если он не строится, готовность
+   обязана об этом узнать, а не упасть вместе с ним. */
+function safeSlice(){
+  try{ return sliceGCode(state); }catch(e){ return {warnings:[{cls:'e',txt:'G-code не строится: '+e.message}]}; }
+}
+
 function refreshNow(){
   const str=computeStrength(state);
   const {tris}=sceneAPI.rebuild(state,str);
@@ -66,7 +74,12 @@ function refreshNow(){
   // замечание по спрятанному инструменту — шум: тому, кто лепит руками,
   // нечего делать с запасом прочности при печати
   const tabs=activeRoute().tabs;
-  updateWarnings(warn.filter(w=>!w.area||tabs.includes(w.area)));
+  const shown=warn.filter(w=>!w.area||tabs.includes(w.area));
+  /* Готовность собирается из того же, что человек уже видит: показанных
+     замечаний, ответа слайсера и габарита после обжига. Считать её отдельно
+     значило бы завести второй источник правды о том же изделии. */
+  const ready=readiness(state, {prod, str, warnings: shown, gcode: safeSlice(), prof: userProfileMM(state), tabs});
+  updateWarnings(shown, ready);
   updateCoatPanel();
   syncKiln();          // садка зависит от габарита после усадки
   syncMoney();         // себестоимость зависит от массы, садки и глазури

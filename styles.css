@@ -269,6 +269,23 @@ body.editing #splitDraft{display:none;}
   border:1px solid var(--line);border-radius:var(--radius-sm);
   background:var(--panel2);padding:var(--gap-2);
 }
+/* Готовность изделия: один ответ на вопрос «отдавать ли в работу». Цвет —
+   те же смысловые токены, что у замечаний, чтобы статус читался как их итог,
+   а не как отдельная сущность. */
+.ready-badge{
+  display:flex;align-items:center;gap:8px;width:100%;margin:0 0 var(--gap-1);
+  padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:var(--sunken);color:var(--text);font:inherit;font-size:calc(13px * var(--ui));
+  cursor:pointer;text-align:left;
+}
+.ready-badge:empty{display:none;}
+.ready-badge i{margin-left:auto;font-style:normal;opacity:.7;font-variant-numeric:tabular-nums;}
+.ready-badge.ok{border-color:color-mix(in srgb,var(--ok) 55%,var(--line));color:var(--ok);}
+.ready-badge.warn{border-color:color-mix(in srgb,var(--warn) 55%,var(--line));color:var(--warn);}
+.ready-badge.bad{border-color:color-mix(in srgb,var(--bad) 55%,var(--line));color:var(--bad);}
+.ready-badge.unknown{border-color:var(--line2);color:var(--muted);}
+.ready-badge:hover{background:var(--field);}
+
 .pat-sets{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:var(--gap-1);}
 .pat-layer.muted{opacity:.55;}
 .pat-layer.muted .pat-ico{filter:grayscale(1);}

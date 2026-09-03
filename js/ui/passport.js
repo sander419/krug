@@ -15,6 +15,8 @@
 import { state } from '../core/state.js';
 import { emit } from '../core/bus.js';
 import { computeProduction, userProfileMM, computeWarnings, computeStrength } from '../core/math.js';
+import { readiness } from '../core/readiness.js';
+import { sliceGCode } from '../core/slicer.js';
 import { byId as materialById, density } from '../config/materials.js';
 import { byGlazeId } from '../config/glazes.js';
 import { byId as processById } from '../config/processes.js';
@@ -53,6 +55,16 @@ export function passportData() {
     prod, prof, mat, glz, opt, kiln, per, plan, an, rec, mould,
     firedH: state.H * k, firedD: state.D * k,
     warnings: computeWarnings(state, prod, computeStrength(state)),
+    /* Готовность считается из тех же замечаний и того же слайсера, что
+       и в панели: два разных ответа об одной вещи — худшее, что здесь
+       может быть. */
+    ready: (() => {
+      const str = computeStrength(state);
+      const warnings = computeWarnings(state, prod, str);
+      let gcode = null;
+      try { gcode = sliceGCode(state); } catch (e) { gcode = {warnings: [{cls: 'e', txt: 'G-code не строится: ' + e.message}]}; }
+      return readiness(state, {prod, str, warnings, gcode, prof});
+    })(),
     strength: computeStrength(state),
   };
 }
@@ -137,11 +149,11 @@ function bodyHTML() {
       <div class="pp-sub">${Math.round(state.H)}×${Math.round(state.D)} мм на круге ·
         ${esc(d.mat.name)} · ${esc(d.glz.name.toLowerCase())}${w
           ? ` · этап: ${phaseById(w.phase).name}` : ' · не сохранено'}</div>
-      <div class="pp-verdict ${bad.length ? 'bad' : warn.length ? 'warn' : 'ok'}">
-        ${icon(bad.length ? 'circle-alert' : 'circle-check', 15)}
-        ${bad.length ? `${bad.length} ${plural(bad.length, 'замечание', 'замечания', 'замечаний')} «нельзя»: ${esc(bad[0].txt)}`
-          : warn.length ? `Красных нет, есть ${warn.length} ${plural(warn.length, 'предупреждение', 'предупреждения', 'предупреждений')}`
-          : 'Мастер одобряет: форма технологична и устойчива'}</div>
+      <!-- Паспорт читают перед тем, как отдать вещь в работу, поэтому здесь
+           стоит та же готовность, что и в панели: один ответ и причина. -->
+      <div class="pp-verdict ${d.ready.tone}">
+        ${icon(d.ready.tone === 'ok' ? 'circle-check' : d.ready.tone === 'bad' ? 'circle-alert' : 'info', 15)}
+        ${esc(d.ready.name)}${d.ready.reasons.length ? ` — ${esc(d.ready.reasons[0].txt)}` : ': ' + esc(d.ready.what)}</div>
     </div>
   </div>`;
 
