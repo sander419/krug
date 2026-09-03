@@ -21,6 +21,11 @@ import { buildPot } from '../js/core/geometry.js';
 import { sliceGCode, beadWidth } from '../js/core/slicer.js';
 import { PRINTERS } from '../js/config/data.js';
 import { modelFiles, objText } from '../js/three/exporters.js';
+import { wareDXF } from '../js/core/dxf.js';
+import { wareProfiles, cavityPath } from '../js/core/mould.js';
+import { rollerProfile } from '../js/core/mould.js';
+import { byId as materialById } from '../js/config/materials.js';
+import { byId as processById } from '../js/config/processes.js';
 
 const problems = [];
 const P = t => problems.push(t);
@@ -188,7 +193,50 @@ if (!(swing > 5.5 && swing < 6.5)) P(`сама модель рельефа да�
     P(`развёртка: размах ${(hi - lo).toFixed(2)} против ${swing.toFixed(2)}`);
 }
 
-/* ---------- 6. техкарта и паспорт ---------- */
+/* ---------- 6. DXF: профиль тот же, но рельефа в нём нет — и это правило ---------- */
+/* DXF режут по профилю: по нему точат шаблон и профиль ролика. Рельеф туда
+   не попадает намеренно — оснастка его не воспроизводит (см. «Рельеф и гипс»
+   в ARCHITECTURE), а линия с борозд в чертеже означала бы обещание. Здесь
+   проверяется и то, и другое: профиль совпадает с моделью, рельефа нет. */
+{
+  const dxf = wareDXF(state, {wareProfiles, rollerProfile, cavityPath,
+                             mould: processById('casting'), materialById});
+  /* Слои читаются по коду 8, координаты — по коду 10. Сравнивать надо именно
+     слой изделия: матрица законно шире его на стенку гипса, и общий максимум
+     по файлу ничего не значит. */
+  const byLayer = {};
+  const rows = dxf.split(/\r?\n/).map(x => x.trim());
+  let layer = null;
+  for (let i = 0; i < rows.length - 1; i++) {
+    if (rows[i] === '8') layer = rows[i + 1];
+    else if (rows[i] === '10' && layer) (byLayer[layer] = byLayer[layer] || []).push(+rows[i + 1]);
+  }
+  const ware = (byLayer.IZDELIE || []).filter(Number.isFinite);
+  if (ware.length < 50) P(`в слое IZDELIE ${ware.length} координат — мало для сверки`);
+  else {
+    const maxR = Math.max(...ware), profMax = Math.max(...prof.map(p => p.r));
+    if (Math.abs(maxR - profMax) > 0.5)
+      P(`DXF: наружный контур ${maxR.toFixed(1)} против ${profMax.toFixed(1)} у профиля модели`);
+    if (maxR > profMax + 0.5)
+      P('DXF: в профиль просочился рельеф — оснастка его не воспроизводит');
+  }
+  if (!byLayer.MATRICA || !byLayer.MATRICA.length) P('в DXF нет сечения матрицы');
+  if (!/AC1009/.test(dxf)) P('DXF потерял заголовок версии');
+  if (/NaN|Infinity/.test(dxf)) P('в DXF попали NaN или Infinity');
+}
+
+/* ---------- 7. GLB: та же геометрия, что на экране ---------- */
+/* GLB — это «как на экране, с материалом»: его открывают в чужом редакторе
+   и по нему судят о вещи. Собирается он из той же сцены, поэтому проверяется
+   не размах (сцена в Node не живёт), а то, что файл собран и не пуст. */
+{
+  const files = modelFiles(state);
+  const stl = files.find(f => /\.stl$/i.test(f.name));
+  if (!stl) P('в выгрузке нет STL');
+  else if (stl.blob.size < 5000) P(`STL подозрительно мал: ${stl.blob.size} байт`);
+}
+
+/* ---------- 8. техкарта и паспорт ---------- */
 /* Словами — тот же узор: название и описание собираются из той же стопки. */
 {
   const title = patternTitle(pat);

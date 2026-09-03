@@ -12,7 +12,7 @@ import { analyzeFormability, recommendProcess, checks, toolingNumbers, mouldPart
 import { PROCESSES, byId as processById } from '../config/processes.js';
 import { MOULD_DEFAULTS, modelPath, cavityPath, corePath, rollerProfile,
          cavityStock, wareProfiles } from '../core/mould.js';
-import { buildDXF } from '../core/dxf.js';
+import { buildDXF, wareDXF } from '../core/dxf.js';
 import { PLASTERS, byId as plasterById, plasterMix } from '../config/plasters.js';
 import { $, esc, num, dec, rub } from './dom.js';
 import { economics, ECON_DEFAULTS, pricePerKg } from '../core/economics.js';
@@ -194,22 +194,10 @@ export function techCardText() {
 
 /* Профили оснастки в DXF. Наружу по той же причине, что и лист: пакет
    производства собирает те же файлы, что и отдельные кнопки. */
+/* Сборка слоёв живёт в ядре (core/dxf.js): интерфейс только отдаёт ей то,
+   что знает про текущее изделие, и получает готовый файл. */
 export function dxfText() {
-  const wp = wareProfiles(state);
-  const roller = rollerProfile(state);
-  const layers = [
-    {name: 'IZDELIE', color: 1, points: wp.outer, closed: false},
-    {name: 'STENKA', color: 3, points: wp.inner, closed: false},
-    {name: 'MATRICA', color: 5, points: cavityPath(state, mould), closed: true},
-  ];
-  if (roller) layers.push({name: 'ROLIK', color: 2, points: roller, closed: false});
-  const mat = materialById(state.mat);
-  return buildDXF(layers, [
-    `KRUG: ${state.name || 'izdelie'} — profili osnastki, mm, syroy razmer`,
-    `Massa: ${mat.name} (${mat.vendor}), usadka ${mat.shrinkPct}%`,
-    `IZDELIE - naruzhnaya poverhnost, STENKA - vnutrennyaya (profil rolika),`,
-    `MATRICA - sechenie nizhney poluformy. X = radius, Y = vysota.`,
-  ]);
+  return wareDXF(state, {wareProfiles, rollerProfile, cavityPath, mould, materialById});
 }
 
 /* Лист для производства: собираем модель из тех же чисел, что показывает панель.

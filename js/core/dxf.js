@@ -42,3 +42,38 @@ export function buildDXF(layers, notes = []) {
   s += g(0, 'ENDSEC') + g(0, 'EOF');
   return s;
 }
+
+
+/**
+ * Слои DXF для изделия: наружная поверхность, стенка, сечение матрицы
+ * и профиль ролика.
+ *
+ * Сборка живёт в ядре, а не в интерфейсе, по двум причинам. Первая: это
+ * геометрия, а не показ — здесь нет ни одного слова про кнопки. Вторая
+ * важнее: пока она лежала в UI, её нельзя было проверить из командной
+ * строки — файл интерфейса тянет за собой DOM, и проверка «в DXF тот же
+ * профиль, что в модели» не запускалась вовсе.
+ *
+ * **Рельефа в DXF нет намеренно.** По этим линиям точат шаблон и профиль
+ * ролика, а оснастка рельеф не воспроизводит: линия с борозд означала бы
+ * обещание, которого инструмент не выполняет.
+ */
+export function wareDXF(state, deps) {
+  const {wareProfiles, rollerProfile, cavityPath, mould, materialById} = deps;
+  const wp = wareProfiles(state);
+  const roller = rollerProfile(state);
+  const layers = [
+    {name: 'IZDELIE', color: 1, points: wp.outer, closed: false},
+    {name: 'STENKA', color: 3, points: wp.inner, closed: false},
+    {name: 'MATRICA', color: 5, points: cavityPath(state, mould), closed: true},
+  ];
+  if (roller) layers.push({name: 'ROLIK', color: 2, points: roller, closed: false});
+  const mat = materialById(state.mat);
+  return buildDXF(layers, [
+    `KRUG: ${state.name || 'izdelie'} — profili osnastki, mm, syroy razmer`,
+    `Massa: ${mat.name} (${mat.vendor}), usadka ${mat.shrinkPct}%`,
+    'IZDELIE - naruzhnaya poverhnost, STENKA - vnutrennyaya (profil rolika),',
+    'MATRICA - sechenie nizhney poluformy. X = radius, Y = vysota.',
+    'Relef uzora v DXF ne vhodit: osnastka ego ne vosproizvodit.',
+  ]);
+}
